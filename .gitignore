@@ -1,0 +1,4 @@
+.idea
+*.swp
+cmake-build*
+semantic_classes.json
