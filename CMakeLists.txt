@@ -1,7 +1,5 @@
-cmake_minimum_required(VERSION 3.9)
+cmake_minimum_required(VERSION 3.1)
 project(bim_data)
-
-set(CMAKE_CXX_STANDARD 11)
 
 # OpenMP
 find_package(OpenMP)
@@ -13,14 +11,6 @@ if (OPENMP_FOUND)
     add_definitions(-DCGAL_USE_GMPXX)
 endif (OPENMP_FOUND)
 
-# EIGEN
-find_package( Eigen3 3.2 REQUIRED)
-if (EIGEN3_FOUND)
-    include( ${EIGEN3_USE_FILE} )
-endif(EIGEN3_FOUND)
-include_directories( EIGEN3_INCLUDE_DIR )
-message("Eigen3_VERSION ${Eigen3_VERSION}")
-
 #Qt
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
@@ -30,10 +20,13 @@ find_package(Qt5 COMPONENTS Widgets Core Xml OpenGL REQUIRED)
 # CGAL
 find_package(CGAL REQUIRED)
 include(${CGAL_USE_FILE})
-message("BUILD_TYPE ${CMAKE_BUILD_TYPE}")
 message("CGAL_VERSION: ${CGAL_VERSION}")
-message("CGAL_INCLUDE_DIRS: ${CGAL_INCLUDE_DIRS}")
 set(CMAKE_AUTOUIC_SEARCH_PATHS ${CGAL_INCLUDE_DIRS}/CGAL/Qt/resources/)
+
+# EIGEN
+find_package( Eigen3 3.2 REQUIRED)
+include( ${EIGEN3_USE_FILE} )
+
 
 # External
 include_directories(external)

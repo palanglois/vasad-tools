@@ -19,6 +19,7 @@
 #include <CGAL/Polygon_mesh_processing/polygon_soup_to_polygon_mesh.h>
 #include <CGAL/IO/print_wavefront.h>
 #include <CGAL/draw_polyhedron.h>
+#include <CGAL/Polygon_mesh_processing/triangulate_hole.h>
 
 using namespace std;
 
@@ -84,8 +85,40 @@ void writePolyhedron(Polyhedron mesh, const string& outPath)
     file_out.close();
 }
 
+void repairMesh(Polyhedron &mesh, bool verbose=false)
+{
+    // Incrementally fill the holes
+    unsigned int nb_holes = 0;
+    for(Halfedge_handle h : halfedges(mesh))
+    {
+        if(h->is_border())
+        {
+            vector<Facet_handle>  patch_facets;
+            vector<Vertex_handle> patch_vertices;
+            bool success = get<0>(
+                    CGAL::Polygon_mesh_processing::triangulate_refine_and_fair_hole(
+                            mesh,
+                            h,
+                            back_inserter(patch_facets),
+                            back_inserter(patch_vertices),
+                            CGAL::Polygon_mesh_processing::parameters::vertex_point_map(get(CGAL::vertex_point, mesh)).
+                                    geom_traits(Kernel())));
+            if (verbose) {
+                cout << " Number of facets in constructed patch: " << patch_facets.size() << endl;
+                cout << " Number of vertices in constructed patch: " << patch_vertices.size() << endl;
+                cout << " Fairing : " << (success ? "succeeded" : "failed") << endl;
+                ++nb_holes;
+            }
+        }
+    }
+    if(verbose) {
+        cout << endl;
+        cout << nb_holes << " holes have been filled" << endl;
+    }
+}
+
 /* Load points from an obj file */
-map<string, bool> loadTrianglesFromObj(const string &objFile, const string &outPath)
+map<string, bool> loadObjAndCheckCloseness(const string &objFile, const string &outPath)
 {
     //Loading the obj data
     ifstream inputStream(objFile.c_str());
@@ -99,11 +132,11 @@ map<string, bool> loadTrianglesFromObj(const string &objFile, const string &outP
     string currentLine;
     string curObject;
     vector<Point> curPoints;
-    map<string, vector<vector<size_t>>> allPolygons;
     vector<vector<size_t>> curPolygons;
     vector<vector<int>> triClasses;
     map<string, bool> objAndCloseness;
     int nbClosed = 0;
+    int nbClosedAfter = 0;
     int nbTotal = 0;
     while(getline(inputStream, currentLine))
     {
@@ -128,30 +161,32 @@ map<string, bool> loadTrianglesFromObj(const string &objFile, const string &outP
         }
         else if (firstCaracter == "o"){
             // New object - Check the previous one and reinit the variables
-            if(!curObject.empty())
+            if(curObject.empty()) {
+                ss >> curObject ;
+                continue;
+            }
+            if (curObject.find("Flow") == string::npos /*&& curObject.find("Seam") != string::npos*/)
             {
-                if (curObject.find("Flow") == string::npos && curObject.find("Seam") != string::npos)
-                {
-                    auto pointCopies = curPoints;
-                    CGAL::Polygon_mesh_processing::orient_polygon_soup(pointCopies, curPolygons);
-                    Polyhedron mesh;
-                    CGAL::Polygon_mesh_processing::polygon_soup_to_polygon_mesh(pointCopies, curPolygons, mesh);
-                    bool closed = CGAL::is_closed(mesh);
-                    nbTotal++;
-                    nbClosed += (int)closed;
-                    objAndCloseness[curObject] = closed;
-                    if(!closed) {
-                        cout << curObject << " is "
-                             << (closed ? "\x1B[32mclosed\033[0m\t\t" : "\x1B[31mopen\033[0m\t\t") << endl;
-                        replace( curObject.begin(), curObject.end(), '/', '_');
+                // Check that current object is closed
+                auto pointCopies = curPoints;
+                CGAL::Polygon_mesh_processing::orient_polygon_soup(pointCopies, curPolygons);
+                Polyhedron mesh;
+                CGAL::Polygon_mesh_processing::polygon_soup_to_polygon_mesh(pointCopies, curPolygons, mesh);
+                bool closedBefore = CGAL::is_closed(mesh);
+                nbTotal++;
+                nbClosed += (int)closedBefore;
+                nbClosedAfter += (int)closedBefore;
+                objAndCloseness[curObject] = closedBefore;
+                // Otherwise try to repair it
+                if(!closedBefore) {
+                    repairMesh(mesh); // Hole filling
+                    bool closedAfter = CGAL::is_closed(mesh);
+                    nbClosedAfter += (int)closedAfter;
+                    replace( curObject.begin(), curObject.end(), '/', '_');
+                    cout << "Surface " << curObject << " is now "
+                         << (closedAfter ? "\x1B[32mclosed\033[0m\t\t" : "\x1B[31mopen\033[0m\t\t") << endl;
+                    if(!closedAfter) {
                         writePolyhedron(mesh, outPath + curObject + ".obj");
-//                        ofstream ofs(outPath + curObject + ".obj");
-//                        CGAL::print_polyhedron_wavefront(ofs, mesh);
-                        allPolygons[curObject] = curPolygons;
-                        cout << "Number of faces: " << curPolygons.size() << endl;
-                        CGAL::draw(mesh);
-                        // Repair
-                        // TODO Once they fix the f*** out of the lib
                         CGAL::draw(mesh);
                     }
                 }
@@ -160,7 +195,8 @@ map<string, bool> loadTrianglesFromObj(const string &objFile, const string &outP
             curPolygons = vector<vector<size_t>>();
         }
     }
-    cout << nbClosed << " closed mesh out of " << nbTotal << endl;
+    cout << "Before repairing: " << nbClosed << " closed mesh out of " << nbTotal << endl;
+    cout << "After repairing: " << nbClosedAfter << " closed mesh out of " << nbTotal << endl;
     return objAndCloseness;
 }
 
@@ -185,6 +221,6 @@ int main(int argc, char *argv[])
 
     const string inputPath = opt["-i"];
 
-    auto objAndCloseness = loadTrianglesFromObj(inputPath, outPath);
+    auto objAndCloseness = loadObjAndCheckCloseness(inputPath, outPath);
     return 0;
 }

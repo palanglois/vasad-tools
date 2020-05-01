@@ -102,6 +102,7 @@ int main(int argc, char *argv[]) {
     //Random shoots from given point of views
     vector<Point> sampledPoints;
     vector<colorTuple> pointColors;
+    pointColors.reserve(nbShoot*pointOfViews.size());
     sampledPoints.reserve(nbShoot*pointOfViews.size());
 
     default_random_engine generator;

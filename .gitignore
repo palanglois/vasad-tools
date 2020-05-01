@@ -2,3 +2,4 @@
 *.swp
 cmake-build*
 semantic_classes.json
+debug
