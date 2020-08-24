@@ -25,38 +25,6 @@ using namespace std;
 using Json = nlohmann::json;
 
 
-vector<classKeywordsColor> loadSemanticClasses(string path)
-{
-    vector<classKeywordsColor> semanticClasses;
-
-    //Loading json data
-    Json inputData;
-    ifstream inputStream(path.c_str());
-    if(!inputStream)
-    {
-        cerr << "Could not load file located at : " << path << endl;
-        return vector<classKeywordsColor>();
-    }
-    inputStream >> inputData;
-    for( auto itr = inputData.begin() ; itr != inputData.end() ; itr++ ) {
-        cout << itr.key() << endl;
-
-        //Color
-        Json colorArray = itr.value().at("color");
-        vector<int> color;
-        for(auto color_itr = colorArray.begin(); color_itr != colorArray.end(); color_itr++)
-            color.push_back(*color_itr);
-
-        // Keywords
-        Json keywordsArray = itr.value().at("keywords");
-        vector<string> keywords;
-        for(auto str_it = keywordsArray.begin(); str_it != keywordsArray.end(); str_it++)
-            keywords.push_back(*str_it);
-        semanticClasses.emplace_back(itr.key(), keywords, color);
-    }
-    return semanticClasses;
-}
-
 int main(int argc, char *argv[]) {
     op::OptionParser opt;
     opt.add_option("-h", "--help", "show option help");
@@ -65,6 +33,7 @@ int main(int argc, char *argv[]) {
     opt.add_option("-c", "--input", "Path to the json file containing the camera positions", "");
     opt.add_option("-n", "--number", "Number of ray to shoot per point of view", "10000");
     opt.add_option("-gt", "--groundtruth", "Output the ground truth mesh with colored classes");
+    opt.add_option("-so", "--save_objects", "Output the separated_images");
 
     //Parsing options
     bool correctParsing = opt.parse_options(argc, argv);
@@ -92,9 +61,12 @@ int main(int argc, char *argv[]) {
     const string inputPath = opt["-i"];
     auto trianglesAndColors = loadTrianglesFromObj(inputPath, classesWithColor);
     triangles = trianglesAndColors.first;
-    if(op::str2bool(opt["-gt"]))
+    if (op::str2bool(opt["-gt"]))
         saveTrianglesAsObj(vector<Triangle>(triangles.begin(), triangles.end()),
                            outPath + "coloredTriangles.obj", trianglesAndColors.second);
+    if (op::str2bool(opt["-so"]))
+        saveSeparatedObj(vector<Triangle>(triangles.begin(), triangles.end()),
+                         outPath + "sep_obj", trianglesAndColors.second);
 
     //Build intersection tree
     Tree tree(triangles.begin(), triangles.end());

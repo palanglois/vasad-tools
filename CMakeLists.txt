@@ -22,6 +22,16 @@ find_package(CGAL REQUIRED)
 include(${CGAL_USE_FILE})
 message("CGAL_VERSION: ${CGAL_VERSION}")
 set(CMAKE_AUTOUIC_SEARCH_PATHS ${CGAL_INCLUDE_DIRS}/CGAL/Qt/resources/)
+set(CGAL_QT_SOURCE
+        ${CGAL_INCLUDE_DIRS}/CGAL/Qt/image_interface.h
+        ${CGAL_INCLUDE_DIRS}/CGAL/Qt/qglviewer.h
+        ${CGAL_INCLUDE_DIRS}/CGAL/Qt/domUtils.h
+        ${CGAL_INCLUDE_DIRS}/CGAL/Qt/frame.h
+        ${CGAL_INCLUDE_DIRS}/CGAL/Qt/manipulatedFrame.h
+        ${CGAL_INCLUDE_DIRS}/CGAL/Qt/manipulatedCameraFrame.h
+        ${CGAL_INCLUDE_DIRS}/CGAL/Qt/camera.h
+        ${CGAL_INCLUDE_DIRS}/CGAL/Qt/keyFrameInterpolator.h
+        ${CGAL_INCLUDE_DIRS}/CGAL/Qt/qglviewer_impl.h)
 
 # EIGEN
 find_package( Eigen3 3.2 REQUIRED)
@@ -38,15 +48,17 @@ add_executable(bim_data
 
 add_executable(closeness_checker
         main_closeness_checker.cpp
-        ${CGAL_INCLUDE_DIRS}/CGAL/Qt/image_interface.h
-        ${CGAL_INCLUDE_DIRS}/CGAL/Qt/qglviewer.h
-        ${CGAL_INCLUDE_DIRS}/CGAL/Qt/domUtils.h
-        ${CGAL_INCLUDE_DIRS}/CGAL/Qt/frame.h
-        ${CGAL_INCLUDE_DIRS}/CGAL/Qt/manipulatedFrame.h
-        ${CGAL_INCLUDE_DIRS}/CGAL/Qt/manipulatedCameraFrame.h
-        ${CGAL_INCLUDE_DIRS}/CGAL/Qt/camera.h
-        ${CGAL_INCLUDE_DIRS}/CGAL/Qt/keyFrameInterpolator.h
-        ${CGAL_INCLUDE_DIRS}/CGAL/Qt/qglviewer_impl.h)
+        ${CGAL_QT_SOURCE} meshProcessing.cpp meshProcessing.h)
+
+add_executable(boolean_operations_check
+        main_boolean_operations_check.cpp
+        ${CGAL_QT_SOURCE}
+        iogeometry.cpp iogeometry.h
+        BimObj.cpp BimObj.h
+        meshProcessing.cpp meshProcessing.h)
+add_executable(main_test main_test.cpp)
 
 target_link_libraries(bim_data ${CGAL_LIBRARIES})
 target_link_libraries(closeness_checker ${CGAL_LIBRARIES} Qt5::Widgets Qt5::Xml Qt5::OpenGL)
+target_link_libraries(boolean_operations_check ${CGAL_LIBRARIES} Qt5::Widgets Qt5::Xml Qt5::OpenGL gmpxx)
+target_link_libraries(main_test ${CGAL_LIBRARIES})
