@@ -158,7 +158,6 @@ vector<classKeywordsColor> loadSemanticClasses(string path)
     }
     inputStream >> inputData;
     for( auto itr = inputData.begin() ; itr != inputData.end() ; itr++ ) {
-        cout << itr.key() << endl;
 
         //Color
         Json colorArray = itr.value().at("color");

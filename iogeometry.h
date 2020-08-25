@@ -25,8 +25,8 @@
 // External
 #include "json/json.hpp"
 
-//typedef CGAL::Simple_cartesian<double> Kernel;
-typedef CGAL::Homogeneous<CGAL::Exact_integer>  Kernel;
+typedef CGAL::Simple_cartesian<double> Kernel;
+//typedef CGAL::Homogeneous<CGAL::Exact_integer>  Kernel;
 
 /* Typedefs for the geometrical primitives */
 typedef typename Kernel::Point_3 Point;

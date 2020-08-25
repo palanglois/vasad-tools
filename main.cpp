@@ -79,7 +79,10 @@ int main(int argc, char *argv[]) {
 
     default_random_engine generator;
     normal_distribution<double> distribution(0.0, 1.0);
+    int curPt = 0;
     for (auto pov: pointOfViews) {
+        curPt++;
+        cout << "Doing pt " << curPt << " out of " << pointOfViews.size() << endl;
 #pragma omp parallel for schedule(dynamic, 1)
         for (int i = 0; i < nbShoot; i++) {
 
@@ -95,8 +98,7 @@ int main(int argc, char *argv[]) {
 #pragma omp critical
                 {
                     if (boost::get<Point>(&(intersection->first))) {
-                        const Primitive_id &primitive_id = boost::get<Primitive_id>(intersection->second);
-                        colorTuple color = trianglesAndColors.second[*primitive_id];
+                        colorTuple color = trianglesAndColors.second[*boost::get<Primitive_id>(intersection->second)];
                         pointColors.push_back(color);
                         const Point *p = boost::get<Point>(&(intersection->first));
                         sampledPoints.push_back(*p);
