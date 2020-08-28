@@ -50,6 +50,10 @@ add_executable(closeness_checker
         main_closeness_checker.cpp
         ${CGAL_QT_SOURCE} meshProcessing.cpp meshProcessing.h)
 
+add_executable(plane_arrangement
+        main_plane_arrangement.cpp
+        iogeometry.cpp)
+
 add_executable(boolean_operations_check
         main_boolean_operations_check.cpp
         ${CGAL_QT_SOURCE}

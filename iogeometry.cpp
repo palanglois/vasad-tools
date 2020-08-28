@@ -89,6 +89,29 @@ vector<Point> loadPointOfViews(const string &jsonFile) {
     return pointOfViews;
 }
 
+vector<Point> loadPointCloudObj(const string &inFile)
+{
+    //Loading the obj data
+    ifstream inputStream(inFile.c_str());
+    if (!inputStream) {
+        cerr << "Could not load file located at : " << inFile << endl;
+        return vector<Point>();
+    }
+    vector<Point> points;
+    string currentLine;
+    while (getline(inputStream, currentLine)) {
+        stringstream ss(currentLine);
+        string firstCaracter;
+        float vx, vy, vz;
+        ss >> firstCaracter;
+        if (firstCaracter == "v") {
+            ss >> vx >> vy >> vz;
+            points.emplace_back(vx, vy, vz);
+        }
+    }
+    return points;
+}
+
 void savePointsAsObj(vector<Point> points, const string &outPath) {
     ofstream fileOut(outPath);
     for (const auto point: points)

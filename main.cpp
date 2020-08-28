@@ -33,6 +33,7 @@ int main(int argc, char *argv[]) {
     opt.add_option("-c", "--input", "Path to the json file containing the camera positions", "");
     opt.add_option("-n", "--number", "Number of ray to shoot per point of view", "10000");
     opt.add_option("-gt", "--groundtruth", "Output the ground truth mesh with colored classes");
+    opt.add_option("-pov", "--pointofview", "Save the point of views for each point");
     opt.add_option("-so", "--save_objects", "Output the separated_images");
 
     //Parsing options
@@ -73,9 +74,11 @@ int main(int argc, char *argv[]) {
 
     //Random shoots from given point of views
     vector<Point> sampledPoints;
+    vector<Point> pointOfViews2;
     vector<colorTuple> pointColors;
     pointColors.reserve(nbShoot*pointOfViews.size());
     sampledPoints.reserve(nbShoot*pointOfViews.size());
+    pointOfViews.reserve(nbShoot*pointOfViews.size());
 
     default_random_engine generator;
     normal_distribution<double> distribution(0.0, 1.0);
@@ -102,12 +105,15 @@ int main(int argc, char *argv[]) {
                         pointColors.push_back(color);
                         const Point *p = boost::get<Point>(&(intersection->first));
                         sampledPoints.push_back(*p);
+                        if(op::str2bool(opt["-pov"]))
+                            pointOfViews2.push_back(pov);
                     }
                 }
             }
         }
     }
     savePointsAsObjWithColors(sampledPoints, pointColors, outPath + "out.obj");
-
+    if(op::str2bool(opt["-pov"]))
+        savePointsAsObj(pointOfViews2, outPath + "pov.obj");
     return 0;
 }

@@ -13,6 +13,7 @@
 
 // CGAL
 #include <CGAL/Simple_cartesian.h>
+#include <CGAL/Exact_predicates_exact_constructions_kernel.h>
 #include <CGAL/Exact_integer.h>
 //#include <CGAL/Polyhedron_3.h>
 #include <CGAL/Nef_polyhedron_3.h>
@@ -26,7 +27,9 @@
 #include "json/json.hpp"
 
 typedef CGAL::Simple_cartesian<double> Kernel;
+typedef CGAL::Exact_predicates_exact_constructions_kernel Kernel2;
 //typedef CGAL::Homogeneous<CGAL::Exact_integer>  Kernel;
+typedef CGAL::Cartesian_converter<Kernel,Kernel2>         Simple_to_Epeck;
 
 /* Typedefs for the geometrical primitives */
 typedef typename Kernel::Point_3 Point;
@@ -73,6 +76,7 @@ typedef std::tuple<std::string, std::vector<std::string>, colorTuple> classKeywo
 std::pair<std::vector<Triangle>, TriangleColorMap> loadTrianglesFromObj(const std::string &objFile,
                                                                  const std::vector<classKeywordsColor> &classes);
 std::vector<Point> loadPointOfViews(const std::string &jsonFile);
+std::vector<Point> loadPointCloudObj(const std::string &inFile);
 
 // Output functions
 void savePointsAsObj(std::vector<Point> points, const std::string &outPath);
