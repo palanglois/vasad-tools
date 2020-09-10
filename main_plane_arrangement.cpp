@@ -1,6 +1,7 @@
 #include <iostream>
 #include <vector>
 #include <algorithm>
+#include <random>
 
 // External
 #include "OptionParser/option_parser.h"
@@ -225,21 +226,25 @@ int main(int argc, char *argv[]) {
     bbox += CGAL::bbox_3(pov.begin(), pov.end());
 
     arrangement.set_bbox(bbox);
-    Efficient_ransac::Shape_range shapes = ransac.shapes();
-    Efficient_ransac::Shape_range::iterator it = shapes.begin();
+    vector<Plane*> shapes;
+    for(auto planeIt = ransac.shapes().begin(); planeIt != ransac.shapes().end(); planeIt++)
+        shapes.push_back(dynamic_cast<Plane*>(planeIt->get()));
+    auto it = shapes.begin();
     Simple_to_Epeck s2e;
     int planeIter = 0;
+    sort(shapes.begin(), shapes.end(),
+         [](auto & a, auto & b) -> bool
+         {
+             return a->indices_of_assigned_points().size() > b->indices_of_assigned_points().size();
+         });
     while (it != shapes.end()) {
-        if (Plane* plane = dynamic_cast<Plane*>(it->get())) {
-            //Actually insert the plane
-            arrangement.insert(s2e(Kernel::Plane_3(*plane)));
+            arrangement.insert(s2e(Kernel::Plane_3(**it)));
             if(planeIter++ == maxNumberOfPlanes) break;
-        }
         it++;
     }
     cout << "Plane arrangement built !" << endl;
     cout << "Saving arrangement..." << endl;
-    saveArrangementAsPly("../debug/arrangement.ply", arrangement);
+    saveArrangementAsPly("arrangement.ply", arrangement);
 
     // Prepare labels and mapping
     vector<bool> labels(arrangement.number_of_cells(), true);
@@ -330,7 +335,7 @@ int main(int argc, char *argv[]) {
     cout << "Number of true labels: " << nbTrue << " out of " << labels.size() << endl;
 
     cout << "Saving reconstruction..." << endl;
-    savePlyFromLabel("../debug/out.ply", arrangement, cell2label, labels);
+    savePlyFromLabel("filtered_plane_arrangement.ply", arrangement, cell2label, labels);
     cout << "Reconstruction saved." << endl;
 
     return 0;

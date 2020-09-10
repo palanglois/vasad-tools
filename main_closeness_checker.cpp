@@ -9,8 +9,9 @@
 // External
 #include "OptionParser/option_parser.h"
 
+//#include "ui_ImageInterface.h"
 // CGAL
-#define CGAL_USE_BASIC_VIEWER
+//#define CGAL_USE_BASIC_VIEWER
 #include <CGAL/Simple_cartesian.h>
 #include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
 #include <CGAL/Polyhedron_3.h>
@@ -20,6 +21,7 @@
 #include <CGAL/IO/print_wavefront.h>
 #include <CGAL/draw_polyhedron.h>
 #include <CGAL/Polygon_mesh_processing/triangulate_hole.h>
+
 
 using namespace std;
 
@@ -187,7 +189,7 @@ map<string, bool> loadObjAndCheckCloseness(const string &objFile, const string &
                          << (closedAfter ? "\x1B[32mclosed\033[0m\t\t" : "\x1B[31mopen\033[0m\t\t") << endl;
                     if(!closedAfter) {
                         writePolyhedron(mesh, outPath + curObject + ".obj");
-                        CGAL::draw(mesh);
+                        //CGAL::draw(mesh);
                     }
                 }
             }

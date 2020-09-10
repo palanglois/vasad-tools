@@ -20,18 +20,21 @@ find_package(Qt5 COMPONENTS Widgets Core Xml OpenGL REQUIRED)
 # CGAL
 find_package(CGAL REQUIRED)
 include(${CGAL_USE_FILE})
-message("CGAL_VERSION: ${CGAL_VERSION}")
-set(CMAKE_AUTOUIC_SEARCH_PATHS ${CGAL_INCLUDE_DIRS}/CGAL/Qt/resources/)
+message("CGAL_VERSION: ${CGAL_VERSION} test")
+set(CMAKE_AUTOUIC_SEARCH_PATHS ${CGAL_INCLUDE_DIRS})
+list(TRANSFORM CMAKE_AUTOUIC_SEARCH_PATHS APPEND /CGAL/Qt/resources/)
+message(${CMAKE_AUTOUIC_SEARCH_PATHS})
 set(CGAL_QT_SOURCE
-        ${CGAL_INCLUDE_DIRS}/CGAL/Qt/image_interface.h
-        ${CGAL_INCLUDE_DIRS}/CGAL/Qt/qglviewer.h
-        ${CGAL_INCLUDE_DIRS}/CGAL/Qt/domUtils.h
-        ${CGAL_INCLUDE_DIRS}/CGAL/Qt/frame.h
-        ${CGAL_INCLUDE_DIRS}/CGAL/Qt/manipulatedFrame.h
-        ${CGAL_INCLUDE_DIRS}/CGAL/Qt/manipulatedCameraFrame.h
-        ${CGAL_INCLUDE_DIRS}/CGAL/Qt/camera.h
-        ${CGAL_INCLUDE_DIRS}/CGAL/Qt/keyFrameInterpolator.h
-        ${CGAL_INCLUDE_DIRS}/CGAL/Qt/qglviewer_impl.h)
+	#        ${CGAL_INCLUDE_DIRS}/CGAL/Qt/image_interface.h
+	#${CGAL_INCLUDE_DIRS}/CGAL/Qt/qglviewer.h
+	#${CGAL_INCLUDE_DIRS}/CGAL/Qt/domUtils.h
+	#${CGAL_INCLUDE_DIRS}/CGAL/Qt/frame.h
+	#${CGAL_INCLUDE_DIRS}/CGAL/Qt/manipulatedFrame.h
+	#${CGAL_INCLUDE_DIRS}/CGAL/Qt/manipulatedCameraFrame.h
+	#${CGAL_INCLUDE_DIRS}/CGAL/Qt/camera.h
+	#${CGAL_INCLUDE_DIRS}/CGAL/Qt/keyFrameInterpolator.h
+	#${CGAL_INCLUDE_DIRS}/CGAL/Qt/qglviewer_impl.h
+	)
 
 # EIGEN
 find_package( Eigen3 3.2 REQUIRED)
