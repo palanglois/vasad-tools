@@ -55,7 +55,7 @@ struct Timeout_callback {
     mutable int nb;
     mutable CGAL::Timer timer;
     const double limit;
-    Timeout_callback(double limit) :
+    explicit Timeout_callback(double limit) :
             nb(0), limit(limit) {
         timer.start();
     }
@@ -75,9 +75,9 @@ struct Timeout_callback {
     }
 };
 
-void saveArrangementAsPly(string fileName, Polyhedral_complex_3::Arrangement_3<Kernel2> &arr, bool verbose=true) {
+void saveArrangementAsPly(const string& fileName, Polyhedral_complex_3::Arrangement_3<Kernel2> &arr, bool verbose=true) {
     // Mark all facet to be drawn
-    for (Polyhedral_complex_3::Arrangement_3<Kernel2>::Faces_iterator itf = arr.facets_begin(); itf != arr.facets_end(); itf++) {
+    for (auto itf = arr.facets_begin(); itf != arr.facets_end(); itf++) {
         Polyhedral_complex_3::Arrangement_3<Kernel2>::Face &f = *itf;
         f.to_draw = false;
         if (!arr.is_facet_bounded(f)) { continue; }
@@ -227,8 +227,8 @@ int main(int argc, char *argv[]) {
 
     arrangement.set_bbox(bbox);
     vector<Plane*> shapes;
-    for(auto planeIt = ransac.shapes().begin(); planeIt != ransac.shapes().end(); planeIt++)
-        shapes.push_back(dynamic_cast<Plane*>(planeIt->get()));
+    for(const auto & planeIt : ransac.shapes())
+        shapes.push_back(dynamic_cast<Plane*>(planeIt.get()));
     auto it = shapes.begin();
     Simple_to_Epeck s2e;
     int planeIter = 0;
@@ -256,7 +256,7 @@ int main(int argc, char *argv[]) {
     //Prepare intersection tree
     cout << "Building intersection tree..." << endl;
     std::vector<Triangle> triangles;
-    for (Arrangement ::Faces_iterator itf = arrangement.facets_begin(); itf != arrangement.facets_end(); itf++) {
+    for (auto itf = arrangement.facets_begin(); itf != arrangement.facets_end(); itf++) {
 
         Arrangement::Face &f = *itf;
         Arrangement::Face_handle fh = arrangement.facet_handle(f);
@@ -275,12 +275,12 @@ int main(int argc, char *argv[]) {
         // create the triangles
         // here there is a strong assumption that f is convex
         std::vector<Arrangement::Face_handle>::const_iterator vhi = vertices.begin();
-        Arrangement::Point first = arrangement.point(*vhi);
+        const Arrangement::Point& first = arrangement.point(*vhi);
         ++vhi;
         Arrangement::Point second = arrangement.point(*vhi);
         ++vhi;
         while (vhi != vertices.end()) {
-            Arrangement::Point third = arrangement.point(*vhi);
+            const Arrangement::Point& third = arrangement.point(*vhi);
             ++vhi;
 
             Point a(CGAL::to_double(first.x()), CGAL::to_double(first.y()), CGAL::to_double(first.z()));
