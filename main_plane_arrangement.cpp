@@ -312,7 +312,10 @@ int main(int argc, char *argv[]) {
         int i = indices[k];
         if(k % 1000 == 0)
             cout << "Computed " << k << " out of " << limit << " rays." << endl;
-        Segment query(pointCloud[i], pov[i]);
+        Vector dir = pov[i] - pointCloud[i];
+        dir /= sqrt(dir.squared_length());
+        Point endPoint = pov[i] - 0.01*dir;
+        Segment query(pointCloud[i], endPoint);
         vector<Segment_intersection> intersections;
         vector<Point> intersectPoints;
         tree.all_intersections(query, back_inserter(intersections));
