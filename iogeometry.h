@@ -83,6 +83,8 @@ void savePointsAsObj(std::vector<Point> points, const std::string &outPath);
 void savePointsAsObjWithColors(std::vector<Point> points, std::vector<colorTuple> colors, const std::string &outPath);
 void saveTrianglesAsObj(std::vector<Triangle> triangles, const std::string &outPath, TriangleColorMap colors);
 void saveSeparatedObj(std::vector<Triangle> triangles, const std::string &outPath, TriangleColorMap colors);
+void saveArrangement(const std::string &name, const std::vector<Kernel::Plane_3> &planes, const CGAL::Bbox_3 &bbox,
+        const std::map<int, int> &cell2label, const std::vector<bool> &labels);
 
 // Semantics
 std::vector<classKeywordsColor> loadSemanticClasses(std::string path);

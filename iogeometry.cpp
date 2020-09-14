@@ -167,6 +167,40 @@ void saveSeparatedObj(vector<Triangle> triangles, const string &outPath, Triangl
     }
 }
 
+void saveArrangement(const string &name, const vector<Kernel::Plane_3> &planes, const CGAL::Bbox_3 &bbox,
+                     const map<int, int> &cell2label, const vector<bool> &labels)
+{
+    // Planes
+    Json planesData;
+    for(auto &planeIt: planes)
+    {
+        Vector ortDir = planeIt.orthogonal_vector();
+        Point inlier = planeIt.projection(CGAL::ORIGIN);
+        Json planeNormal = {ortDir.x(), ortDir.y(), ortDir.z()};
+        Json planeInlier = {inlier.x(), inlier.y(), inlier.z()};
+        Json planeData = {{"normal", planeNormal}, {"inlier", planeInlier}};
+        planesData.push_back(planeData);
+    }
+
+    // Bounding box
+    Json bboxData = {bbox.xmin(), bbox.ymin(), bbox.zmin(), bbox.xmax(), bbox.ymax(), bbox.zmax()};
+
+    // Mapping
+    Json mapping;
+    for(auto &mapIt: cell2label)
+        mapping.push_back({to_string(mapIt.first).c_str(), mapIt.second});
+
+    // Labels
+    Json labelsData(labels);
+
+    // Compile data
+    Json outputData = {{"planes", planesData}, {"bbox", bboxData}, {"map", mapping}, {"labels", labelsData}};
+
+    // Output arrangement
+    ofstream outFile(name);
+    outFile << outputData;
+}
+
 vector<classKeywordsColor> loadSemanticClasses(string path)
 {
     vector<classKeywordsColor> semanticClasses;

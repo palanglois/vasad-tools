@@ -123,7 +123,7 @@ void sort_intersections(vector<Point> &intersectPoints)
     intersectPoints = ret;
 }
 
-void savePlyFromLabel(const string &filename, Arrangement &arr, map<Arrangement::Face_handle, int> &fh_to_node, const vector<bool> &labels)
+void savePlyFromLabel(const string &filename, Arrangement &arr, map<int, int> &fh_to_node, const vector<bool> &labels)
 {
 
     for(auto itf = arr.facets_begin(); itf != arr.facets_end(); itf++){
@@ -157,6 +157,7 @@ int main(int argc, char *argv[]) {
     op::OptionParser opt;
     opt.add_option("-h", "--help", "show option help");
     opt.add_option("-i", "--input", "Path to the input obj point cloud", "");
+    opt.add_option("-o", "--output", "Path to the output directory", ".");
     opt.add_option("-pov", "--pointofview", "Path to the pov obj file", "");
     opt.add_option("-t", "--timout", "Timeout for RANSAC", "60");
 
@@ -177,16 +178,17 @@ int main(int argc, char *argv[]) {
     }
 
     const string inputPath = opt["-i"];
+    const string outputPath = opt["-o"][opt["-o"].size()-1] == '/' ? opt["-o"] : opt["-o"] + '/';
     const string povPath = opt["-pov"];
     double timout = op::str2double(opt["-t"]);
-    const int maxNumberOfPlanes = 160;
+    const int maxNumberOfPlanes = 180;
 
     // Load file
     cout << "Loading point cloud..." << endl;
     vector<Point> pointCloud = loadPointCloudObj(inputPath);
     vector<Point> pov = loadPointCloudObj(povPath);
     Pwn_vector pwnCloud;
-    const int debugLimit = 100000;
+    const int debugLimit = 10000;
     int iter = 0;
     for(auto point: pointCloud)
     {
@@ -215,7 +217,7 @@ int main(int argc, char *argv[]) {
     Timeout_callback timeout_callback(timout);
     Efficient_ransac::Parameters parameters;
     parameters.min_points = 10;
-    parameters.epsilon = 0.08;
+    parameters.epsilon = 0.05;
     ransac.detect(parameters, timeout_callback);
     cout << ransac.shapes().end() - ransac.shapes().begin()
          << " shapes detected." << endl;
@@ -238,17 +240,18 @@ int main(int argc, char *argv[]) {
              return a->indices_of_assigned_points().size() > b->indices_of_assigned_points().size();
          });
     while (it != shapes.end()) {
+            cout << "Number of inliers: " << (*it)->indices_of_assigned_points().size() << endl;
             arrangement.insert(s2e(Kernel::Plane_3(**it)));
             if(planeIter++ == maxNumberOfPlanes) break;
         it++;
     }
     cout << "Plane arrangement built !" << endl;
     cout << "Saving arrangement..." << endl;
-    saveArrangementAsPly("arrangement.ply", arrangement);
+    saveArrangementAsPly(outputPath + "arrangement.ply", arrangement);
 
     // Prepare labels and mapping
     vector<bool> labels(arrangement.number_of_cells(), true);
-    map<Arrangement::Face_handle, int> cell2label;
+    map<int, int> cell2label;
     int cellIter = 0;
     for(auto cellIt = arrangement.cells_begin(); cellIt != arrangement.cells_end(); cellIt++)
         cell2label[arrangement.cell_handle(*cellIt)] = cellIter++;
@@ -305,7 +308,11 @@ int main(int argc, char *argv[]) {
     vector<int> indices(pointCloud.size());
     iota(indices.begin(), indices.end(), 0);
     const int seed = 0;
+#ifndef NDEBUG
+    const int limit = 20000;
+#else
     const int limit = 400000;
+#endif
     shuffle(indices.begin(), indices.end(), default_random_engine(seed));
     for(int k = 0; k < limit; k++)
     {
@@ -338,8 +345,15 @@ int main(int argc, char *argv[]) {
     cout << "Number of true labels: " << nbTrue << " out of " << labels.size() << endl;
 
     cout << "Saving reconstruction..." << endl;
-    savePlyFromLabel("filtered_plane_arrangement.ply", arrangement, cell2label, labels);
+    savePlyFromLabel(outputPath + "filtered_plane_arrangement.ply", arrangement, cell2label, labels);
     cout << "Reconstruction saved." << endl;
+
+    cout << "Saving arrangement" << endl;
+    vector<Kernel::Plane_3> rawPlanes;
+    for(auto& itPlane: shapes)
+        rawPlanes.emplace_back(*itPlane);
+    saveArrangement(outputPath + "arrangement_check_point.json", rawPlanes, bbox, cell2label, labels);
+    cout << "Arrangement saved" << endl;
 
     return 0;
 }
