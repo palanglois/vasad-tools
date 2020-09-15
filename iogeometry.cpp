@@ -167,8 +167,8 @@ void saveSeparatedObj(vector<Triangle> triangles, const string &outPath, Triangl
     }
 }
 
-void saveArrangement(const string &name, const vector<Kernel::Plane_3> &planes, const CGAL::Bbox_3 &bbox,
-                     const map<int, int> &cell2label, const vector<bool> &labels)
+void saveArrangement(const string &name, const vector<Kernel::Plane_3> &planes, int maxNumberOfPlanes,
+        const CGAL::Bbox_3 &bbox, const map<int, int> &cell2label, const vector<bool> &labels)
 {
     // Planes
     Json planesData;
@@ -194,14 +194,53 @@ void saveArrangement(const string &name, const vector<Kernel::Plane_3> &planes, 
     Json labelsData(labels);
 
     // Compile data
-    Json outputData = {{"planes", planesData}, {"bbox", bboxData}, {"map", mapping}, {"labels", labelsData}};
+    Json outputData = {{"planes", planesData}, {"bbox", bboxData}, {"map", mapping}, {"labels", labelsData},
+                       {"nbPlanes", maxNumberOfPlanes}};
 
     // Output arrangement
     ofstream outFile(name);
     outFile << outputData;
 }
 
-vector<classKeywordsColor> loadSemanticClasses(string path)
+void loadArrangement(const string &name, Arrangement &arr, map<int, int> &cell2label, vector<bool> &labels)
+{
+    cout << "Loading arrangement!" << endl;
+    fstream i(name);
+    Json data;
+    i >> data;
+
+    // Bounding box
+    vector<double> box = data["bbox"];
+    CGAL::Bbox_3 bbox(box[0], box[1], box[2], box[3], box[4], box[5]);
+    arr.set_bbox(bbox);
+
+    // Planes
+    vector<Json> planes = data["planes"];
+#ifndef NDEBUG
+    int nbPlanes = 30;
+#else
+    int nbPlanes = data["nbPlanes"];
+#endif
+    for(int i=0; i < nbPlanes; i++)
+    {
+        Json &norm = planes[i]["normal"];
+        Kernel2::Vector_3 normal((double) norm[0], (double) norm[1], (double) norm[2]);
+        Json &inl = planes[i]["inlier"];
+        Kernel2::Point_3 inlier((double) inl[0], (double) inl[1], (double) inl[2]);
+        arr.insert(Kernel2::Plane_3(inlier, normal));
+        cout << "Inserted plane " << i + 1 << " out of " << nbPlanes << endl;
+    }
+
+    //Mapping
+    for(auto &elem: data["map"])
+        cell2label[stoi(elem[0].get<string>())] = elem[1].get<int>();
+
+    //Labels
+    labels = data["labels"].get<vector<bool>>();
+    cout << "Arrangement loaded" << endl;
+}
+
+vector<classKeywordsColor> loadSemanticClasses(const string& path)
 {
     vector<classKeywordsColor> semanticClasses;
 

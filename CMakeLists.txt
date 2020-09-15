@@ -63,9 +63,13 @@ add_executable(boolean_operations_check
         iogeometry.cpp iogeometry.h
         BimObj.cpp BimObj.h
         meshProcessing.cpp meshProcessing.h)
+
+add_executable(graph_statistics main_graph_statistics.cpp
+        iogeometry.cpp)
 add_executable(main_test main_test.cpp)
 
 target_link_libraries(bim_data ${CGAL_LIBRARIES})
 target_link_libraries(closeness_checker ${CGAL_LIBRARIES} Qt5::Widgets Qt5::Xml Qt5::OpenGL)
 target_link_libraries(boolean_operations_check ${CGAL_LIBRARIES} Qt5::Widgets Qt5::Xml Qt5::OpenGL gmpxx)
+target_link_libraries(graph_statistics ${CGAL_LIBRARIES})
 target_link_libraries(main_test ${CGAL_LIBRARIES})

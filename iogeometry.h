@@ -23,6 +23,13 @@
 // Boost
 #include <boost/functional/hash.hpp>
 
+//Polyhedral complex
+#include <Polyhedral_complex_3/Arrangement_3.hpp>
+#include <Polyhedral_complex_3/Mesh_3.hpp>
+#include <Polyhedral_complex_3/Mesh_extractor_3.hpp>
+#include <Polyhedral_complex_3/print_PLY.hpp>
+#include "Polyhedral_complex_3/Polyhedral_complex_queries_3.hpp"
+
 // External
 #include "json/json.hpp"
 
@@ -45,6 +52,9 @@ typedef CGAL::Nef_polyhedron_3<Kernel> Nef_Polyhedron;
 typedef Polyhedron::Halfedge_handle    Halfedge_handle;
 typedef Polyhedron::Facet_handle       Facet_handle;
 typedef Polyhedron::Vertex_handle      Vertex_handle;
+
+/* Typedef for plane arrangement */
+typedef Polyhedral_complex_3::Arrangement_3<Kernel2> Arrangement;
 
 
 // Hash for Triangle
@@ -83,10 +93,11 @@ void savePointsAsObj(std::vector<Point> points, const std::string &outPath);
 void savePointsAsObjWithColors(std::vector<Point> points, std::vector<colorTuple> colors, const std::string &outPath);
 void saveTrianglesAsObj(std::vector<Triangle> triangles, const std::string &outPath, TriangleColorMap colors);
 void saveSeparatedObj(std::vector<Triangle> triangles, const std::string &outPath, TriangleColorMap colors);
-void saveArrangement(const std::string &name, const std::vector<Kernel::Plane_3> &planes, const CGAL::Bbox_3 &bbox,
-        const std::map<int, int> &cell2label, const std::vector<bool> &labels);
+void saveArrangement(const std::string &name, const std::vector<Kernel::Plane_3> &planes, int maxNumberOfPlanes,
+        const CGAL::Bbox_3 &bbox, const std::map<int, int> &cell2label, const std::vector<bool> &labels);
+void loadArrangement(const std::string &name, Arrangement &arr, std::map<int, int> &cell2label, std::vector<bool> &labels);
 
 // Semantics
-std::vector<classKeywordsColor> loadSemanticClasses(std::string path);
+std::vector<classKeywordsColor> loadSemanticClasses(const std::string& path);
 
 #endif

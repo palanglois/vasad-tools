@@ -16,13 +16,6 @@
 #include <CGAL/AABB_traits.h>
 #include <CGAL/AABB_triangle_primitive.h>
 
-//Polyhedral complex
-#include <Polyhedral_complex_3/Arrangement_3.hpp>
-#include <Polyhedral_complex_3/Mesh_3.hpp>
-#include <Polyhedral_complex_3/Mesh_extractor_3.hpp>
-#include <Polyhedral_complex_3/print_PLY.hpp>
-#include "Polyhedral_complex_3/Polyhedral_complex_queries_3.hpp"
-
 // Ours
 #include "iogeometry.h"
 
@@ -49,7 +42,6 @@ typedef CGAL::AABB_triangle_primitive<Kernel, Iterator> Primitive;
 typedef CGAL::AABB_traits<Kernel, Primitive> AABB_triangle_traits;
 typedef CGAL::AABB_tree<AABB_triangle_traits> Tree;
 typedef boost::optional< Tree::Intersection_and_primitive_id<Segment>::Type > Segment_intersection;
-typedef Polyhedral_complex_3::Arrangement_3<Kernel2> Arrangement;
 
 struct Timeout_callback {
     mutable int nb;
@@ -352,7 +344,7 @@ int main(int argc, char *argv[]) {
     vector<Kernel::Plane_3> rawPlanes;
     for(auto& itPlane: shapes)
         rawPlanes.emplace_back(*itPlane);
-    saveArrangement(outputPath + "arrangement_check_point.json", rawPlanes, bbox, cell2label, labels);
+    saveArrangement(outputPath + "arrangement_check_point.json", rawPlanes, maxNumberOfPlanes, bbox, cell2label, labels);
     cout << "Arrangement saved" << endl;
 
     return 0;
