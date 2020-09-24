@@ -44,28 +44,31 @@ include( ${EIGEN3_USE_FILE} )
 # External
 include_directories(external)
 
+# Own
+include_directories(lib)
+
 add_executable(bim_data
         main.cpp
-        iogeometry.cpp
-        iogeometry.h)
+        lib/iogeometry.cpp
+        lib/iogeometry.h test/mainTest.cpp)
 
 add_executable(closeness_checker
         main_closeness_checker.cpp
-        ${CGAL_QT_SOURCE} meshProcessing.cpp meshProcessing.h)
+        ${CGAL_QT_SOURCE} lib/meshProcessing.cpp lib/meshProcessing.h)
 
 add_executable(plane_arrangement
         main_plane_arrangement.cpp
-        iogeometry.cpp)
+        lib/iogeometry.cpp)
 
 add_executable(boolean_operations_check
         main_boolean_operations_check.cpp
         ${CGAL_QT_SOURCE}
-        iogeometry.cpp iogeometry.h
-        BimObj.cpp BimObj.h
-        meshProcessing.cpp meshProcessing.h)
+        lib/iogeometry.cpp lib/iogeometry.h
+        lib/BimObj.cpp lib/BimObj.h
+        lib/meshProcessing.cpp lib/meshProcessing.h)
 
 add_executable(graph_statistics main_graph_statistics.cpp
-        iogeometry.cpp)
+        lib/iogeometry.cpp lib/graphStats.cpp lib/graphStats.h)
 add_executable(main_test main_test.cpp)
 
 target_link_libraries(bim_data ${CGAL_LIBRARIES})
@@ -73,3 +76,17 @@ target_link_libraries(closeness_checker ${CGAL_LIBRARIES} Qt5::Widgets Qt5::Xml 
 target_link_libraries(boolean_operations_check ${CGAL_LIBRARIES} Qt5::Widgets Qt5::Xml Qt5::OpenGL gmpxx)
 target_link_libraries(graph_statistics ${CGAL_LIBRARIES})
 target_link_libraries(main_test ${CGAL_LIBRARIES})
+
+### TESTS ###
+
+# GTest
+add_library(GTest_in STATIC external/gtest/gtest.h external/gtest/gtest-all.cc)
+set_target_properties(GTest_in PROPERTIES LINK_FLAGS "-pthread")
+
+# Making tests
+enable_testing()
+include_directories(test)
+add_executable(runUnitTests test/mainTest.cpp test/test_graph.cpp test/graph_fixture.h
+        lib/graphStats.cpp)
+target_link_libraries(runUnitTests GTest_in pthread ${CGAL_LIBRARIES})
+add_test(runUnitTests runUnitTests)

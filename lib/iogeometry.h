@@ -19,6 +19,9 @@
 #include <CGAL/Nef_polyhedron_3.h>
 #include <CGAL/Polyhedron_items_with_id_3.h>
 #include <CGAL/Surface_mesh.h>
+#include <CGAL/AABB_tree.h>
+#include <CGAL/AABB_traits.h>
+#include <CGAL/AABB_triangle_primitive.h>
 
 // Boost
 #include <boost/functional/hash.hpp>
@@ -52,6 +55,14 @@ typedef CGAL::Nef_polyhedron_3<Kernel> Nef_Polyhedron;
 typedef Polyhedron::Halfedge_handle    Halfedge_handle;
 typedef Polyhedron::Facet_handle       Facet_handle;
 typedef Polyhedron::Vertex_handle      Vertex_handle;
+
+/* Typedef for AABBTree */
+typedef std::vector<Triangle>::iterator Iterator;
+typedef CGAL::AABB_triangle_primitive<Kernel, Iterator> Primitive;
+typedef CGAL::AABB_traits<Kernel, Primitive> AABB_triangle_traits;
+typedef CGAL::AABB_tree<AABB_triangle_traits> Tree;
+typedef boost::optional< Tree::Intersection_and_primitive_id<Segment>::Type > Segment_intersection;
+typedef boost::optional<Tree::Intersection_and_primitive_id<Ray>::Type> Ray_intersection;
 
 /* Typedef for plane arrangement */
 typedef Polyhedral_complex_3::Arrangement_3<Kernel2> Arrangement;

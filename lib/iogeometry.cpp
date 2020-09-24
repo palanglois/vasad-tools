@@ -217,10 +217,13 @@ void loadArrangement(const string &name, Arrangement &arr, map<int, int> &cell2l
     // Planes
     vector<Json> planes = data["planes"];
 #ifndef NDEBUG
-    int nbPlanes = 30;
+    int nbPlanes = min(data["nbPlanes"].get<int>(), 30);
 #else
-    int nbPlanes = data["nbPlanes"];
+    int nbPlanes = data["nbPlanes"].get<int>();
 #endif
+    //DEBUG
+    int nbPlanesUsed = 0;
+    // END DEBUG
     for(int i=0; i < nbPlanes; i++)
     {
         Json &norm = planes[i]["normal"];
@@ -228,8 +231,14 @@ void loadArrangement(const string &name, Arrangement &arr, map<int, int> &cell2l
         Json &inl = planes[i]["inlier"];
         Kernel2::Point_3 inlier((double) inl[0], (double) inl[1], (double) inl[2]);
         arr.insert(Kernel2::Plane_3(inlier, normal));
+        //DEBUG
+        nbPlanesUsed++;
+        //END DEBUG
         cout << "Inserted plane " << i + 1 << " out of " << nbPlanes << endl;
     }
+    //DEBUG
+    cout << "Nb of planes used " << nbPlanesUsed << endl;
+    //END DEBUG
 
     //Mapping
     for(auto &elem: data["map"])

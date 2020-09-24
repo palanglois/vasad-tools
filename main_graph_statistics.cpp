@@ -4,7 +4,8 @@
 #include "OptionParser/option_parser.h"
 
 // Own
-#include "iogeometry.h"
+#include "lib/iogeometry.h"
+#include "lib/graphStats.h"
 
 using namespace std;
 
@@ -32,10 +33,23 @@ int main(int argc, char *argv[]) {
 
     const string inputPath = opt["-i"];
 
+    // Loading plane arrangement
     map<int, int> cell2label;
     vector<bool> labels;
     Arrangement arr;
     loadArrangement(inputPath, arr, cell2label, labels);
+
+    pair<Nodes, Edges> nodesEdges = computeGraphStatistics(labels, cell2label, arr, true);
+
+
+//    cout << count << " " << visitedCell.size() << endl;
+//    cout << "Label2Cell size: " << label2cell.size() << endl;
+//    cout << "Labels size: " << labels.size() << endl;
+//    cout << "Number of cells: " << arr.number_of_cells() << endl;
+//    int cellNb = 0;
+//    for(auto cellIt = arr.cells_begin(); cellIt != arr.cells_end(); cellIt++)
+//        cellNb++;
+//    cout << "Nb cells arr: " << cellNb << endl;
 
     return 0;
 }

@@ -6,7 +6,7 @@
 #include "OptionParser/option_parser.h"
 
 // Own
-#include "iogeometry.h"
+#include "lib/iogeometry.h"
 
 // CGAL
 #include <CGAL/AABB_tree.h>

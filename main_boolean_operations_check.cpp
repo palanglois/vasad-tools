@@ -5,7 +5,7 @@
 #include "OptionParser/option_parser.h"
 
 // Own
-#include "BimObj.h"
+#include "lib/BimObj.h"
 
 using namespace std;
 

@@ -12,12 +12,9 @@
 #include <CGAL/pca_estimate_normals.h>
 #include <CGAL/Shape_detection/Efficient_RANSAC.h>
 #include <CGAL/Timer.h>
-#include <CGAL/AABB_tree.h>
-#include <CGAL/AABB_traits.h>
-#include <CGAL/AABB_triangle_primitive.h>
 
 // Ours
-#include "iogeometry.h"
+#include "lib/iogeometry.h"
 
 using namespace std;
 
@@ -37,11 +34,6 @@ typedef CGAL::Shape_detection::Efficient_RANSAC_traits
 typedef CGAL::Shape_detection::Efficient_RANSAC<Traits> Efficient_ransac;
 typedef CGAL::Shape_detection::Plane<Traits>            Plane;
 
-typedef vector<Triangle>::iterator Iterator;
-typedef CGAL::AABB_triangle_primitive<Kernel, Iterator> Primitive;
-typedef CGAL::AABB_traits<Kernel, Primitive> AABB_triangle_traits;
-typedef CGAL::AABB_tree<AABB_triangle_traits> Tree;
-typedef boost::optional< Tree::Intersection_and_primitive_id<Segment>::Type > Segment_intersection;
 
 struct Timeout_callback {
     mutable int nb;
@@ -173,7 +165,11 @@ int main(int argc, char *argv[]) {
     const string outputPath = opt["-o"][opt["-o"].size()-1] == '/' ? opt["-o"] : opt["-o"] + '/';
     const string povPath = opt["-pov"];
     double timout = op::str2double(opt["-t"]);
+#ifndef NDEBUG
+    const int maxNumberOfPlanes = 3;
+#else
     const int maxNumberOfPlanes = 180;
+#endif
 
     // Load file
     cout << "Loading point cloud..." << endl;
@@ -231,12 +227,15 @@ int main(int argc, char *argv[]) {
          {
              return a->indices_of_assigned_points().size() > b->indices_of_assigned_points().size();
          });
+    int nbPlane = 0;
     while (it != shapes.end()) {
             cout << "Number of inliers: " << (*it)->indices_of_assigned_points().size() << endl;
             arrangement.insert(s2e(Kernel::Plane_3(**it)));
-            if(planeIter++ == maxNumberOfPlanes) break;
+            nbPlane++;
+            if(++planeIter == maxNumberOfPlanes) break;
         it++;
     }
+    cout << "Used " << nbPlane << " planes" << endl;
     cout << "Plane arrangement built !" << endl;
     cout << "Saving arrangement..." << endl;
     saveArrangementAsPly(outputPath + "arrangement.ply", arrangement);
@@ -344,7 +343,11 @@ int main(int argc, char *argv[]) {
     vector<Kernel::Plane_3> rawPlanes;
     for(auto& itPlane: shapes)
         rawPlanes.emplace_back(*itPlane);
-    saveArrangement(outputPath + "arrangement_check_point.json", rawPlanes, maxNumberOfPlanes, bbox, cell2label, labels);
+    saveArrangement(outputPath + "arrangement_check_point.json", rawPlanes,
+            min(maxNumberOfPlanes, (int) rawPlanes.size()), bbox, cell2label, labels);
+    cout << "Bbox " << bbox << endl;
+    cout << "Nb of cells: " << arrangement.number_of_cells() << endl;
+    cout << "Nb of planes: " << maxNumberOfPlanes << endl;
     cout << "Arrangement saved" << endl;
 
     return 0;
