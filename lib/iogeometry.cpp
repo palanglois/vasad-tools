@@ -112,6 +112,82 @@ vector<Point> loadPointCloudObj(const string &inFile)
     return points;
 }
 
+vector<pair<Tree*, int>> loadTreesFromObj(const string &inFile, const vector<classKeywordsColor> &classes)
+{
+    vector<pair<Tree*, int>> allTrees;
+
+    //Loading the obj data
+    ifstream inputStream(inFile.c_str());
+    if (!inputStream) {
+        cerr << "Could not load file located at : " << inFile << endl;
+        return allTrees;
+    }
+
+    //Loading the triangles
+    string currentLine;
+    int cur_class_id(0);
+    vector<colorTuple> triClasses;
+    TriangleColorMap triangleToColors;
+    vector<Point> points;
+    vector<vector<int>> faces;
+    while (getline(inputStream, currentLine)) {
+        stringstream ss(currentLine);
+        string firstCaracter;
+        float vx, vy, vz;
+        string f1, f2, f3, obj_name;
+        ss >> firstCaracter;
+        if (firstCaracter == "v") {
+            // Vertice
+            ss >> vx >> vy >> vz;
+            points.emplace_back(vx, vy, vz);
+        } else if (firstCaracter == "f") {
+            // Face
+            ss >> f1 >> f2 >> f3;
+            vector<string> curFace = {f1, f2, f3};
+            vector<int> curFaceIdx;
+            for (const auto& idxStr: curFace)
+                curFaceIdx.push_back(stoi(idxStr.substr(0, idxStr.find("/"))) - 1);
+            faces.emplace_back(curFaceIdx);
+        } else if (firstCaracter == "o") {
+            // Object - Finding the corresponding class
+            ss >> obj_name;
+            for (int i=0; i < classes.size(); i++) {
+                auto &cl = classes[i];
+                bool classFound = false;
+                for (auto &keyword: get<1>(cl)) {
+                    if (obj_name.find(keyword) != string::npos) {
+                        // Class has been found
+                        classFound = true;
+                        // Make tree
+                        vector<Triangle> triangles;
+                        for(auto &triIdx: faces) {
+                            auto curTriangle = new Triangle(points[triIdx[0]], points[triIdx[1]], points[triIdx[2]]);
+
+                            if(!Kernel().is_degenerate_3_object()(*curTriangle))
+                                triangles.push_back(*curTriangle);
+                        }
+                        if(!triangles.empty()) {
+                            Tree *curTree = new Tree();
+                            // Weird stuff I need to do to make it work...
+                            for(auto triPtr: triangles) {
+                                vector<Triangle> triVec = {triPtr};
+                                curTree->insert(AABB_triangle_traits::Primitive(triVec.begin()));
+                            }
+                            allTrees.emplace_back(curTree, i);
+                        }
+                        //Empty the faces
+                        faces = vector<vector<int>>();
+                        break;
+                    }
+                }
+                if (classFound) break;
+            }
+        }
+    }
+
+    return allTrees;
+}
+
 void savePointsAsObj(vector<Point> points, const string &outPath) {
     ofstream fileOut(outPath);
     for (const auto point: points)
@@ -202,7 +278,7 @@ void saveArrangement(const string &name, const vector<Kernel::Plane_3> &planes, 
     outFile << outputData;
 }
 
-void loadArrangement(const string &name, Arrangement &arr, map<int, int> &cell2label, vector<bool> &labels)
+void loadArrangement(const string &name, Arrangement &arr, map<int, int> &cell2label, vector<bool> &labels, CGAL::Bbox_3 &bbox)
 {
     cout << "Loading arrangement!" << endl;
     fstream i(name);
@@ -211,7 +287,7 @@ void loadArrangement(const string &name, Arrangement &arr, map<int, int> &cell2l
 
     // Bounding box
     vector<double> box = data["bbox"];
-    CGAL::Bbox_3 bbox(box[0], box[1], box[2], box[3], box[4], box[5]);
+    bbox = CGAL::Bbox_3(box[0], box[1], box[2], box[3], box[4], box[5]);
     arr.set_bbox(bbox);
 
     // Planes

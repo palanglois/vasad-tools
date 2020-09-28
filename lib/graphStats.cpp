@@ -3,8 +3,8 @@
 using namespace std;
 
 template <typename T, typename A>
-int arg_max(std::vector<T, A> const& vec) {
-    return static_cast<int>(std::distance(vec.begin(), max_element(vec.begin(), vec.end())));
+int arg_max(vector<T, A> const& vec) {
+    return static_cast<int>(distance(vec.begin(), max_element(vec.begin(), vec.end())));
 }
 
 pair<Nodes, Edges> computeGraphStatistics(const vector<bool> &labels, const map<int, int> &cell2label,
@@ -146,8 +146,9 @@ vector<int> assignLabel(const Arrangement &arr,const map<int, int> &cell2label, 
 
     // For every point, test it for every shape
     Simple_to_Epeck s2e;
-    for(auto &point: queryPoints)
+    for(int i=0; i < queryPoints.size(); i++)
     {
+        auto &point = queryPoints[i];
         int label = voidClass;
         for(auto &labeledTree: labeledTrees)
         {
@@ -159,23 +160,34 @@ vector<int> assignLabel(const Arrangement &arr,const map<int, int> &cell2label, 
             // Test the nb of intersections for parity
             if(intersections.size() % 2 == 1)
             {
-                // In the tree
+                // In the current shape
                 label = labeledTree.second;
             }
         }
         // Find the current cell
         Arrangement::Face_handle cellHandle = find_containing_cell(arr, s2e(point));
         votes[cell2label.at(cellHandle)][label]++;
+
+        if(verbose)
+            if((100*i) % (10*queryPoints.size()) == 0)
+                cout << "Processed " << i << " points out of " << queryPoints.size() << endl;
+
     }
-    for(int i=0; i < votes.size(); i++)
-        labels.push_back(arg_max(votes[i]));
+    for(const auto & vote : votes)
+        labels.push_back(arg_max(vote));
 
     if(verbose) {
         for (int i = 0; i < votes.size(); i++) {
-            cout << "Cell vote for cell " << i << ": ";
-            for (auto nb: votes[i])
-                cout << nb << " ";
-            cout << endl;
+            bool display = false;
+            for(int j=0; j < votes[i].size() - 1; j++)
+                if(votes[i][j] != 0)
+                    display = true;
+            if(display) {
+                cout << "Cell vote for cell " << i << ": ";
+                for (auto nb: votes[i])
+                    cout << nb << " ";
+                cout << endl;
+            }
         }
     }
 

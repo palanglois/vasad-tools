@@ -14,6 +14,7 @@ int main(int argc, char *argv[]) {
     op::OptionParser opt;
     opt.add_option("-h", "--help", "show option help");
     opt.add_option("-i", "--input", "Path to the input plane arrangement", "");
+    opt.add_option("-m", "--mesh", "Path to the input obj ground truth", "");
 
     //Parsing options
     bool correctParsing = opt.parse_options(argc, argv);
@@ -31,15 +32,33 @@ int main(int argc, char *argv[]) {
         return EXIT_FAILURE;
     }
 
+    if(opt["-m"].empty())
+    {
+        cerr << "Input obj ground truth (-m) required !" << endl;
+        return EXIT_FAILURE;
+    }
+
     const string inputPath = opt["-i"];
 
     // Loading plane arrangement
     map<int, int> cell2label;
     vector<bool> labels;
     Arrangement arr;
-    loadArrangement(inputPath, arr, cell2label, labels);
+    CGAL::Bbox_3 bbox;
+    loadArrangement(inputPath, arr, cell2label, labels, bbox);
 
     pair<Nodes, Edges> nodesEdges = computeGraphStatistics(labels, cell2label, arr, true);
+
+    // Load semantic_classes
+    vector<classKeywordsColor> classesWithColor = loadSemanticClasses("../semantic_classes.json");
+
+    // Load the ground truth
+    const string gtPath = opt["-m"];
+    cout << "Loading ground truth..." << endl;
+    auto treesAndClasses = loadTreesFromObj(gtPath, classesWithColor);
+    cout << "Ground truth loaded." << endl;
+
+    vector<int> gtLabels = assignLabel(arr, cell2label, bbox, treesAndClasses, 1000000, true);
 
 
 //    cout << count << " " << visitedCell.size() << endl;
