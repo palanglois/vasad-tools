@@ -1,6 +1,9 @@
 cmake_minimum_required(VERSION 3.1)
 project(bim_data)
 
+#Data folder
+add_definitions(-DTEST_DIR="${CMAKE_CURRENT_SOURCE_DIR}/data/")
+
 # OpenMP
 find_package(OpenMP)
 if (OPENMP_FOUND)
@@ -50,7 +53,7 @@ include_directories(lib)
 add_executable(bim_data
         main.cpp
         lib/iogeometry.cpp
-        lib/iogeometry.h test/mainTest.cpp)
+        lib/iogeometry.h)
 
 add_executable(closeness_checker
         main_closeness_checker.cpp
@@ -87,6 +90,6 @@ set_target_properties(GTest_in PROPERTIES LINK_FLAGS "-pthread")
 enable_testing()
 include_directories(test)
 add_executable(runUnitTests test/mainTest.cpp test/test_graph.cpp test/graph_fixture.h
-        lib/graphStats.cpp)
+        lib/graphStats.cpp lib/iogeometry.cpp)
 target_link_libraries(runUnitTests GTest_in pthread ${CGAL_LIBRARIES})
 add_test(runUnitTests runUnitTests)

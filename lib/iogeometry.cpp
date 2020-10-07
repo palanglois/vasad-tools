@@ -112,9 +112,9 @@ vector<Point> loadPointCloudObj(const string &inFile)
     return points;
 }
 
-vector<pair<Tree*, int>> loadTreesFromObj(const string &inFile, const vector<classKeywordsColor> &classes)
+vector<pair<vector<Triangle>, int>> loadTreesFromObj(const string &inFile, const vector<classKeywordsColor> &classes)
 {
-    vector<pair<Tree*, int>> allTrees;
+    vector<pair<vector<Triangle>, int>> allTrees;
 
     //Loading the obj data
     ifstream inputStream(inFile.c_str());
@@ -125,11 +125,11 @@ vector<pair<Tree*, int>> loadTreesFromObj(const string &inFile, const vector<cla
 
     //Loading the triangles
     string currentLine;
-    int cur_class_id(0);
     vector<colorTuple> triClasses;
     TriangleColorMap triangleToColors;
     vector<Point> points;
     vector<vector<int>> faces;
+    int curClass = -1;
     while (getline(inputStream, currentLine)) {
         stringstream ss(currentLine);
         string firstCaracter;
@@ -157,8 +157,7 @@ vector<pair<Tree*, int>> loadTreesFromObj(const string &inFile, const vector<cla
                 for (auto &keyword: get<1>(cl)) {
                     if (obj_name.find(keyword) != string::npos) {
                         // Class has been found
-                        classFound = true;
-                        // Make tree
+                        // First we make the previous tree
                         vector<Triangle> triangles;
                         for(auto &triIdx: faces) {
                             auto curTriangle = new Triangle(points[triIdx[0]], points[triIdx[1]], points[triIdx[2]]);
@@ -167,16 +166,18 @@ vector<pair<Tree*, int>> loadTreesFromObj(const string &inFile, const vector<cla
                                 triangles.push_back(*curTriangle);
                         }
                         if(!triangles.empty()) {
-                            Tree *curTree = new Tree();
-                            // Weird stuff I need to do to make it work...
-                            for(auto triPtr: triangles) {
-                                vector<Triangle> triVec = {triPtr};
-                                curTree->insert(AABB_triangle_traits::Primitive(triVec.begin()));
-                            }
-                            allTrees.emplace_back(curTree, i);
+//                            Tree *curTree = new Tree();
+//                            // Weird stuff I need to do to make it work...
+//                            for(auto triPtr: triangles) {
+//                                vector<Triangle> triVec = {triPtr};
+//                                curTree->insert(AABB_triangle_traits::Primitive(triVec.begin()));
+//                            }
+                            allTrees.emplace_back(triangles, curClass);
                         }
                         //Empty the faces
                         faces = vector<vector<int>>();
+                        classFound = true;
+                        curClass = i;
                         break;
                     }
                 }
@@ -184,11 +185,45 @@ vector<pair<Tree*, int>> loadTreesFromObj(const string &inFile, const vector<cla
             }
         }
     }
+    // We make the last tree
+    vector<Triangle> triangles;
+    for(auto &triIdx: faces) {
+//        auto curTriangle = new Triangle(points[triIdx[0]], points[triIdx[1]], points[triIdx[2]]);
+        auto curTriangle = Triangle(points[triIdx[0]], points[triIdx[1]], points[triIdx[2]]);
 
+        if(!Kernel().is_degenerate_3_object()(curTriangle))
+            triangles.push_back(curTriangle);
+    }
+    if(!triangles.empty()) {
+//        Tree *curTree = new Tree(triangles.begin(), triangles.end());
+        /*// Weird stuff I need to do to make it work...
+        for(auto triPtr: triangles) {
+            vector<Triangle> triVec = {triPtr};
+            curTree->insert(AABB_triangle_traits::Primitive(triVec.begin()));
+        }*/
+        allTrees.emplace_back(triangles, curClass);
+
+//        //DEBUG
+//        Kernel::Ray_3 query(Kernel::Point_3(0.2, 0.2, 0.2), Kernel::Vector_3(0., 1., 1.));
+//        list<Ray_intersection> intersections;
+//        curTree->all_intersections(query, back_inserter(intersections));
+
+//        for(auto triPtr: triangles)
+//            cout << triPtr << endl;
+//        cout << endl;
+//        for(auto prim: allTrees[allTrees.size() - 1].first->m_primitives)
+//            cout << prim.datum() << endl;
+//        cout << endl;
+//        cout << "Nb of intersections: " << intersections.size() << endl;
+        //cout << "debug" << endl;
+    }
+    //Empty the faces
+    //Debug
+//    cout << "input bbox : " << CGAL::bbox_3(points.begin(), points.end()) << endl;
     return allTrees;
 }
 
-void savePointsAsObj(vector<Point> points, const string &outPath) {
+void savePointsAsObj(const vector<Point>& points, const string &outPath) {
     ofstream fileOut(outPath);
     for (const auto point: points)
         fileOut << "v " << point.x() << " " << point.y() << " " << point.z() << endl;
@@ -206,7 +241,7 @@ void savePointsAsObjWithColors(vector<Point> points, vector<colorTuple> colors, 
     fileOut.close();
 }
 
-void saveTrianglesAsObj(vector<Triangle> triangles, const string &outPath, TriangleColorMap colors) {
+void saveTrianglesAsObj(const vector<Triangle>& triangles, const string &outPath, TriangleColorMap colors) {
     ofstream fileOut(outPath);
     for (auto triangle : triangles) {
         colorTuple color = colors[triangle];
@@ -316,12 +351,26 @@ void loadArrangement(const string &name, Arrangement &arr, map<int, int> &cell2l
     cout << "Nb of planes used " << nbPlanesUsed << endl;
     //END DEBUG
 
-    //Mapping
-    for(auto &elem: data["map"])
-        cell2label[stoi(elem[0].get<string>())] = elem[1].get<int>();
+    //Mapping and labels
+    if (data["map"].find("NOMAP") != data["map"].end())
+    {
+        // If the mapping does not exist, we create it
+        int cellIter = 0;
+        for(auto cellIt = arr.cells_begin(); cellIt != arr.cells_end(); cellIt++)
+            cell2label[arr.cell_handle(*cellIt)] = cellIter++;
 
-    //Labels
-    labels = data["labels"].get<vector<bool>>();
+        //Labels
+        labels = vector<bool>(cell2label.size(), false);
+    }
+    else {
+        // If the mapping exists we load it
+        for (auto &elem: data["map"])
+            cell2label[stoi(elem[0].get<string>())] = elem[1].get<int>();
+
+        //Labels
+        labels = data["labels"].get<vector<bool>>();
+    }
+
     cout << "Arrangement loaded" << endl;
 }
 

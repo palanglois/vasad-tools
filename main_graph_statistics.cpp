@@ -10,6 +10,36 @@
 using namespace std;
 
 
+
+void savePlyFromLabel(const string &filename, Arrangement &arr, map<int, int> &fh_to_node, const vector<bool> &labels)
+{
+
+    for(auto itf = arr.facets_begin(); itf != arr.facets_end(); itf++){
+        Arrangement::Face& f = *itf;
+        itf->to_draw = false;
+        if(! arr.is_facet_bounded(f)){continue;}
+        Arrangement::Face_handle ch0 = f.superface(0), ch1 = f.superface(1);
+        //if(!(is_cell_bounded(ch0) && is_cell_bounded(ch1))){continue;}
+        if(fh_to_node.count((int)ch0) ==0 || fh_to_node.count((int)ch1) == 0){continue;}
+        if(labels[fh_to_node[int(ch0)]] != labels[fh_to_node[int(ch1)]]){
+            f.to_draw = true;
+        }
+    }
+
+    typedef Polyhedral_complex_3::Mesh_3<> Mesh;
+    typedef Polyhedral_complex_3::Mesh_extractor_3<Arrangement,Mesh> Extractor;
+    Mesh meshGC;
+    Extractor extractorGC(arr);
+    extractorGC.extract(meshGC,false);
+    {
+        std::ofstream stream(filename.c_str());
+        if (!stream.is_open())
+            return ;
+        Polyhedral_complex_3::print_mesh_PLY(stream, meshGC);
+        stream.close();
+    }
+}
+
 int main(int argc, char *argv[]) {
     op::OptionParser opt;
     opt.add_option("-h", "--help", "show option help");
@@ -55,10 +85,29 @@ int main(int argc, char *argv[]) {
     // Load the ground truth
     const string gtPath = opt["-m"];
     cout << "Loading ground truth..." << endl;
-    auto treesAndClasses = loadTreesFromObj(gtPath, classesWithColor);
+    auto shapesAndClasses = loadTreesFromObj(gtPath, classesWithColor);
     cout << "Ground truth loaded." << endl;
 
-    vector<int> gtLabels = assignLabel(arr, cell2label, bbox, treesAndClasses, 1000000, true);
+#ifndef NDEBUG
+    const int nbSamples = 100000;
+#else
+//        const int nbSamples = 4000000;
+        const int nbSamples = 400000;
+#endif
+
+//    for(auto prim: shapesAndClasses[shapesAndClasses.size() - 1].first->m_primitives)
+//        cout << prim.datum() << endl;
+//    cout << endl;
+    vector<int> gtLabels = assignLabel(arr, cell2label, bbox, shapesAndClasses, nbSamples, true, true);
+    vector<bool> gtLabelsBool;
+    for(auto label: gtLabels)
+        gtLabelsBool.push_back(label != -1);
+
+
+
+    cout << "Saving reconstruction..." << endl;
+    savePlyFromLabel("gt_reconstruction.ply", arr, cell2label, gtLabelsBool);
+    cout << "Reconstruction saved." << endl;
 
 
 //    cout << count << " " << visitedCell.size() << endl;

@@ -98,12 +98,12 @@ std::pair<std::vector<Triangle>, TriangleColorMap> loadTrianglesFromObj(const st
                                                                  const std::vector<classKeywordsColor> &classes);
 std::vector<Point> loadPointOfViews(const std::string &jsonFile);
 std::vector<Point> loadPointCloudObj(const std::string &inFile);
-std::vector<std::pair<Tree*, int>> loadTreesFromObj(const std::string &inFile, const std::vector<classKeywordsColor> &classes);
+std::vector<std::pair<std::vector<Triangle>, int>> loadTreesFromObj(const std::string &inFile, const std::vector<classKeywordsColor> &classes);
 
 // Output functions
-void savePointsAsObj(std::vector<Point> points, const std::string &outPath);
+void savePointsAsObj(const std::vector<Point>& points, const std::string &outPath);
 void savePointsAsObjWithColors(std::vector<Point> points, std::vector<colorTuple> colors, const std::string &outPath);
-void saveTrianglesAsObj(std::vector<Triangle> triangles, const std::string &outPath, TriangleColorMap colors);
+void saveTrianglesAsObj(const std::vector<Triangle>& triangles, const std::string &outPath, TriangleColorMap colors);
 void saveSeparatedObj(std::vector<Triangle> triangles, const std::string &outPath, TriangleColorMap colors);
 void saveArrangement(const std::string &name, const std::vector<Kernel::Plane_3> &planes, int maxNumberOfPlanes,
         const CGAL::Bbox_3 &bbox, const std::map<int, int> &cell2label, const std::vector<bool> &labels);

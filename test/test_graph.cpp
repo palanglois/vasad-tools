@@ -114,14 +114,23 @@ TEST_F(PlaneArrangementFixture, NodeLabeling)
     triangles.emplace_back(points[5], points[2], points[6]);
 
     // AABB Tree for test mesh
-    Tree* tree = new Tree(triangles.begin(), triangles.end());
-    vector<pair<Tree*, int>> labeledTrees = {make_pair(tree, 0)};
+    vector<pair<vector<Triangle>, int>> labeledTrees = {make_pair(triangles, 0)};
 
-    vector<int> nodeLabels = assignLabel(*myPlaneArrangement, cell2label, bbox, labeledTrees);
+    vector<int> nodeLabels = assignLabel(*myPlaneArrangement, cell2label, bbox, labeledTrees, 10000, true, false);
     ASSERT_EQ(nodeLabels[0], 0);
-    ASSERT_EQ(nodeLabels[1], 1);
-    ASSERT_EQ(nodeLabels[2], 1);
-    ASSERT_EQ(nodeLabels[3], 1);
+    ASSERT_EQ(nodeLabels[1], -1);
+    ASSERT_EQ(nodeLabels[2], -1);
+    ASSERT_EQ(nodeLabels[3], -1);
+}
 
-    delete tree;
+TEST_F(PlaneArrangementFixture, LabelingWithObjLoad)
+{
+    const string testObjPath = (string) TEST_DIR + "test.obj";
+    vector<classKeywordsColor> classesWithColor = loadSemanticClasses("../semantic_classes.json");
+    auto allTrees =  loadTreesFromObj(testObjPath, classesWithColor);
+    vector<int> gtLabels = assignLabel(*myPlaneArrangement, cell2label, bbox, allTrees, 10000, true, false);
+    ASSERT_EQ(gtLabels[0], 5);
+    ASSERT_EQ(gtLabels[1], -1);
+    ASSERT_EQ(gtLabels[2], -1);
+    ASSERT_EQ(gtLabels[3], 3);
 }
