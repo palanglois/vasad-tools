@@ -357,7 +357,8 @@ void loadArrangement(const string &name, Arrangement &arr, map<int, int> &cell2l
         // If the mapping does not exist, we create it
         int cellIter = 0;
         for(auto cellIt = arr.cells_begin(); cellIt != arr.cells_end(); cellIt++)
-            cell2label[arr.cell_handle(*cellIt)] = cellIter++;
+            if(arr.is_cell_bounded(*cellIt))
+                cell2label[arr.cell_handle(*cellIt)] = cellIter++;
 
         //Labels
         labels = vector<bool>(cell2label.size(), false);

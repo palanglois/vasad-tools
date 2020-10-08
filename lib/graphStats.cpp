@@ -350,3 +350,58 @@ vector<int> assignLabel(const Arrangement &arr, const map<int, int> &cell2label,
 
     return labels;
 }
+
+pair<NodeFeatures, EdgeFeatures>
+computeGraph(const vector<int> &labels, const map<int, int> &cell2label, const Arrangement &arr,
+        const int nbClasses, bool verbose) {
+
+    // Graph nodes
+    NodeFeatures nodeFeatures(cell2label.size(), vector<int>(1, 0));
+    for(auto cellIt = arr.cells_begin(); cellIt != arr.cells_end(); cellIt++)
+    {
+        if(!arr.is_cell_bounded(*cellIt)) continue;
+        auto cellHandle = arr.cell_handle(*cellIt);
+        int labelIdx = cell2label.at(cellHandle);
+        nodeFeatures[labelIdx] = {int(labels[labelIdx] != -1)};
+    }
+
+    // Graph edges
+    EdgeFeatures edgeFeatures;
+    for(auto facetIt = arr.facets_begin(); facetIt != arr.facets_end(); facetIt++)
+    {
+        if(facetIt->number_of_superfaces() != 2)
+            cerr << "Facet doesn't have exactly 2 adjacent cells!" << endl;
+        if(arr.is_cell_bounded(arr.cell(facetIt->superface(0))) &&
+           arr.is_cell_bounded(arr.cell(facetIt->superface(1))))
+        {
+            // We have a valid graph edge
+            int cellIdx1 = facetIt->superface(0);
+            int cellIdx2 = facetIt->superface(1);
+            int cellFeatureIdx1 = cell2label.at(cellIdx1);
+            int cellFeatureIdx2 = cell2label.at(cellIdx2);
+            int cellLabel1 = labels[cellFeatureIdx1];
+            int cellLabel2 = labels[cellFeatureIdx2];
+            vector<int> edgeFeature(nbClasses + 1, 0);
+            if(cellLabel1 == -1 && cellLabel2 != -1)
+            {
+                // We're at a void/full transition
+                edgeFeature[cellLabel2] = 1;
+                edgeFeatures[make_pair(cellFeatureIdx1, cellFeatureIdx2)] = edgeFeature;
+            }
+            else if(cellLabel1 != -1 && cellLabel2 == -1)
+            {
+                // Same here but different direction
+                edgeFeature[cellLabel1] = 1;
+                edgeFeatures[make_pair(cellFeatureIdx1, cellFeatureIdx2)] = edgeFeature;
+            }
+            else
+            {
+                // We're not at a transition
+                edgeFeature[nbClasses] = 1;
+                edgeFeatures[make_pair(cellFeatureIdx1, cellFeatureIdx2)] = edgeFeature;
+            }
+        }
+    }
+
+    return make_pair(nodeFeatures, edgeFeatures);
+}

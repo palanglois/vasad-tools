@@ -245,7 +245,8 @@ int main(int argc, char *argv[]) {
     map<int, int> cell2label;
     int cellIter = 0;
     for(auto cellIt = arrangement.cells_begin(); cellIt != arrangement.cells_end(); cellIt++)
-        cell2label[arrangement.cell_handle(*cellIt)] = cellIter++;
+        if(arrangement.is_cell_bounded(*cellIt))
+            cell2label[arrangement.cell_handle(*cellIt)] = cellIter++;
 
     //Prepare intersection tree
     cout << "Building intersection tree..." << endl;
