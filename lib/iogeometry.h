@@ -40,6 +40,7 @@ typedef CGAL::Simple_cartesian<double> Kernel;
 typedef CGAL::Exact_predicates_exact_constructions_kernel Kernel2;
 //typedef CGAL::Homogeneous<CGAL::Exact_integer>  Kernel;
 typedef CGAL::Cartesian_converter<Kernel,Kernel2>         Simple_to_Epeck;
+typedef CGAL::Cartesian_converter<Kernel2,Kernel>         Epeck_to_Simple;
 
 /* Typedefs for the geometrical primitives */
 typedef typename Kernel::Point_3 Point;

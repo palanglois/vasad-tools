@@ -125,6 +125,7 @@ vector<int> assignLabel(const Arrangement &arr, const map<int, int> &cell2label,
                         vector<std::pair<std::vector<Triangle>, int>> &labeledShapes, int nbSamples, bool fill, bool verbose)
 {
     Simple_to_Epeck s2e;
+    Epeck_to_Simple e2s;
     //Build bbox for each shape
     vector<CGAL::Bbox_3> bboxes;
     for(const auto& labeledShape: labeledShapes)
@@ -176,12 +177,43 @@ vector<int> assignLabel(const Arrangement &arr, const map<int, int> &cell2label,
                         points.push_back(arr.point(*pointIt));
                 }
             }
-            auto curBbox = CGAL::bbox_3(points.begin(), points.end());
+
+            // Note: We explicitely compute the bounding box, the function CGAL::bbox_3 gives too big
+            // bounding boxes!
+            Point pt = e2s(points[0]);
+            double xmin = pt.x();
+            double xmax = pt.x();
+            double ymin = pt.y();
+            double ymax = pt.y();
+            double zmin = pt.z();
+            double zmax = pt.z();
+            for(const auto& point: points)
+            {
+                Point pt2 = e2s(point);
+                xmin = min(xmin, pt2.x());
+                xmax = max(xmax, pt2.x());
+                ymin = min(ymin, pt2.y());
+                ymax = max(ymax, pt2.y());
+                zmin = min(zmin, pt2.z());
+                zmax = max(zmax, pt2.z());
+            }
+            auto curBbox = CGAL::Bbox_3(xmin, ymin, zmin, xmax, ymax, zmax);
+
+            // Drawing points in the bounding box
             uniform_real_distribution<double> curXDist(curBbox.xmin(), curBbox.xmax());
             uniform_real_distribution<double> curYDist(curBbox.ymin(), curBbox.ymax());
             uniform_real_distribution<double> curZDist(curBbox.zmin(), curBbox.zmax());
             for(int i=0; i< 40; i++)
                 queryPoints.emplace_back(Point(curXDist(generator), curYDist(generator), curZDist(generator)), arr.cell_handle(*cellIt));
+
+//            // DEBUG
+//            if(int(arr.cell_handle(*cellIt)) == 35480) {
+//                for (int i = queryPoints.size() - 40; i < queryPoints.size(); i++)
+//                    cout << "Here " << queryPoints[i].first << endl;
+//                cout << "Bbox " << curBbox << endl;
+//                for(const auto& point: points)
+//                    cout << "Point " << point << " bbox " << point.bbox() << endl;
+//            }
         }
     }
 
@@ -194,7 +226,8 @@ vector<int> assignLabel(const Arrangement &arr, const map<int, int> &cell2label,
             cout << "Processed " << j << " shapes out of " << labeledShapes.size() << endl;
         auto &labeledTree = labeledShapes[j];
         tree.rebuild(labeledTree.first.begin(), labeledTree.first.end());
-        for(int i=0; i < queryPoints.size(); i++)
+#pragma omp parallel for schedule(static)
+	for(int i=0; i < queryPoints.size(); i++)
         {
 
             auto &point = queryPoints[i].first;
@@ -218,14 +251,24 @@ vector<int> assignLabel(const Arrangement &arr, const map<int, int> &cell2label,
 //                cout << endl;
 //            }
             //Make a random query ray and intersect it
-            Ray query(point, Vector(1., 0., 0.));
-            list<Ray_intersection> intersections;
-            tree.all_intersections(query, back_inserter(intersections));
+            //Ray query(point, Vector(1., 0., 0.));
+            vector<Ray> queries = {Ray(point, Vector(1., 0., 0.)),
+                                   Ray(point, Vector(0., 1., 0.)),
+                                   Ray(point, Vector(0., 0., 1.))};
+            vector<list<Ray_intersection>> intersections(3, list<Ray_intersection>(0));
+            for(int k=0; k < queries.size(); k++)
+                tree.all_intersections(queries[k], back_inserter(intersections[k]));
+            unsigned int odd = 0;
+            for(const auto& inter: intersections)
+                odd += int(inter.size() % 2 == 1);
+            if(odd == 2)
+                cout << odd << endl;
 
             // Test the nb of intersections for parity
-            if(intersections.size() % 2 == 1)
+            if(odd >= 2)
             {
                 // In the current shape
+#pragma omp critical
                 pointsLabel[i] = labeledTree.second;
                 //cout << "Here " << labeledTree.second << endl;
             }
@@ -239,7 +282,7 @@ vector<int> assignLabel(const Arrangement &arr, const map<int, int> &cell2label,
         else
             cellHandle = find_containing_cell(arr, s2e(queryPoints[i].first), queryPoints[i].second);
         votes[cell2label.at(cellHandle)][pointsLabel[i]]++;
-        if(verbose && (i % 10000 == 0))
+        if(verbose && (i % 100000 == 0))
             cout << "Processed " << i << " points out of " << queryPoints.size() << endl;
     }
     for(const auto & vote : votes)
@@ -259,6 +302,51 @@ vector<int> assignLabel(const Arrangement &arr, const map<int, int> &cell2label,
             }
         }
     }
+
+//    //DEBUG
+//    cout << "DEBUG" << endl;
+////    Point query(37.7275666666667, -30.2528, 8.59148666666667);
+//    Point query(34.5212666666667, -30.2528, 8.17148666666667);
+//    Arrangement::Face_handle debugCell = find_containing_cell(arr, s2e(query));
+//    cout << "Cell id: " << debugCell << endl;
+//    cout << "votes: " << endl;
+//
+//    if(arr.is_cell_bounded(debugCell)) {
+//        for (auto nb: votes[cell2label.at(debugCell)])
+//            cout << nb << " ";
+//        cout << endl;
+//        cout << "label given: " << labels[cell2label.at(debugCell)] << endl;
+//        cout << "points of current cell: " << endl;
+//    }
+//    auto cell = arr.cell(debugCell);
+//    for(auto facetIt = cell.subfaces_begin(); facetIt != cell.subfaces_end(); facetIt++)
+//    {
+//        auto facet = arr.facet(*facetIt);
+//        for(auto edgeIt = facet.subfaces_begin(); edgeIt != facet.subfaces_end(); edgeIt++) {
+//            auto edge = arr.edge(*edgeIt);
+//            for(auto pointIt = edge.subfaces_begin(); pointIt != edge.subfaces_end(); pointIt++)
+//                cout << arr.point(*pointIt) << endl;
+//        }
+//    }
+//    vector<Triangle> triangles;
+//    TriangleColorMap colorMap;
+//    cout << "nb of faces: " << cell.number_of_subfaces() << endl;
+//    for(auto facetIt = cell.subfaces_begin(); facetIt != cell.subfaces_end(); facetIt++) {
+//        auto facet = arr.facet(*facetIt);
+//        auto edgeOne = facet.subfaces_begin();
+//        auto edgeTwo = facet.subfaces_begin()++;
+//        while (edgeTwo != facet.subfaces_end()) {
+//            if(arr.edge(*edgeTwo).number_of_subfaces() != 2) break;
+//            auto pt1 = arr.edge(*edgeOne).subface(0);
+//            auto pt2 = arr.edge(*edgeTwo).subface(0);
+//            auto pt3 = arr.edge(*edgeTwo).subface(1);
+//            triangles.emplace_back(e2s(arr.point(pt1)), e2s(arr.point(pt2)), e2s(arr.point(pt3)));
+//            colorMap[triangles[triangles.size() - 1]] = {100, 100, 100};
+//            edgeTwo++;
+//        }
+//    }
+//    saveTrianglesAsObj(triangles, "test.obj", colorMap);
+
 
     return labels;
 }
