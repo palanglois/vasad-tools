@@ -405,3 +405,17 @@ computeGraph(const vector<int> &labels, const map<int, int> &cell2label, const A
 
     return make_pair(nodeFeatures, edgeFeatures);
 }
+
+vector<vector<double>> getCellsPoints(const map<int, int> &cell2label, const Arrangement &arr) {
+    vector<vector<double>> cellsPoints(cell2label.size(), {0., 0., 0.});
+    Epeck_to_Simple e2s;
+
+    for(auto cellIt = arr.cells_begin(); cellIt != arr.cells_end(); cellIt++) {
+        if(!arr.is_cell_bounded(*cellIt)) continue;
+
+        auto pt = e2s(cellIt->point());
+        cellsPoints[cell2label.at(arr.cell_handle(*cellIt))] = {pt.x(), pt.y(), pt.z()};
+    }
+
+    return cellsPoints;
+}

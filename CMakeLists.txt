@@ -72,13 +72,15 @@ add_executable(boolean_operations_check
 
 add_executable(graph_statistics main_graph_statistics.cpp
         lib/iogeometry.cpp lib/graphStats.cpp lib/graphStats.h)
-add_executable(main_test main_test.cpp)
+
+add_executable(graph2ply main_graph_to_ply.cpp
+        lib/iogeometry.cpp lib/graphStats.cpp lib/graphStats.h)
+
 
 target_link_libraries(bim_data ${CGAL_LIBRARIES})
 target_link_libraries(closeness_checker ${CGAL_LIBRARIES} Qt5::Widgets Qt5::Xml Qt5::OpenGL)
 target_link_libraries(boolean_operations_check ${CGAL_LIBRARIES} Qt5::Widgets Qt5::Xml Qt5::OpenGL gmpxx)
 target_link_libraries(graph_statistics ${CGAL_LIBRARIES})
-target_link_libraries(main_test ${CGAL_LIBRARIES})
 
 ### TESTS ###
 

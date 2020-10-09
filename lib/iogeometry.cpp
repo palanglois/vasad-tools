@@ -313,7 +313,8 @@ void saveArrangement(const string &name, const vector<Kernel::Plane_3> &planes, 
     outFile << outputData;
 }
 
-void loadArrangement(const string &name, Arrangement &arr, map<int, int> &cell2label, vector<bool> &labels, CGAL::Bbox_3 &bbox)
+void loadArrangement(const string &name, Arrangement &arr, map<int, int> &cell2label, vector<int> &gtLabels,
+        vector<bool> &labels, CGAL::Bbox_3 &bbox)
 {
     cout << "Loading arrangement!" << endl;
     fstream i(name);
@@ -365,11 +366,16 @@ void loadArrangement(const string &name, Arrangement &arr, map<int, int> &cell2l
     }
     else {
         // If the mapping exists we load it
-        for (auto &elem: data["map"])
-            cell2label[stoi(elem[0].get<string>())] = elem[1].get<int>();
+        for (auto elem = data["map"].begin(); elem != data["map"].end(); elem++)
+            cell2label[stoi(elem.key())] = elem.value().get<int>();
 
         //Labels
-        labels = data["labels"].get<vector<bool>>();
+        if (data.find("labels") != data.end())
+            labels = data["labels"].get<vector<bool>>();
+
+        //gtLabels
+        if (data.find("gtLabels") != data.end())
+            gtLabels = data["gtLabels"].get<vector<int>>();
     }
 
     cout << "Arrangement loaded" << endl;
@@ -406,3 +412,4 @@ vector<classKeywordsColor> loadSemanticClasses(const string& path)
     }
     return semanticClasses;
 }
+

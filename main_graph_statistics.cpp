@@ -12,35 +12,6 @@ using Json = nlohmann::json;
 
 
 
-void savePlyFromLabel(const string &filename, Arrangement &arr, map<int, int> &fh_to_node, const vector<bool> &labels)
-{
-
-    for(auto itf = arr.facets_begin(); itf != arr.facets_end(); itf++){
-        Arrangement::Face& f = *itf;
-        itf->to_draw = false;
-        if(! arr.is_facet_bounded(f)){continue;}
-        Arrangement::Face_handle ch0 = f.superface(0), ch1 = f.superface(1);
-        //if(!(is_cell_bounded(ch0) && is_cell_bounded(ch1))){continue;}
-        if(fh_to_node.count((int)ch0) ==0 || fh_to_node.count((int)ch1) == 0){continue;}
-        if(labels[fh_to_node[int(ch0)]] != labels[fh_to_node[int(ch1)]]){
-            f.to_draw = true;
-        }
-    }
-
-    typedef Polyhedral_complex_3::Mesh_3<> Mesh;
-    typedef Polyhedral_complex_3::Mesh_extractor_3<Arrangement,Mesh> Extractor;
-    Mesh meshGC;
-    Extractor extractorGC(arr);
-    extractorGC.extract(meshGC,false);
-    {
-        std::ofstream stream(filename.c_str());
-        if (!stream.is_open())
-            return ;
-        Polyhedral_complex_3::print_mesh_PLY(stream, meshGC);
-        stream.close();
-    }
-}
-
 int main(int argc, char *argv[]) {
     op::OptionParser opt;
     opt.add_option("-h", "--help", "show option help");
@@ -72,7 +43,7 @@ int main(int argc, char *argv[]) {
 
     if(opt["-o"].empty())
     {
-        cerr << "Output file (-i) required !" << endl;
+        cerr << "Output file (-o) required !" << endl;
         return EXIT_FAILURE;
     }
 
@@ -82,9 +53,10 @@ int main(int argc, char *argv[]) {
     // Loading plane arrangement
     map<int, int> cell2label;
     vector<bool> labels;
+    vector<int> gtLabelsOr;
     Arrangement arr;
     CGAL::Bbox_3 bbox;
-    loadArrangement(inputPath, arr, cell2label, labels, bbox);
+    loadArrangement(inputPath, arr, cell2label, gtLabelsOr, labels, bbox);
 
     // Load semantic_classes
     vector<classKeywordsColor> classesWithColor = loadSemanticClasses("../semantic_classes.json");
@@ -125,10 +97,14 @@ int main(int argc, char *argv[]) {
     fstream i(inputPath);
     Json data;
     i >> data;
-    data["map"] = cell2label;
+    Json cell2labelJ;
+    for(auto idx: cell2label)
+        cell2labelJ[to_string(idx.first)] = idx.second;
+    data["map"] = cell2labelJ;
     data["NodeFeatures"] = nodesEdges.first;
     data["EdgeFeatures"] = nodesEdges.second;
     data["gtLabels"] = gtLabels;
+    data["NodePoints"] = getCellsPoints(cell2label, arr);
     ofstream o(outputPath + "arrangementWithGtAndLabels.json");
     o << data;
 

@@ -99,7 +99,10 @@ std::pair<std::vector<Triangle>, TriangleColorMap> loadTrianglesFromObj(const st
                                                                  const std::vector<classKeywordsColor> &classes);
 std::vector<Point> loadPointOfViews(const std::string &jsonFile);
 std::vector<Point> loadPointCloudObj(const std::string &inFile);
-std::vector<std::pair<std::vector<Triangle>, int>> loadTreesFromObj(const std::string &inFile, const std::vector<classKeywordsColor> &classes);
+std::vector<std::pair<std::vector<Triangle>, int>> loadTreesFromObj(const std::string &inFile,
+        const std::vector<classKeywordsColor> &classes);
+void loadArrangement(const std::string &name, Arrangement &arr, std::map<int, int> &cell2label,
+                     std::vector<int> &gtLabels, std::vector<bool> &labels, CGAL::Bbox_3 &bbox);
 
 // Output functions
 void savePointsAsObj(const std::vector<Point>& points, const std::string &outPath);
@@ -108,8 +111,37 @@ void saveTrianglesAsObj(const std::vector<Triangle>& triangles, const std::strin
 void saveSeparatedObj(std::vector<Triangle> triangles, const std::string &outPath, TriangleColorMap colors);
 void saveArrangement(const std::string &name, const std::vector<Kernel::Plane_3> &planes, int maxNumberOfPlanes,
         const CGAL::Bbox_3 &bbox, const std::map<int, int> &cell2label, const std::vector<bool> &labels);
-void loadArrangement(const std::string &name, Arrangement &arr, std::map<int, int> &cell2label,
-        std::vector<bool> &labels, CGAL::Bbox_3 &bbox);
+
+template <class T>
+void savePlyFromLabel(const std::string &filename, Arrangement &arr, std::map<int, int> &fh_to_node,
+        const std::vector<T> &labels)
+{
+
+    for(auto itf = arr.facets_begin(); itf != arr.facets_end(); itf++){
+        Arrangement::Face& f = *itf;
+        itf->to_draw = false;
+        if(! arr.is_facet_bounded(f)){continue;}
+        Arrangement::Face_handle ch0 = f.superface(0), ch1 = f.superface(1);
+        //if(!(is_cell_bounded(ch0) && is_cell_bounded(ch1))){continue;}
+        if(fh_to_node.count((int)ch0) ==0 || fh_to_node.count((int)ch1) == 0){continue;}
+        if(labels[fh_to_node[int(ch0)]] != labels[fh_to_node[int(ch1)]]){
+            f.to_draw = true;
+        }
+    }
+
+    typedef Polyhedral_complex_3::Mesh_3<> Mesh;
+    typedef Polyhedral_complex_3::Mesh_extractor_3<Arrangement,Mesh> Extractor;
+    Mesh meshGC;
+    Extractor extractorGC(arr);
+    extractorGC.extract(meshGC,false);
+    {
+        std::ofstream stream(filename.c_str());
+        if (!stream.is_open())
+            return ;
+        Polyhedral_complex_3::print_mesh_PLY(stream, meshGC);
+        stream.close();
+    }
+}
 
 // Semantics
 std::vector<classKeywordsColor> loadSemanticClasses(const std::string& path);
