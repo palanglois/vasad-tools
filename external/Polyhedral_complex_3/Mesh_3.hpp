@@ -132,8 +132,9 @@ class Mesh_3 {
 
             protected:
                 std::vector<Vertex_handle> _vertex_handles;
-                info_type _info;
                 bool _is_bounded;
+            public:
+                info_type _info;
         };
 
     public:

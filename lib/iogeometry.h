@@ -36,6 +36,9 @@
 // External
 #include "json/json.hpp"
 
+// Ours
+#include "Colormap.h"
+
 typedef CGAL::Simple_cartesian<double> Kernel;
 typedef CGAL::Exact_predicates_exact_constructions_kernel Kernel2;
 //typedef CGAL::Homogeneous<CGAL::Exact_integer>  Kernel;
@@ -114,19 +117,36 @@ void saveArrangement(const std::string &name, const std::vector<Kernel::Plane_3>
 
 template <class T>
 void savePlyFromLabel(const std::string &filename, Arrangement &arr, std::map<int, int> &fh_to_node,
-        const std::vector<T> &labels)
+        const std::vector<T> &labels, const std::vector<classKeywordsColor> &classesWithColor)
 {
+    // Making colormap
+    std::map<int, Colormap::Color> map;
+    for(int i = 0; i < classesWithColor.size(); i++)
+    {
+        const auto& classColor = get<2>(classesWithColor[i]);
+        map[i] = Colormap::Color(static_cast<unsigned char>(get<0>(classColor)),
+                static_cast<unsigned char>(get<1>(classColor)),
+                static_cast<unsigned char>(get<2>(classColor)));
+    }
+    Colormap colormap(map);
 
     for(auto itf = arr.facets_begin(); itf != arr.facets_end(); itf++){
         Arrangement::Face& f = *itf;
+        f._info = -1;
         itf->to_draw = false;
         if(! arr.is_facet_bounded(f)){continue;}
         Arrangement::Face_handle ch0 = f.superface(0), ch1 = f.superface(1);
         //if(!(is_cell_bounded(ch0) && is_cell_bounded(ch1))){continue;}
         if(fh_to_node.count((int)ch0) ==0 || fh_to_node.count((int)ch1) == 0){continue;}
+        T label1 = labels[fh_to_node[int(ch0)]];
+        T label2 = labels[fh_to_node[int(ch1)]];
         if(labels[fh_to_node[int(ch0)]] != labels[fh_to_node[int(ch1)]]){
             f.to_draw = true;
         }
+        if(label1 == -1 && label2 != -1)
+            f._info = label2;
+        if(label1 != -1 && label2 == -1)
+            f._info = label1;
     }
 
     typedef Polyhedral_complex_3::Mesh_3<> Mesh;
@@ -138,7 +158,7 @@ void savePlyFromLabel(const std::string &filename, Arrangement &arr, std::map<in
         std::ofstream stream(filename.c_str());
         if (!stream.is_open())
             return ;
-        Polyhedral_complex_3::print_mesh_PLY(stream, meshGC);
+        Polyhedral_complex_3::print_mesh_with_facet_color_PLY(stream, meshGC, colormap);
         stream.close();
     }
 }

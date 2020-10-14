@@ -1,4 +1,5 @@
 import cv2
+from os.path import join
 import json
 import numpy as np
 
@@ -23,6 +24,6 @@ for i, (cl, keywords) in enumerate(classes.items()):
   classes_with_color[cl] = {"keywords": keywords,
                             "color": cv2.applyColorMap(np.uint8([[h]]), cv2.COLORMAP_JET)[0, 0].tolist()}
 
-with open("semantic_classes.json", "w") as out_file:
+with open(join("data", "semantic_classes.json"), "w") as out_file:
   json.dump(classes_with_color, out_file)
 

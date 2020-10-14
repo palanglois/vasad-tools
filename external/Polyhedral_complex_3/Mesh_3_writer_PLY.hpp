@@ -12,7 +12,7 @@ class Mesh_3_writer_PLY : public Mesh_3_writer<Mesh> {
         typedef typename Base::Facet_handle Facet_handle;
 
     public:
-        Mesh_3_writer_PLY(const Mesh& mesh) : Base(mesh, false) { }
+        Mesh_3_writer_PLY(const Mesh& mesh) : Base(mesh, true) { }
 
     protected:
         void _write_header(std::ostream& stream, int number_of_vertices, int number_of_facets) const

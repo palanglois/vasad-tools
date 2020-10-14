@@ -44,11 +44,14 @@ def main():
         filter_zmax = all_points[:, 2] < bbox[5]
         filter = filter_xmin & filter_xmax & filter_ymin & filter_ymax & filter_zmin & filter_zmax
         good_idx = np.argwhere(filter)
+        old2newIdx = np.stack((np.arange(len(filter)), np.zeros(len(filter)))).T
+        old2newIdx[filter, 1] = np.arange(len(good_idx))
 
         # Update all the attributes of the graph
         new_data["NodeFeatures"] = node_features[good_idx.reshape((-1,))].tolist()
         new_data["EdgeFeatures"] = edge_features[np.all(filter[edges], 1)].tolist()
         new_data["NodePoints"] = all_points[filter].tolist()
+        new_data["Adjacency"] = old2newIdx[np.array([x[0] for x in edge_features[np.all(filter[edges], 1)]]).reshape((-1)), 1].reshape((-1, 2)).astype(np.long).tolist()
         new_data["gtLabels"] = gt_labels[filter].tolist()
         new_data["map"] = {str(x[0]): int(x[1]) for x in np.stack((mapping.T[0][filter], np.arange(len(good_idx)))).T}
 

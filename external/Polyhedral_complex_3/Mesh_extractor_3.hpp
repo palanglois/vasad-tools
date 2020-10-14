@@ -109,6 +109,8 @@ class Mesh_extractor_3 {
                 /* Create a new facet of the final polygonal mesh */
                 Mesh_facet mf(plh);
                 mf.is_bounded() = is_bounded;
+                // Transfer info
+                mf._info = f._info;
 
                 const int num_hs = hs.size();
 

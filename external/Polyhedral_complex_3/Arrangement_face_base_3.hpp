@@ -256,10 +256,10 @@ protected:
 
 	/* Auxiliary information */
 	Point _point;
-	int _info; /* Store the color during the arrangement construction */
 
 	//MODIF
 public:
+    int _info; /* Store the color during the arrangement construction */
 
 	friend std::ostream& operator<< <K,Fh>(std::ostream &os, const Arrangement_face_base_3<K,Fh> & face);
 	friend std::istream& operator>> <K,Fh>(std::istream &is, Arrangement_face_base_3<K,Fh> & face);

@@ -59,7 +59,7 @@ int main(int argc, char *argv[]) {
     loadArrangement(inputPath, arr, cell2label, gtLabelsOr, labels, bbox);
 
     // Load semantic_classes
-    vector<classKeywordsColor> classesWithColor = loadSemanticClasses("../semantic_classes.json");
+    vector<classKeywordsColor> classesWithColor = loadSemanticClasses((string) TEST_DIR + "semantic_classes.json");
 
     // Load the ground truth
     const string gtPath = opt["-m"];
@@ -85,7 +85,7 @@ int main(int argc, char *argv[]) {
 
 
     cout << "Saving reconstruction..." << endl;
-    savePlyFromLabel("gt_reconstruction.ply", arr, cell2label, gtLabelsBool);
+    savePlyFromLabel("gt_reconstruction.ply", arr, cell2label, gtLabelsBool, classesWithColor);
     cout << "Reconstruction saved." << endl;
 
     cout << "Computing statistics" << endl;

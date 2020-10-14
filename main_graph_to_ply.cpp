@@ -22,20 +22,18 @@ int main(int argc, char *argv[]) {
         return 0;
     }
 
-    if(opt["-i"].empty())
-    {
+    if (opt["-i"].empty()) {
         cerr << "Input file (-i) required !" << endl;
         return EXIT_FAILURE;
     }
 
-    if(opt["-o"].empty())
-    {
+    if (opt["-o"].empty()) {
         cerr << "Output file (-o) required !" << endl;
         return EXIT_FAILURE;
     }
 
     const string inputPath = opt["-i"];
-    const string outputPath = opt["-o"][opt["-o"].size() - 1] == '/' ? opt["-o"] : opt["-o"] + '/';
+    const string outputPath = opt["-o"];
 
     // Loading plane arrangement
     map<int, int> cell2label;
@@ -45,8 +43,11 @@ int main(int argc, char *argv[]) {
     CGAL::Bbox_3 bbox;
     loadArrangement(inputPath, arr, cell2label, gtLabels, labels, bbox);
 
+    // Load semantic_classes
+    vector<classKeywordsColor> classesWithColor = loadSemanticClasses((string) TEST_DIR + "semantic_classes.json");
+
     // Extract mesh
-    savePlyFromLabel(outputPath + "gt_reconstruction.ply", arr, cell2label, gtLabels);
+    savePlyFromLabel(outputPath, arr, cell2label, gtLabels, classesWithColor);
 
     return 0;
 }
