@@ -21,7 +21,8 @@ typedef CGAL::AABB_tree<Traits> Tree;
 typedef boost::optional<Tree::Intersection_and_primitive_id<Ray>::Type> Ray_intersection;
 typedef Tree::Primitive_id Primitive_id;
 
-using namespace std;
+// External
+#include "OptionParser/option_parser.h"
 using Json = nlohmann::json;
 
 

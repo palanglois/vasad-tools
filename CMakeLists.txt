@@ -39,10 +39,6 @@ set(CGAL_QT_SOURCE
 	#${CGAL_INCLUDE_DIRS}/CGAL/Qt/qglviewer_impl.h
 	)
 
-# EIGEN
-find_package( Eigen3 3.2 REQUIRED)
-include( ${EIGEN3_USE_FILE} )
-
 
 # External
 include_directories(external)
@@ -81,6 +77,9 @@ add_executable(graph_statistics main_graph_statistics.cpp
 add_executable(graph2ply main_graph_to_ply.cpp
         lib/iogeometry.cpp lib/graphStats.cpp lib/graphStats.h)
 
+add_executable(mesh2plane main_mesh_to_plane.cpp
+        lib/RegionGrowing.cpp lib/RegionGrowing.h)
+
 
 target_link_libraries(bim_data ${CGAL_LIBRARIES})
 target_link_libraries(closeness_checker ${CGAL_LIBRARIES} Qt5::Widgets Qt5::Xml Qt5::OpenGL)
@@ -97,6 +96,6 @@ set_target_properties(GTest_in PROPERTIES LINK_FLAGS "-pthread")
 enable_testing()
 include_directories(test)
 add_executable(runUnitTests test/mainTest.cpp test/test_graph.cpp test/graph_fixture.h
-        lib/graphStats.cpp lib/iogeometry.cpp)
+        lib/graphStats.cpp lib/iogeometry.cpp test/test_region_growing.cpp lib/RegionGrowing.cpp)
 target_link_libraries(runUnitTests GTest_in pthread ${CGAL_LIBRARIES})
 add_test(runUnitTests runUnitTests)
