@@ -16,7 +16,7 @@ int main(int argc, char *argv[]) {
     op::OptionParser opt;
     opt.add_option("-h", "--help", "show option help");
     opt.add_option("-i", "--input", "Path to the input plane arrangement", "");
-    opt.add_option("-o", "--output", "Path to the output plane arrangement", "");
+    opt.add_option("-o", "--output", "Path to the output folder", "");
     opt.add_option("-m", "--mesh", "Path to the input obj ground truth", "");
 
     //Parsing options
@@ -50,14 +50,6 @@ int main(int argc, char *argv[]) {
     const string inputPath = opt["-i"];
     const string outputPath = opt["-o"][opt["-o"].size() - 1] == '/' ? opt["-o"] : opt["-o"] + '/';
 
-    // Loading plane arrangement
-    map<int, int> cell2label;
-    vector<bool> labels;
-    vector<int> gtLabelsOr;
-    Arrangement arr;
-    CGAL::Bbox_3 bbox;
-    loadArrangement(inputPath, arr, cell2label, gtLabelsOr, labels, bbox);
-
     // Load semantic_classes
     vector<classKeywordsColor> classesWithColor = loadSemanticClasses((string) TEST_DIR + "semantic_classes.json");
 
@@ -66,6 +58,14 @@ int main(int argc, char *argv[]) {
     cout << "Loading ground truth..." << endl;
     auto shapesAndClasses = loadTreesFromObj(gtPath, classesWithColor);
     cout << "Ground truth loaded." << endl;
+
+    // Loading plane arrangement
+    map<int, int> cell2label;
+    vector<bool> labels;
+    vector<int> gtLabelsOr;
+    Arrangement arr;
+    CGAL::Bbox_3 bbox;
+    loadArrangement(inputPath, arr, cell2label, gtLabelsOr, labels, bbox);
 
 #ifndef NDEBUG
     const int nbSamples = 100000;
@@ -78,14 +78,9 @@ int main(int argc, char *argv[]) {
 //        cout << prim.datum() << endl;
 //    cout << endl;
     vector<int> gtLabels = assignLabel(arr, cell2label, bbox, shapesAndClasses, nbSamples, true, true);
-    vector<bool> gtLabelsBool;
-    for(auto label: gtLabels)
-        gtLabelsBool.push_back(label != -1);
-
-
 
     cout << "Saving reconstruction..." << endl;
-    savePlyFromLabel("gt_reconstruction.ply", arr, cell2label, gtLabelsBool, classesWithColor);
+    savePlyFromLabel("gt_reconstruction.ply", arr, cell2label, gtLabels, classesWithColor);
     cout << "Reconstruction saved." << endl;
 
     cout << "Computing statistics" << endl;

@@ -5,7 +5,7 @@ from PIL import Image, ImageDraw, ImageFont
 
 def main():
   parser = argparse.ArgumentParser()
-  parser.add_argument("--input", default="semantic_classes.json", help="Json semantic class file")
+  parser.add_argument("--input", default="data/semantic_classes.json", help="Json semantic class file")
   args = parser.parse_args()
 
   h_per_class = 30

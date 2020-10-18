@@ -6,15 +6,15 @@ import numpy as np
 classes = {
   "Pillar": ["Furring"],
   "Partition": ["Partition"],
-  "Bearing_wall": ["Wall:Exterior", "HR"], # HR = hour-rated (fire proof)
-  "Window": ["Window"],
+  "Bearing_wall": ["Wall:Exterior", "Wall:Retaining", "Wall:Foundation", "Wall:Generic", "HR"], # HR = hour-rated (fire proof)
+  "Window": ["Window", "Curtain_Wall", "System_Panel"],
   "Roof": ["Roof"],
   "Door": ["Door"],
   "Floor": ["Floor"],
   "Stair": ["Stair"],
   "Railing": ["Railing"],
   "Ceiling": ["Ceiling"],
-  "Beam": ["Beam"]
+  "Beam": ["Beam", "Hollow_Structural_Section", "Column"]
 }
 
 

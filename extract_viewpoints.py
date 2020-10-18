@@ -7,7 +7,7 @@ from os import makedirs
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--output", type=str, default="data")
+    parser.add_argument("--output", type=str, default="processed")
     args = parser.parse_args()
     file_name = bpy.data.filepath.split(sep='/')[-1].split(sep='.')[0]
     args.output = join(dirname(dirname(__file__)), args.output, file_name)

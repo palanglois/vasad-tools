@@ -55,7 +55,7 @@ int main(int argc, char *argv[]) {
     pointOfViews = loadPointOfViews(opt["-c"]);
 
     // Load semantic_classes
-    vector<classKeywordsColor> classesWithColor = loadSemanticClasses("../semantic_classes.json");
+    vector<classKeywordsColor> classesWithColor = loadSemanticClasses((string) TEST_DIR + "semantic_classes.json");
 
     // Load 3D model
     vector<Triangle> triangles;

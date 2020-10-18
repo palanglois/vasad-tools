@@ -55,6 +55,11 @@ add_executable(bim_data
         lib/iogeometry.cpp
         lib/iogeometry.h)
 
+add_executable(color_classes
+        main_color_classes.cpp
+        lib/iogeometry.cpp
+        lib/iogeometry.h)
+
 add_executable(closeness_checker
         main_closeness_checker.cpp
         ${CGAL_QT_SOURCE} lib/meshProcessing.cpp lib/meshProcessing.h)

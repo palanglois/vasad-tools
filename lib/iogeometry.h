@@ -14,6 +14,7 @@
 // CGAL
 #include <CGAL/Simple_cartesian.h>
 #include <CGAL/Exact_predicates_exact_constructions_kernel.h>
+#include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
 #include <CGAL/Exact_integer.h>
 //#include <CGAL/Polyhedron_3.h>
 #include <CGAL/Nef_polyhedron_3.h>
@@ -40,6 +41,7 @@
 #include "Colormap.h"
 
 typedef CGAL::Simple_cartesian<double> Kernel;
+//typedef CGAL::Exact_predicates_inexact_constructions_kernel Kernel;
 typedef CGAL::Exact_predicates_exact_constructions_kernel Kernel2;
 //typedef CGAL::Homogeneous<CGAL::Exact_integer>  Kernel;
 typedef CGAL::Cartesian_converter<Kernel,Kernel2>         Simple_to_Epeck;

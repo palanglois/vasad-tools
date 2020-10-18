@@ -46,8 +46,8 @@ loadTrianglesFromObj(const string &objFile, const vector<classKeywordsColor> &cl
             // Object - Finding the corresponding class
             ss >> obj_name;
             cur_class_color = colorTuple(0, 0, 0);
+            bool classFound = false;
             for (auto cl: classes) {
-                bool classFound = false;
                 for (auto keyword: get<1>(cl)) {
                     if (obj_name.find(keyword) != string::npos) {
                         cur_class_color = get<2>(cl);
@@ -57,6 +57,10 @@ loadTrianglesFromObj(const string &objFile, const vector<classKeywordsColor> &cl
                 }
                 if (classFound) break;
             }
+            if(obj_name.find("807510") != string::npos)
+                cout << "debug" << endl;
+            if(!classFound)
+                cout << "Could not find class for piece: " << obj_name << endl;
         }
     }
 
@@ -151,38 +155,40 @@ vector<pair<vector<Triangle>, int>> loadTreesFromObj(const string &inFile, const
         } else if (firstCaracter == "o") {
             // Object - Finding the corresponding class
             ss >> obj_name;
+            bool classFound = false;
+            int newClass = -1;
             for (int i=0; i < classes.size(); i++) {
                 auto &cl = classes[i];
-                bool classFound = false;
                 for (auto &keyword: get<1>(cl)) {
                     if (obj_name.find(keyword) != string::npos) {
-                        // Class has been found
-                        // First we make the previous tree
-                        vector<Triangle> triangles;
-                        for(auto &triIdx: faces) {
-                            auto curTriangle = new Triangle(points[triIdx[0]], points[triIdx[1]], points[triIdx[2]]);
-
-                            if(!Kernel().is_degenerate_3_object()(*curTriangle))
-                                triangles.push_back(*curTriangle);
-                        }
-                        if(!triangles.empty()) {
-//                            Tree *curTree = new Tree();
-//                            // Weird stuff I need to do to make it work...
-//                            for(auto triPtr: triangles) {
-//                                vector<Triangle> triVec = {triPtr};
-//                                curTree->insert(AABB_triangle_traits::Primitive(triVec.begin()));
-//                            }
-                            allTrees.emplace_back(triangles, curClass);
-                        }
-                        //Empty the faces
-                        faces = vector<vector<int>>();
+                        newClass = i;
                         classFound = true;
-                        curClass = i;
                         break;
                     }
                 }
-                if (classFound) break;
             }
+            if(!classFound){
+                cout << "Could not assign a class to: " << obj_name << endl;
+            }
+            // First we make the previous tree
+            vector<Triangle> triangles;
+            for(auto &triIdx: faces) {
+                auto curTriangle = new Triangle(points[triIdx[0]], points[triIdx[1]], points[triIdx[2]]);
+
+                if(!Kernel().is_degenerate_3_object()(*curTriangle))
+                    triangles.push_back(*curTriangle);
+            }
+            if(!triangles.empty() && curClass != -1)
+                allTrees.emplace_back(triangles, curClass);
+            //Empty the faces even if the class has not been found
+            faces = vector<vector<int>>();
+            if (classFound) {
+                // Class has been found
+                // The object we're now going to read has class newClass
+                curClass = newClass;
+            } else
+                // Class has not been found
+                curClass = -1;
         }
     }
     // We make the last tree

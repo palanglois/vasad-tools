@@ -281,6 +281,12 @@ vector<int> assignLabel(const Arrangement &arr, const map<int, int> &cell2label,
             cellHandle = find_containing_cell(arr, s2e(queryPoints[i].first));
         else
             cellHandle = find_containing_cell(arr, s2e(queryPoints[i].first), queryPoints[i].second);
+        assert(cell2label.at(cellHandle) < votes.size());
+        assert(cell2label.at(cellHandle) >= 0);
+        assert(i < pointsLabel.size());
+        assert(i >= 0);
+        assert(pointsLabel[i] < votes[cell2label.at(cellHandle)].size());
+        assert(pointsLabel[i] >= 0);
         votes[cell2label.at(cellHandle)][pointsLabel[i]]++;
         if(verbose && (i % 100000 == 0))
             cout << "Processed " << i << " points out of " << queryPoints.size() << endl;
@@ -346,7 +352,6 @@ vector<int> assignLabel(const Arrangement &arr, const map<int, int> &cell2label,
 //        }
 //    }
 //    saveTrianglesAsObj(triangles, "test.obj", colorMap);
-
 
     return labels;
 }

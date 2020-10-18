@@ -397,6 +397,7 @@ def main():
     # Parse arguments
     parser = argparse.ArgumentParser()
     parser.add_argument("--data", help="stl file whose class have to be computed", required=True)
+    parser.add_argument("--output", help="Path to the output json file (will be created)", required=True)
     parser.add_argument("--epsilon_point", help="Threshold on point for a triangle to belong to a class",
                         default=0.01)
     parser.add_argument("--epsilon_normal", help="Threshold on normal for a triangle to belong to a class",
@@ -405,9 +406,9 @@ def main():
                         default=0.04)
     parser.add_argument("--sigma_normal", help="Threshold on normal for two classes to be matched",
                         default=0.001)
-    backend_parser = parser.add_mutually_exclusive_group(required=True)
-    backend_parser.add_argument('--matplotlib', dest='backend_mpl', action='store_true', help="Matplotlib backend")
-    backend_parser.add_argument('--occ', dest='backend_mpl', action='store_false', help="Open Cascade backend")
+    # backend_parser = parser.add_mutually_exclusive_group(required=True)
+    # backend_parser.add_argument('--matplotlib', dest='backend_mpl', action='store_true', help="Matplotlib backend")
+    # backend_parser.add_argument('--occ', dest='backend_mpl', action='store_false', help="Open Cascade backend")
     args = parser.parse_args()
 
     # Compute the class
@@ -416,16 +417,16 @@ def main():
     class_computer.compute_classes_from_file_by_growing()
 
     # Output obtained planes
-    class_computer.save_planes_as_json(join("debug", "planes.json"))
+    class_computer.save_planes_as_json(args.output)
 
-    # Compute the structural lines
-    class_computer.compute_line_classes_and_output()
-
-    # Display it
-    if args.backend_mpl:
-        class_computer.render_classes_matplotlib()
-    else:
-        class_computer.render_classes_occ()
+    # # Compute the structural lines
+    # class_computer.compute_line_classes_and_output()
+    #
+    # # Display it
+    # if args.backend_mpl:
+    #     class_computer.render_classes_matplotlib()
+    # else:
+    #     class_computer.render_classes_occ()
 
 
 if __name__ == "__main__":
