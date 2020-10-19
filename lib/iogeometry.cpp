@@ -248,7 +248,7 @@ void savePointsAsObjWithColors(vector<Point> points, vector<colorTuple> colors, 
 }
 
 void saveTrianglesAsObj(const vector<Triangle>& triangles, const string &outPath, TriangleColorMap colors) {
-    ofstream fileOut(outPath);
+    stringstream fileOut;
     for (auto triangle : triangles) {
         colorTuple color = colors[triangle];
         for (int i = 0; i < 3; i++)
@@ -257,7 +257,9 @@ void saveTrianglesAsObj(const vector<Triangle>& triangles, const string &outPath
     }
     for (int i = 0; i < triangles.size(); i++)
         fileOut << "f " << 3 * i + 1 << " " << 3 * i + 2 << " " << 3 * i + 3 << endl;
-    fileOut.close();
+    ofstream realFileOut(outPath.c_str());
+    realFileOut << fileOut.rdbuf();
+    realFileOut.close();
 }
 
 void saveSeparatedObj(vector<Triangle> triangles, const string &outPath, TriangleColorMap colors) {

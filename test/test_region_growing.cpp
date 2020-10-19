@@ -91,7 +91,7 @@ TEST(RegionGrowing, Merging)
     ASSERT_EQ(nbPrimitives, 1);
 }
 
-TEST(RegionGrowing, WeirCube)
+TEST(RegionGrowing, WeirdCube)
 {
     double epsilonPoint = 0.01;
     double epsilonNormal = 0.005;
