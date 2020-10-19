@@ -10,7 +10,7 @@ int main(int argc, char *argv[]) {
     op::OptionParser opt;
     opt.add_option("-h", "--help", "show option help");
     opt.add_option("-i", "--input", "Path to the input plane arrangement", "");
-    opt.add_option("-o", "--output", "Path to the output directory", "");
+    opt.add_option("-o", "--output", "Path to the output ply file", "");
 
     //Parsing options
     bool correctParsing = opt.parse_options(argc, argv);

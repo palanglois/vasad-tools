@@ -1,6 +1,7 @@
 #include "RegionGrowing.h"
 
 using namespace std;
+using Json = nlohmann::json;
 
 vector<string> split(const string &str, const string &delim) {
     vector<string> tokens;
@@ -13,6 +14,66 @@ vector<string> split(const string &str, const string &delim) {
         prev = pos + delim.length();
     } while (pos < str.length() && prev < str.length());
     return tokens;
+}
+
+/**
+ * Computes the color gradiant
+ * color: the output vector
+ * x: the gradiant (beetween 0 and 360)
+ * min and max: variation of the RGB channels (Move3D 0 -> 1)
+ */
+void GroundColorMix(double* color, double x, double min, double max)
+{
+    /*
+     * Red = 0
+     * Green = 1
+     * Blue = 2
+     */
+    double posSlope = (max-min)/60;
+    double negSlope = (min-max)/60;
+
+    if( x < 60 )
+    {
+        color[0] = max;
+        color[1] = posSlope*x+min;
+        color[2] = min;
+        return;
+    }
+    else if ( x < 120 )
+    {
+        color[0] = negSlope*x+2*max+min;
+        color[1] = max;
+        color[2] = min;
+        return;
+    }
+    else if ( x < 180  )
+    {
+        color[0] = min;
+        color[1] = max;
+        color[2] = posSlope*x-2*max+min;
+        return;
+    }
+    else if ( x < 240  )
+    {
+        color[0] = min;
+        color[1] = negSlope*x+4*max+min;
+        color[2] = max;
+        return;
+    }
+    else if ( x < 300  )
+    {
+        color[0] = posSlope*x-4*max+min;
+        color[1] = min;
+        color[2] = max;
+        return;
+    }
+    else
+    {
+        color[0] = max;
+        color[1] = min;
+        color[2] = negSlope*x+6*max;
+        return;
+    }
 }
 
 RegionGrowing::RegionGrowing(const string &inFile, double _epsilonPoint, double _epsilonNormal, double _sigmaPoint,
@@ -94,11 +155,15 @@ void RegionGrowing::loadObjFile(const string &inFile) {
             faceIterator++;
         }
     }
-    // Update face normals
+    // Update face normals, areas and centers
+    faceCenters.resize(nbFaces, 3);
     for (int i = 0; i < nbFaces; i++) {
         for (int j = 0; j < 3; j++)
             faceNormals.row(i) += rawNormals.row(faceNormalCoord(i, j));
         faceNormals.row(i).normalize();
+        faceAreas.push_back(0.5 * (pointCloud.row(faces(i, 2)) - pointCloud.row(faces(i, 0))).cross(
+                pointCloud.row(faces(i, 1)) - pointCloud.row(faces(i, 0))).norm());
+        faceCenters.row(i) = (pointCloud.row(faces(i, 0)) + pointCloud.row(faces(i, 1)) + pointCloud.row(faces(i, 2))) / 3.;
     }
     if(verbose)
         cout << "Obj file loaded!" << endl;
@@ -147,8 +212,10 @@ void RegionGrowing::buildAdjacencyGraph() {
         cout << "Adjacency graph built!" << endl;
 }
 
-void RegionGrowing::run() {
+int RegionGrowing::run() {
     // Main algorithm function
+    if(verbose)
+        cout << "Performing region growing" << endl;
     vector<PlaneClass> grownClasses(0);
     Eigen::Matrix<bool, Eigen::Dynamic, 1> isTriangleAdded;
     isTriangleAdded.resize(faces.rows(), 1);
@@ -157,6 +224,8 @@ void RegionGrowing::run() {
     int globalIt = 0;
     while(!isTriangleAdded.all())
     {
+        if((globalIt % (1 + int(permutation.size() / 10)) == 0) && verbose)
+            cout << "Progress: " << round(100.*double(globalIt) / permutation.size()) << "%" << endl;
         // We check that the current triangle has not been visited yet
         int triangleIt = permutation[globalIt];
         if(isTriangleAdded(triangleIt))
@@ -168,12 +237,64 @@ void RegionGrowing::run() {
 
         // We initiate a new class with the current unseen triangle
         PlaneClass newClass;
-        Triangle curTriangle = getTriangle(triangleIt);
-        Point averagePoint = curTriangle.rowwise().mean();
-        newClass.addTriangle(curTriangle, triangleIt, faceNormals.row(triangleIt), averagePoint);
-        //TODO
+        newClass.addTriangle(faceAreas[triangleIt], triangleIt, faceNormals.row(triangleIt), faceCenters.row(triangleIt));
+        // We gather the none visited neighbours of current triangle
+        vector<bool> visitedNeighbor(faces.rows(), false);
+        visitedNeighbor[triangleIt] = true;
+        deque<int> neighboursList;
+        for(const auto& edge: triangleToEdge.at(triangleIt))
+            for(const auto& neighbourTriIdx: edgeToTriangle.at(edge))
+                //Check that neighbour is not the current triangle and it has not been added already
+                if(neighbourTriIdx != triangleIt && !isTriangleAdded(neighbourTriIdx)) {
+                    neighboursList.push_back(neighbourTriIdx);
+                    visitedNeighbor[neighbourTriIdx] = true;
+                }
+        // We propagate to the neighbours
+        while(!neighboursList.empty())
+        {
+            const int& nextTriangleId = neighboursList.back();
+            neighboursList.pop_back();
+            const Point& nextTriangleAverage = faceCenters.row(nextTriangleId);
+            if(isTriangleInClass(nextTriangleAverage, faceNormals.row(nextTriangleId), newClass)) {
+                newClass.addTriangle(faceAreas[nextTriangleId], nextTriangleId, faceNormals.row(nextTriangleId),
+                                     nextTriangleAverage);
+                // When we get an inlier, we also test its neighbors so that the region grows
+                for (const auto &edge: triangleToEdge.at(nextTriangleId)) {
+                    for (const auto &neighbourTriIdx: edgeToTriangle.at(edge)) {
+
+                        if (neighbourTriIdx != nextTriangleId && !isTriangleAdded(neighbourTriIdx) && !visitedNeighbor[neighbourTriIdx]) {
+                            neighboursList.push_back(neighbourTriIdx);
+                            visitedNeighbor[neighbourTriIdx] = true;
+                        }
+                    }
+                }
+            }
+        }
+        grownClasses.push_back(newClass);
     }
 
+     // Primitive merging
+    if(verbose)
+        cout << "Merging the primitives" << endl;
+    sort(grownClasses.begin(), grownClasses.end(), [&](const PlaneClass& a, const PlaneClass& b) -> bool {return a.getTotalArea() > b.getTotalArea();});
+    for(int i=0; i < grownClasses.size(); i++)
+    {
+        if((i % (1 + int(grownClasses.size() / 10)) == 0) && verbose)
+            cout << "Progress: " << round(100.*double(i) / grownClasses.size()) << "%" << endl;
+        bool classFound = false;
+        for(auto& curClass: computedClasses)
+            if(areClassesSame(curClass, grownClasses[i]))
+            {
+                classFound = true;
+                curClass.mergeWith(grownClasses[i]);
+                break;
+            }
+        if(!classFound)
+            computedClasses.push_back(grownClasses[i]);
+    }
+    if(verbose)
+        cout << "Algorithm completed! Found " << computedClasses.size() << " primitives." << endl;
+    return computedClasses.size();
 }
 
 vector<int> RegionGrowing::computeTriangleOrder() const {
@@ -199,13 +320,95 @@ const PointCloud &RegionGrowing::getPointCloud() const {
     return pointCloud;
 }
 
-Triangle RegionGrowing::getTriangle(int i) const {
-    assert(i >= 0);
-    assert(i < faces.size());
-    Triangle triangle;
-    for (int j = 0; j < 3; j++)
-        triangle.row(j) = pointCloud.row(faces(i, j));
-    return triangle;
+inline bool RegionGrowing::isTriangleInClass(const Point& averagePoint, const Point& triangleNormal, const PlaneClass& planeClass) const {
+    const Point& classNormal = planeClass.getNormal();
+    const Point& classAveragePoint = planeClass.getRefPoint();
+    bool pointContributionOne = abs((averagePoint - classAveragePoint).dot(classNormal)) < epsilonPoint;
+    bool pointContributionTwo = abs((averagePoint - classAveragePoint).dot(triangleNormal)) < epsilonPoint;
+    bool normalContribution = 1. - abs(triangleNormal.dot(classNormal)) < epsilonNormal;
+    return pointContributionOne && pointContributionTwo && normalContribution;
+}
+
+inline bool RegionGrowing::areClassesSame(const PlaneClass &planeClassOne, const PlaneClass &planeClassTwo)
+{
+    bool pointContributionOne = abs((planeClassOne.getRefPoint() - planeClassTwo.getRefPoint()).dot(planeClassOne.getNormal())) < sigmaPoint;
+    bool pointContributionTwo = abs((planeClassOne.getRefPoint() - planeClassTwo.getRefPoint()).dot(planeClassTwo.getNormal())) < sigmaPoint;
+    bool normalContribution = 1. - abs((planeClassOne.getNormal().dot(planeClassTwo.getNormal()))) < sigmaNormal;
+    return pointContributionOne && pointContributionTwo && normalContribution;
+}
+
+void RegionGrowing::saveAsObj(const string& outFile) const {
+    stringstream outStream;
+    int vertexId = 1;
+    vector<int> permutation(computedClasses.size(), 0);
+    for(int i=0; i < permutation.size(); i++)
+        permutation[i] = i;
+    unsigned seed = chrono::system_clock::now().time_since_epoch().count();
+    shuffle (permutation.begin(), permutation.end(), default_random_engine(seed));
+    for(int j=0; j < computedClasses.size(); j++)
+    {
+        const int& i = permutation[j];
+        auto color = new double[3];
+        double intensity = double(j) / computedClasses.size() * 360.;
+        GroundColorMix(color, intensity, 0, 255);
+        vector<int> intColor = {int(color[0]), int(color[1]), int(color[2])};
+        for(const auto& faceIdx: computedClasses[i].getInlierIndex())
+        {
+            for(int k=0; k < 3; k++)
+            {
+                const Point& curPoint = pointCloud.row(faces(faceIdx, k));
+                outStream << "v " << curPoint(0) << " "
+                          << curPoint(1) << " "
+                          << curPoint(2) << " "
+                          << int(color[0]) << " "
+                          << int(color[1]) << " "
+                          << int(color[2]) << " " << endl;
+            }
+            outStream << "f " << vertexId << " " << vertexId + 1 << " " << vertexId + 2 << endl;
+            vertexId += 3;
+        }
+        delete[] color;
+    }
+    ofstream outStreamReal(outFile.c_str());
+    outStreamReal  << outStream.rdbuf();
+}
+
+void RegionGrowing::saveAsJson(const string& outFile)
+{
+    // Sort computed classes by decreasing area order
+    sort(computedClasses.begin(), computedClasses.end(), [&](const PlaneClass& a, const PlaneClass& b) -> bool {return a.getTotalArea() > b.getTotalArea();});
+
+    // Planes
+    Json planesData;
+    for(const auto& planeClass: computedClasses)
+    {
+        Json planeNormal = {planeClass.getNormal()(0), planeClass.getNormal()(1), planeClass.getNormal()(2)};
+        Json planeInlier = {planeClass.getRefPoint()(0), planeClass.getRefPoint()(1), planeClass.getRefPoint()(2)};
+        Json planeData = {{"normal", planeNormal}, {"inlier", planeInlier}};
+        planesData.push_back(planeData);
+    }
+
+    // Map
+    Json map;
+    map["NOMAP"] = 0;
+
+    // Labels
+    Json labels;
+    labels.push_back(true);
+
+    // Bbox
+    Point minPoint = pointCloud.colwise().minCoeff();
+    Point maxPoint = pointCloud.colwise().maxCoeff();
+    Json bbox = {minPoint(0), minPoint(1), minPoint(2), maxPoint(0), maxPoint(1), maxPoint(2)};
+
+    // Number of planes
+    Json nbPlanes = 180;
+
+    // Compile data
+    Json outputData = {{"planes", planesData}, {"map", map}, {"labels", labels}, {"bbox", bbox}, {"nbPlanes", nbPlanes}};
+
+    ofstream outStream(outFile.c_str());
+    outStream << outputData;
 }
 
 PlaneClass::PlaneClass() {
@@ -216,8 +419,7 @@ PlaneClass::PlaneClass() {
     triangleAreaAccumulator = 0;
 }
 
-void PlaneClass::addTriangle(const Triangle &triangle, int index, const Point &curNormal, const Point &average) {
-    double triangleArea = 0.5 * (triangle.row(1) - triangle.row(0)).cross(triangle.row(2) - triangle.row(0)).norm();
+void PlaneClass::addTriangle(const double &triangleArea, int index, const Point &curNormal, const Point &average) {
 
     // Updating the index
     inlierIndex.push_back(index);
@@ -233,20 +435,24 @@ void PlaneClass::addTriangle(const Triangle &triangle, int index, const Point &c
     triangleAreaAccumulator += triangleArea;
 
     // Update the class characteristics
-    normal = getNormal();
-    averagePoint = getRefPoint();
-
-    // Insert the points;
-    for (int i = 0; i < 3; i++)
-        inlierPoints.emplace_back(triangle.row(i));
+    updateNormal();
+    updateRefPoint();
 }
 
-Point PlaneClass::getNormal() const {
-    return normal / normal.norm();
+const Point& PlaneClass::getNormal() const {
+    return normal;
 }
 
-Point PlaneClass::getRefPoint() const {
-    return averagePointAccumulator / triangleAreaAccumulator;
+const Point& PlaneClass::getRefPoint() const {
+    return averagePoint;
+}
+
+void PlaneClass::updateNormal() {
+    normal /= normal.norm();
+}
+
+void PlaneClass::updateRefPoint() {
+    averagePoint = averagePointAccumulator / triangleAreaAccumulator;
 }
 
 double PlaneClass::getArea() const {
@@ -256,7 +462,6 @@ double PlaneClass::getArea() const {
 void PlaneClass::mergeWith(const PlaneClass &other) {
     // Concatenate points and their indexes
     inlierIndex.insert(inlierIndex.end(), other.inlierIndex.begin(), other.inlierIndex.end());
-    inlierPoints.insert(inlierPoints.end(), other.inlierPoints.begin(), other.inlierPoints.end());
 
     // Check the normal orientation and update
     if (normal.dot(other.normal) < 0)
@@ -269,6 +474,15 @@ void PlaneClass::mergeWith(const PlaneClass &other) {
     triangleAreaAccumulator += other.triangleAreaAccumulator;
 
     // Update the class characteristics
-    normal = getNormal();
-    averagePoint = getRefPoint();
+    updateNormal();
+    updateRefPoint();
+}
+
+const double& PlaneClass::getTotalArea() const
+{
+    return triangleAreaAccumulator;
+}
+
+const vector<int>& PlaneClass::getInlierIndex() const {
+    return inlierIndex;
 }

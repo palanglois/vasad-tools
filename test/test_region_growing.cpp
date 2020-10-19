@@ -7,14 +7,15 @@ using namespace std;
 TEST(RegionGrowing, PlaneClass)
 {
     PlaneClass planeClass;
-    Triangle triangle;
+    Eigen::Matrix3d triangle;
     triangle.row(0) = Point(1., 0., 0.);
     triangle.row(1) = Point(0., 1., 0.);
     triangle.row(2) = Point(1., 1., 0.);
     Point normal(0., 0., 1.);
     Point average = triangle.colwise().mean();
     int idx=0;
-    planeClass.addTriangle(triangle, idx, normal, average);
+    double triangleArea = 0.5*(triangle.row(2) - triangle.row(0)).cross(triangle.row(1) - triangle.row(0)).norm();
+    planeClass.addTriangle(triangleArea, idx, normal, average);
     ASSERT_EQ(planeClass.getNormal(), normal);
     ASSERT_EQ(planeClass.getRefPoint(), average);
     ASSERT_EQ(planeClass.getArea(), 0.5);
@@ -24,25 +25,27 @@ TEST(RegionGrowing, PlaneClassFusion)
 {
     //Class 1
     PlaneClass planeClassOne;
-    Triangle triangle;
+    Eigen::Matrix3d triangle;
     triangle.row(0) = Point(1., 0., 0.);
     triangle.row(1) = Point(0., 1., 0.);
     triangle.row(2) = Point(1., 1., 0.);
     Point normal(0., 0., 1.);
     Point average = triangle.colwise().mean();
     int idx=0;
-    planeClassOne.addTriangle(triangle, idx, normal, average);
+    double triangleArea = 0.5*(triangle.row(2) - triangle.row(0)).cross(triangle.row(1) - triangle.row(0)).norm();
+    planeClassOne.addTriangle(triangleArea, idx, normal, average);
 
     //Class 2
     PlaneClass planeClassTwo;
-    Triangle triangleTwo;
+    Eigen::Matrix3d triangleTwo;
     triangleTwo.row(0) = Point(1., 0., 0.);
     triangleTwo.row(1) = Point(0., 1., 0.);
     triangleTwo.row(2) = Point(0., 0., 0.);
     Point normalTwo(0., 0., 1.);
     Point averageTwo = triangleTwo.colwise().mean();
-    int Two=1;
-    planeClassTwo.addTriangle(triangleTwo, Two, normalTwo, averageTwo);
+    int two=1;
+    double triangleAreaTwo = 0.5*(triangle.row(2) - triangle.row(0)).cross(triangle.row(1) - triangle.row(0)).norm();
+    planeClassTwo.addTriangle(triangleAreaTwo, two, normalTwo, averageTwo);
 
     // Test Merging
     planeClassOne.mergeWith(planeClassTwo);
@@ -72,5 +75,29 @@ TEST(RegionGrowing, RegionGrowing)
     }
     for(int i=0; i < areas.size() - 1; i++)
         ASSERT_GE(areas[i], areas[i + 1]);
-    rg.run();
+    int nbPrimitives = rg.run();
+    ASSERT_EQ(nbPrimitives, 9);
+    rg.saveAsObj((string) TEST_DIR + "coloredGtPlanes.obj");
+}
+
+TEST(RegionGrowing, Merging)
+{
+    double epsilonPoint = 0.01;
+    double epsilonNormal = 0.005;
+    double sigmaPoint = 0.04;
+    double sigmaNormal = 0.001;
+    RegionGrowing rg((string) TEST_DIR + "disjointPlane.obj", epsilonPoint, epsilonNormal, sigmaPoint, sigmaNormal, false);
+    int nbPrimitives = rg.run();
+    ASSERT_EQ(nbPrimitives, 1);
+}
+
+TEST(RegionGrowing, WeirCube)
+{
+    double epsilonPoint = 0.01;
+    double epsilonNormal = 0.005;
+    double sigmaPoint = 0.04;
+    double sigmaNormal = 0.001;
+    RegionGrowing rg((string) TEST_DIR + "weirdCube.obj", epsilonPoint, epsilonNormal, sigmaPoint, sigmaNormal, false);
+    int nbPrimitives = rg.run();
+    rg.saveAsObj((string) TEST_DIR + "coloredGtPlanes2.obj");
 }

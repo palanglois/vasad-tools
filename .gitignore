@@ -4,3 +4,5 @@ cmake-build*
 semantic_classes.json
 debug
 build
+data/coloredGtPlanes.obj
+data/coloredGtPlanes2.obj

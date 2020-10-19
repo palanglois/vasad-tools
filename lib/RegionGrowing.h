@@ -1,6 +1,7 @@
 #ifndef BIM_DATA_REGIONGROWING_H
 #define BIM_DATA_REGIONGROWING_H
 
+// STD
 #include <iostream>
 #include <iterator>
 #include <string>
@@ -8,12 +9,18 @@
 #include <fstream>
 #include <vector>
 #include <unordered_map>
+#include <deque>
+#include <random>
+#include <chrono>
 
+// Eigen
 #include <Eigen/Core>
 #include <Eigen/Geometry>
 
+// Json
+#include <json/json.hpp>
+
 typedef Eigen::Vector3d                        Point;      // A type for points
-typedef Eigen::Matrix3d                        Triangle;   // A type for triangles
 typedef Eigen::Matrix<double, 2, 3>            Edge;       // A type for edges
 typedef Eigen::Matrix<double,Eigen::Dynamic,3> PointCloud; // A type for the point clouds
 typedef Eigen::Matrix<double,Eigen::Dynamic,3> Normals;    // A type for the normals
@@ -39,15 +46,25 @@ class PlaneClass
 {
 public:
     PlaneClass();
-    void addTriangle(const Triangle& triangle, int index, const Point& curNormal, const Point& average);
-    Point getNormal() const;
-    Point getRefPoint() const;
-    double getArea() const;
+
+    // Main functions
+    void addTriangle(const double &triangleArea, int index, const Point& curNormal, const Point& average);
     void mergeWith(const PlaneClass& other);
+
+    // Accessors
+    const Point& getNormal() const;
+    const Point& getRefPoint() const;
+    const double& getTotalArea() const;
+    double getArea() const;
+    const std::vector<int>& getInlierIndex() const;
+
+protected:
+    // Internal functions
+    void updateNormal();
+    void updateRefPoint();
 
 private:
     std::vector<int> inlierIndex;
-    std::vector<Point> inlierPoints;
     Point normalAccumulator;
     Point averagePointAccumulator;
     double triangleAreaAccumulator;
@@ -60,19 +77,30 @@ class RegionGrowing
 public:
     RegionGrowing(const std::string& inFile, double _epsilonPoint, double _epsilonNormal,
                   double _sigmaPoint, double _sigmaNormal, bool _verbose=false);
+    // Main functions
+    int run();
+    void saveAsObj(const std::string& outFile) const;
+    void saveAsJson(const std::string& outFile);
+
+    // Region growing criteria
+    inline bool isTriangleInClass(const Point &averagePoint, const Point &triangleNormal, const PlaneClass &planeClass) const;
+    inline bool areClassesSame(const PlaneClass &planeClassOne, const PlaneClass &planeClassTwo);
+
+    // Internal functions
     void loadObjFile(const std::string& inFile);
     void buildAdjacencyGraph();
     std::vector<int> computeTriangleOrder() const;
-    void run();
 
+    // Accessors
     const Faces& getFaces() const;
     const PointCloud& getPointCloud() const;
-    Triangle getTriangle(int i) const;
 private:
     // Mesh
     PointCloud pointCloud;
     Faces faces;
     Normals faceNormals;
+    std::vector<double> faceAreas;
+    PointCloud faceCenters;
 
     // Algorithm attributes
     std::vector<PlaneClass> computedClasses;

@@ -37,7 +37,9 @@ int main(int argc, char *argv[]) {
     double sigmaPoint = op::str2double(opt["-sp"]);
     double sigmaNormal = op::str2double(opt["-sn"]);
 
-    RegionGrowing regionGrowing(inPath, epsilonPoint, epsilonNormal, sigmaPoint, sigmaNormal);
-
+    RegionGrowing regionGrowing(inPath, epsilonPoint, epsilonNormal, sigmaPoint, sigmaNormal, true);
+    int nbOfPrimitives = regionGrowing.run();
+    regionGrowing.saveAsObj(outPath + "coloredGtPlanes.obj");
+    regionGrowing.saveAsJson(outPath + "coloredGtPlanes.json");
     return 0;
 }
