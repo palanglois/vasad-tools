@@ -6,9 +6,9 @@ import numpy as np
 classes = {
   "Pillar": ["Furring"],
   "Partition": ["Partition"],
-  "Bearing_wall": ["Wall:Exterior", "Wall:Retaining", "Wall:Foundation", "Wall:Generic", "HR"], # HR = hour-rated (fire proof)
-  "Window": ["Window", "Curtain_Wall", "System_Panel"],
-  "Roof": ["Roof"],
+  "Bearing_wall": ["Wall:Exterior", "Wall:Retaining", "Wall:Foundation", "Wall:Generic", "HR", "IfcWallStandardCase/Wall."], # HR = hour-rated (fire proof)
+  "Window": ["Window", "Curtain_Wall", "System_Panel", "CurtainWall"],
+  "Roof": ["Roof", "ROOF"],
   "Door": ["Door"],
   "Floor": ["Floor"],
   "Stair": ["Stair"],

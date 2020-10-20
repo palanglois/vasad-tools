@@ -200,7 +200,7 @@ vector<pair<vector<Triangle>, int>> loadTreesFromObj(const string &inFile, const
         if(!Kernel().is_degenerate_3_object()(curTriangle))
             triangles.push_back(curTriangle);
     }
-    if(!triangles.empty()) {
+    if(!triangles.empty() && curClass != -1) {
 //        Tree *curTree = new Tree(triangles.begin(), triangles.end());
         /*// Weird stuff I need to do to make it work...
         for(auto triPtr: triangles) {

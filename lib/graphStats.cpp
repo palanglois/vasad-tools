@@ -281,6 +281,7 @@ vector<int> assignLabel(const Arrangement &arr, const map<int, int> &cell2label,
             cellHandle = find_containing_cell(arr, s2e(queryPoints[i].first));
         else
             cellHandle = find_containing_cell(arr, s2e(queryPoints[i].first), queryPoints[i].second);
+        if(!arr.is_cell_bounded(cellHandle)) continue;
         assert(cell2label.at(cellHandle) < votes.size());
         assert(cell2label.at(cellHandle) >= 0);
         assert(i < pointsLabel.size());
