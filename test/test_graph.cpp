@@ -114,7 +114,7 @@ TEST_F(PlaneArrangementFixture, NodeLabeling)
     triangles.emplace_back(points[5], points[2], points[6]);
 
     // AABB Tree for test mesh
-    vector<pair<vector<Triangle>, int>> labeledTrees = {make_pair(triangles, 0)};
+    vector<facesLabelName> labeledTrees = {make_tuple(triangles, 0, "")};
 
     vector<int> nodeLabels = assignLabel(*myPlaneArrangement, cell2label, bbox, labeledTrees, 10000, true, false);
     ASSERT_EQ(nodeLabels[0], 0);

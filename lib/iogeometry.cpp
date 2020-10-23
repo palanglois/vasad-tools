@@ -116,9 +116,9 @@ vector<Point> loadPointCloudObj(const string &inFile)
     return points;
 }
 
-vector<pair<vector<Triangle>, int>> loadTreesFromObj(const string &inFile, const vector<classKeywordsColor> &classes)
+vector<facesLabelName> loadTreesFromObj(const string &inFile, const vector<classKeywordsColor> &classes)
 {
-    vector<pair<vector<Triangle>, int>> allTrees;
+    vector<facesLabelName> allTrees;
 
     //Loading the obj data
     ifstream inputStream(inFile.c_str());
@@ -134,6 +134,7 @@ vector<pair<vector<Triangle>, int>> loadTreesFromObj(const string &inFile, const
     vector<Point> points;
     vector<vector<int>> faces;
     int curClass = -1;
+    string curName;
     while (getline(inputStream, currentLine)) {
         stringstream ss(currentLine);
         string firstCaracter;
@@ -157,11 +158,13 @@ vector<pair<vector<Triangle>, int>> loadTreesFromObj(const string &inFile, const
             ss >> obj_name;
             bool classFound = false;
             int newClass = -1;
+            string newName;
             for (int i=0; i < classes.size(); i++) {
                 auto &cl = classes[i];
                 for (auto &keyword: get<1>(cl)) {
                     if (obj_name.find(keyword) != string::npos) {
                         newClass = i;
+                        newName = obj_name;
                         classFound = true;
                         break;
                     }
@@ -179,13 +182,14 @@ vector<pair<vector<Triangle>, int>> loadTreesFromObj(const string &inFile, const
                     triangles.push_back(*curTriangle);
             }
             if(!triangles.empty() && curClass != -1)
-                allTrees.emplace_back(triangles, curClass);
+                allTrees.emplace_back(triangles, curClass, curName);
             //Empty the faces even if the class has not been found
             faces = vector<vector<int>>();
             if (classFound) {
                 // Class has been found
                 // The object we're now going to read has class newClass
                 curClass = newClass;
+                curName = newName;
             } else
                 // Class has not been found
                 curClass = -1;
@@ -207,7 +211,7 @@ vector<pair<vector<Triangle>, int>> loadTreesFromObj(const string &inFile, const
             vector<Triangle> triVec = {triPtr};
             curTree->insert(AABB_triangle_traits::Primitive(triVec.begin()));
         }*/
-        allTrees.emplace_back(triangles, curClass);
+        allTrees.emplace_back(triangles, curClass, curName);
 
 //        //DEBUG
 //        Kernel::Ray_3 query(Kernel::Point_3(0.2, 0.2, 0.2), Kernel::Vector_3(0., 1., 1.));

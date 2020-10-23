@@ -5,16 +5,16 @@ import numpy as np
 
 classes = {
   "Pillar": ["Furring"],
-  "Partition": ["Partition"],
-  "Bearing_wall": ["Wall:Exterior", "Wall:Retaining", "Wall:Foundation", "Wall:Generic", "HR", "IfcWallStandardCase/Wall."], # HR = hour-rated (fire proof)
-  "Window": ["Window", "Curtain_Wall", "System_Panel", "CurtainWall"],
-  "Roof": ["Roof", "ROOF"],
-  "Door": ["Door"],
-  "Floor": ["Floor"],
-  "Stair": ["Stair"],
+  "Partition": ["Partition", "M_Int"],
+  "Bearing_wall": ["Wall:Exterior", "Wall:Retaining", "Wall:Foundation", "Wall:Cast", "Wall:Reinforced", "Wall:STONE", "Wall:Generic", "HR", "IfcWallStandardCase/Wall.", "M_Ext"], # HR = hour-rated (fire proof)
+  "Window": ["Window", "Curtain_Wall", "System_Panel", "CurtainWall", "IfcBuildingElementProxy/Cadre", "PAN_Principal"],
+  "Roof": ["Roof", "ROOF", "IfcCovering/TER"],
+  "Door": ["Door", "Porte"],
+  "Floor": ["Floor", "Dalle", "IfcSlab"],
+  "Stair": ["Stair", "MARCHE", "IfcMember/LIM", "IfcMember/SS"],
   "Railing": ["Railing"],
   "Ceiling": ["Ceiling"],
-  "Beam": ["Beam", "Hollow_Structural_Section", "Column"]
+  "Beam": ["Beam", "Hollow_Structural_Section", "Column", "IfcBuildingElementProxy/Forme"]
 }
 
 

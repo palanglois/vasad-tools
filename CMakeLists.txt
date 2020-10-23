@@ -85,6 +85,9 @@ target_link_libraries(bim_data ${CGAL_LIBRARIES})
 target_link_libraries(closeness_checker ${CGAL_LIBRARIES} Qt5::Widgets Qt5::Xml Qt5::OpenGL)
 target_link_libraries(boolean_operations_check ${CGAL_LIBRARIES} Qt5::Widgets Qt5::Xml Qt5::OpenGL gmpxx)
 target_link_libraries(graph_statistics ${CGAL_LIBRARIES})
+if(MKL_FOUND)
+    target_link_libraries(mesh2plane ${MKL_LIBRARIES})
+endif()
 
 ### TESTS ###
 

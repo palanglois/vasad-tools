@@ -323,18 +323,28 @@ const PointCloud &RegionGrowing::getPointCloud() const {
 inline bool RegionGrowing::isTriangleInClass(const Point& averagePoint, const Point& triangleNormal, const PlaneClass& planeClass) const {
     const Point& classNormal = planeClass.getNormal();
     const Point& classAveragePoint = planeClass.getRefPoint();
-    bool pointContributionOne = abs((averagePoint - classAveragePoint).dot(classNormal)) < epsilonPoint;
-    bool pointContributionTwo = abs((averagePoint - classAveragePoint).dot(triangleNormal)) < epsilonPoint;
-    bool normalContribution = 1. - abs(triangleNormal.dot(classNormal)) < epsilonNormal;
-    return pointContributionOne && pointContributionTwo && normalContribution;
+//    bool pointContributionOne = abs((averagePoint - classAveragePoint).dot(classNormal)) < epsilonPoint;
+//    bool pointContributionTwo = abs((averagePoint - classAveragePoint).dot(triangleNormal)) < epsilonPoint;
+//    bool normalContribution = 1. - abs(triangleNormal.dot(classNormal)) < epsilonNormal;
+//    return pointContributionOne && pointContributionTwo && normalContribution;
+    if(abs((averagePoint - classAveragePoint).dot(classNormal)) >= epsilonPoint) return false;
+    if(abs((averagePoint - classAveragePoint).dot(triangleNormal)) < epsilonPoint) return false;
+    return (1. - abs(triangleNormal.dot(classNormal))) < epsilonNormal;
 }
 
 inline bool RegionGrowing::areClassesSame(const PlaneClass &planeClassOne, const PlaneClass &planeClassTwo)
 {
-    bool pointContributionOne = abs((planeClassOne.getRefPoint() - planeClassTwo.getRefPoint()).dot(planeClassOne.getNormal())) < sigmaPoint;
-    bool pointContributionTwo = abs((planeClassOne.getRefPoint() - planeClassTwo.getRefPoint()).dot(planeClassTwo.getNormal())) < sigmaPoint;
-    bool normalContribution = 1. - abs((planeClassOne.getNormal().dot(planeClassTwo.getNormal()))) < sigmaNormal;
-    return pointContributionOne && pointContributionTwo && normalContribution;
+//    bool pointContributionOne = abs((planeClassOne.getRefPoint() - planeClassTwo.getRefPoint()).dot(planeClassOne.getNormal())) < sigmaPoint;
+//    bool pointContributionTwo = abs((planeClassOne.getRefPoint() - planeClassTwo.getRefPoint()).dot(planeClassTwo.getNormal())) < sigmaPoint;
+//    bool normalContribution = 1. - abs((planeClassOne.getNormal().dot(planeClassTwo.getNormal()))) < sigmaNormal;
+//    return pointContributionOne && pointContributionTwo && normalContribution;
+    if(abs((planeClassOne.getRefPoint() - planeClassTwo.getRefPoint()).dot(planeClassOne.getNormal())) >= sigmaPoint) return false;
+    if(abs((planeClassOne.getRefPoint() - planeClassTwo.getRefPoint()).dot(planeClassTwo.getNormal())) >= sigmaPoint) return false;
+    return (1. - abs((planeClassOne.getNormal().dot(planeClassTwo.getNormal())))) < sigmaNormal;
+//    Point difRef = planeClassOne.getRefPoint() - planeClassTwo.getRefPoint();
+//    if(abs(inner_product(difRef.data(), difRef.data() + difRef.size(), planeClassOne.getNormal().data(), 0.)) >= sigmaPoint) return false;
+//    if(abs(inner_product(difRef.data(), difRef.data() + difRef.size(), planeClassTwo.getNormal().data(), 0.)) >= sigmaPoint) return false;
+//    return (1. - abs((planeClassOne.getNormal().dot(planeClassTwo.getNormal())))) < sigmaNormal;
 }
 
 void RegionGrowing::saveAsObj(const string& outFile) const {

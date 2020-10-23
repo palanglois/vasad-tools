@@ -122,19 +122,20 @@ pair<Nodes, Edges> computeGraphStatistics(const vector<bool> &labels, const map<
 }
 
 vector<int> assignLabel(const Arrangement &arr, const map<int, int> &cell2label, CGAL::Bbox_3 bbox,
-                        vector<std::pair<std::vector<Triangle>, int>> &labeledShapes, int nbSamples, bool fill, bool verbose)
+                        vector<facesLabelName> &labeledShapes, int nbSamples,
+                        bool fill, bool verbose)
 {
     Simple_to_Epeck s2e;
     Epeck_to_Simple e2s;
     //Build bbox for each shape
     vector<CGAL::Bbox_3> bboxes;
     for(const auto& labeledShape: labeledShapes)
-        bboxes.push_back(CGAL::bbox_3(labeledShape.first.begin(), labeledShape.first.end()));
+        bboxes.push_back(CGAL::bbox_3(get<0>(labeledShape).begin(), get<0>(labeledShape).end()));
     // Number of classes to consider
     int nbClasses = 0;
     for(auto &labeledTree: labeledShapes)
-        if(labeledTree.second + 2 > nbClasses)
-            nbClasses = labeledTree.second + 2;
+        if(get<1>(labeledTree) + 2 > nbClasses)
+            nbClasses = get<1>(labeledTree) + 2;
     int voidClass = nbClasses - 1;
 
     vector<int> labels;
@@ -207,7 +208,7 @@ vector<int> assignLabel(const Arrangement &arr, const map<int, int> &cell2label,
                 queryPoints.emplace_back(Point(curXDist(generator), curYDist(generator), curZDist(generator)), arr.cell_handle(*cellIt));
 
 //            // DEBUG
-//            if(int(arr.cell_handle(*cellIt)) == 35480) {
+//            if(int(arr.cell_handle(*cellIt)) == 125161) {
 //                for (int i = queryPoints.size() - 40; i < queryPoints.size(); i++)
 //                    cout << "Here " << queryPoints[i].first << endl;
 //                cout << "Bbox " << curBbox << endl;
@@ -225,7 +226,7 @@ vector<int> assignLabel(const Arrangement &arr, const map<int, int> &cell2label,
         if(verbose)
             cout << "Processed " << j << " shapes out of " << labeledShapes.size() << endl;
         auto &labeledTree = labeledShapes[j];
-        tree.rebuild(labeledTree.first.begin(), labeledTree.first.end());
+        tree.rebuild(get<0>(labeledTree).begin(), get<0>(labeledTree).end());
 #pragma omp parallel for schedule(static)
 	for(int i=0; i < queryPoints.size(); i++)
         {
@@ -262,14 +263,14 @@ vector<int> assignLabel(const Arrangement &arr, const map<int, int> &cell2label,
             for(const auto& inter: intersections)
                 odd += int(inter.size() % 2 == 1);
             if(odd == 2)
-                cout << odd << endl;
+                cout << "Potential issue with shape " << get<2>(labeledTree) << endl;
 
             // Test the nb of intersections for parity
             if(odd >= 2)
             {
                 // In the current shape
 #pragma omp critical
-                pointsLabel[i] = labeledTree.second;
+                pointsLabel[i] = get<1>(labeledTree);
                 //cout << "Here " << labeledTree.second << endl;
             }
         }
@@ -293,27 +294,32 @@ vector<int> assignLabel(const Arrangement &arr, const map<int, int> &cell2label,
             cout << "Processed " << i << " points out of " << queryPoints.size() << endl;
     }
     for(const auto & vote : votes)
-        labels.push_back(arg_max(vote) == voidClass ? -1 : arg_max(vote));
+        if(*max_element(vote.begin(), vote.end()) == 0)
+            // If the cell is too thin, there can be no vote. In this case, we'll assume the cell is empty
+            labels.push_back(-1);
+        else
+            labels.push_back(arg_max(vote) == voidClass ? -1 : arg_max(vote));
 
-    if(verbose) {
-        for (int i = 0; i < votes.size(); i++) {
-            bool display = false;
-            for(int j=0; j < votes[i].size() - 1; j++)
-                if(votes[i][j] != 0)
-                    display = true;
-            if(display) {
-                cout << "Cell vote for cell " << i << ": ";
-                for (auto nb: votes[i])
-                    cout << nb << " ";
-                cout << endl;
-            }
-        }
-    }
+//    if(verbose) {
+//        for (int i = 0; i < votes.size(); i++) {
+//            bool display = false;
+//            for(int j=0; j < votes[i].size() - 1; j++)
+//                if(votes[i][j] != 0)
+//                    display = true;
+//            if(display) {
+//                cout << "Cell vote for cell " << i << ": ";
+//                for (auto nb: votes[i])
+//                    cout << nb << " ";
+//                cout << endl;
+//            }
+//        }
+//    }
 
 //    //DEBUG
 //    cout << "DEBUG" << endl;
 ////    Point query(37.7275666666667, -30.2528, 8.59148666666667);
 //    Point query(34.5212666666667, -30.2528, 8.17148666666667);
+//    Point query(9.60298666666667, 6.73633666666667, 5.93695333333333);
 //    Arrangement::Face_handle debugCell = find_containing_cell(arr, s2e(query));
 //    cout << "Cell id: " << debugCell << endl;
 //    cout << "votes: " << endl;
@@ -421,6 +427,34 @@ vector<vector<double>> getCellsPoints(const map<int, int> &cell2label, const Arr
 
         auto pt = e2s(cellIt->point());
         cellsPoints[cell2label.at(arr.cell_handle(*cellIt))] = {pt.x(), pt.y(), pt.z()};
+    }
+
+    return cellsPoints;
+}
+
+vector<vector<double>> getCellsBbox(const map<int, int> &cell2label, const Arrangement &arr) {
+    vector<vector<double>> cellsPoints(cell2label.size(), {0., 0., 0.});
+    Epeck_to_Simple e2s;
+
+    for(auto cellIt = arr.cells_begin(); cellIt != arr.cells_end(); cellIt++) {
+        if(!arr.is_cell_bounded(*cellIt)) continue;
+        cellsPoints[cell2label.at(arr.cell_handle(*cellIt))] = {DBL_MAX, DBL_MAX, DBL_MAX, -DBL_MAX, -DBL_MAX, -DBL_MAX};
+        for(auto facetIt = cellIt->subfaces_begin(); facetIt != cellIt->subfaces_end(); facetIt++)
+        {
+            auto facet = arr.facet(*facetIt);
+            for(auto edgeIt = facet.subfaces_begin(); edgeIt != facet.subfaces_end(); edgeIt++) {
+                auto edge = arr.edge(*edgeIt);
+                for(auto pointIt = edge.subfaces_begin(); pointIt != edge.subfaces_end(); pointIt++)
+		{
+		    cellsPoints[cell2label.at(arr.cell_handle(*cellIt))][0] = min(cellsPoints[cell2label.at(arr.cell_handle(*cellIt))][0], CGAL::to_double(arr.point(*pointIt).x()));
+		    cellsPoints[cell2label.at(arr.cell_handle(*cellIt))][1] = min(cellsPoints[cell2label.at(arr.cell_handle(*cellIt))][1], CGAL::to_double(arr.point(*pointIt).y()));
+		    cellsPoints[cell2label.at(arr.cell_handle(*cellIt))][2] = min(cellsPoints[cell2label.at(arr.cell_handle(*cellIt))][2], CGAL::to_double(arr.point(*pointIt).z()));
+		    cellsPoints[cell2label.at(arr.cell_handle(*cellIt))][3] = max(cellsPoints[cell2label.at(arr.cell_handle(*cellIt))][3], CGAL::to_double(arr.point(*pointIt).x()));
+		    cellsPoints[cell2label.at(arr.cell_handle(*cellIt))][4] = max(cellsPoints[cell2label.at(arr.cell_handle(*cellIt))][4], CGAL::to_double(arr.point(*pointIt).y()));
+		    cellsPoints[cell2label.at(arr.cell_handle(*cellIt))][5] = max(cellsPoints[cell2label.at(arr.cell_handle(*cellIt))][5], CGAL::to_double(arr.point(*pointIt).z()));
+		}
+            }
+        }
     }
 
     return cellsPoints;

@@ -99,12 +99,15 @@ typedef std::unordered_map<Triangle, colorTuple> TriangleColorMap;
 // Typedef for storing semantic classes (name, keywords, color)
 typedef std::tuple<std::string, std::vector<std::string>, colorTuple> classKeywordsColor;
 
+// Typedef for storing a shape (faces, label, name)
+typedef std::tuple<std::vector<Triangle>, int, std::string> facesLabelName;
+
 // Input functions
 std::pair<std::vector<Triangle>, TriangleColorMap> loadTrianglesFromObj(const std::string &objFile,
                                                                  const std::vector<classKeywordsColor> &classes);
 std::vector<Point> loadPointOfViews(const std::string &jsonFile);
 std::vector<Point> loadPointCloudObj(const std::string &inFile);
-std::vector<std::pair<std::vector<Triangle>, int>> loadTreesFromObj(const std::string &inFile,
+std::vector<facesLabelName> loadTreesFromObj(const std::string &inFile,
         const std::vector<classKeywordsColor> &classes);
 void loadArrangement(const std::string &name, Arrangement &arr, std::map<int, int> &cell2label,
                      std::vector<int> &gtLabels, std::vector<bool> &labels, CGAL::Bbox_3 &bbox);

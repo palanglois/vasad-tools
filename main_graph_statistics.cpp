@@ -100,6 +100,7 @@ int main(int argc, char *argv[]) {
     data["EdgeFeatures"] = nodesEdges.second;
     data["gtLabels"] = gtLabels;
     data["NodePoints"] = getCellsPoints(cell2label, arr);
+    data["NodeBbox"] = getCellsBbox(cell2label, arr);
     ofstream o(outputPath + "arrangementWithGtAndLabels.json");
     o << data;
 

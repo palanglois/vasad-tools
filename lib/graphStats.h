@@ -18,8 +18,9 @@ std::pair<NodeFeatures, EdgeFeatures> computeGraph(const std::vector<int> &label
         const std::map<int, int> &cell2label, const Arrangement &arr, const int nbClasses, bool verbose=false);
 
 std::vector<std::vector<double>> getCellsPoints(const std::map<int, int> &cell2label, const Arrangement &arr);
+std::vector<std::vector<double>> getCellsBbox(const std::map<int, int> &cell2label, const Arrangement &arr);
 
 std::vector<int> assignLabel(const Arrangement &arr,const std::map<int, int> &cell2label, CGAL::Bbox_3 bbox,
-        std::vector<std::pair<std::vector<Triangle>, int>> &labeledTrees, int nbSamples=10000, bool fill=true, bool verbose=false);
+        std::vector<facesLabelName> &labeledTrees, int nbSamples=10000, bool fill=true, bool verbose=false);
 
 #endif //BIM_DATA_GRAPHSTATS_H
