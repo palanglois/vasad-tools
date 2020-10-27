@@ -325,18 +325,17 @@ void saveArrangement(const string &name, const vector<Kernel::Plane_3> &planes, 
     outFile << outputData;
 }
 
-void loadArrangement(const string &name, Arrangement &arr, map<int, int> &cell2label, vector<int> &gtLabels,
-        vector<bool> &labels, CGAL::Bbox_3 &bbox)
+PlaneArrangement::PlaneArrangement(const string& name)
 {
     cout << "Loading arrangement!" << endl;
-    fstream i(name);
+    fstream inStream(name);
     Json data;
-    i >> data;
+    inStream >> data;
 
     // Bounding box
     vector<double> box = data["bbox"];
-    bbox = CGAL::Bbox_3(box[0], box[1], box[2], box[3], box[4], box[5]);
-    arr.set_bbox(bbox);
+    _bbox = CGAL::Bbox_3(box[0], box[1], box[2], box[3], box[4], box[5]);
+    _arr.set_bbox(_bbox);
 
     // Planes
     vector<Json> planes = data["planes"];
@@ -356,7 +355,17 @@ void loadArrangement(const string &name, Arrangement &arr, map<int, int> &cell2l
         Kernel2::Vector_3 normal((double) norm[0], (double) norm[1], (double) norm[2]);
         Json &inl = planes[i]["inlier"];
         Kernel2::Point_3 inlier((double) inl[0], (double) inl[1], (double) inl[2]);
-        arr.insert(Kernel2::Plane_3(inlier, normal));
+        _arr.insert(Kernel2::Plane_3(inlier, normal));
+
+        if (planes[i].find("faces") != planes[i].end() &&
+        planes[i].find("cumulatedPercentage") != planes[i].end()) {
+            double cumulatedPercentage = planes[i]["cumulatedPercentage"];
+            vector<vector<int>> faces(planes[i]["faces"].size(), vector<int>(3));
+            for(int j = 0; j < planes[i]["faces"].size(); j++)
+                for(int k=0; k < 3; k++)
+                    faces[j][k] = planes[i]["faces"][j][k];
+            _planes.push_back({inlier, normal, faces, cumulatedPercentage});
+        }
         //DEBUG
         nbPlanesUsed++;
         //END DEBUG
@@ -370,28 +379,48 @@ void loadArrangement(const string &name, Arrangement &arr, map<int, int> &cell2l
     {
         // If the mapping does not exist, we create it
         int cellIter = 0;
-        for(auto cellIt = arr.cells_begin(); cellIt != arr.cells_end(); cellIt++)
-            if(arr.is_cell_bounded(*cellIt))
-                cell2label[arr.cell_handle(*cellIt)] = cellIter++;
+        for(auto cellIt = _arr.cells_begin(); cellIt != _arr.cells_end(); cellIt++)
+            if(_arr.is_cell_bounded(*cellIt))
+                _cell2label[_arr.cell_handle(*cellIt)] = cellIter++;
 
         //Labels
-        labels = vector<bool>(cell2label.size(), false);
+        _labels = vector<int>(_cell2label.size(), false);
     }
     else {
         // If the mapping exists we load it
         for (auto elem = data["map"].begin(); elem != data["map"].end(); elem++)
-            cell2label[stoi(elem.key())] = elem.value().get<int>();
+            _cell2label[stoi(elem.key())] = elem.value().get<int>();
 
         //Labels
         if (data.find("labels") != data.end())
-            labels = data["labels"].get<vector<bool>>();
+            _labels = data["labels"].get<vector<int>>();
 
         //gtLabels
         if (data.find("gtLabels") != data.end())
-            gtLabels = data["gtLabels"].get<vector<int>>();
+            _gtLabels = data["gtLabels"].get<vector<int>>();
     }
 
     cout << "Arrangement loaded" << endl;
+}
+
+Arrangement &PlaneArrangement::arrangement() {
+    return _arr;
+}
+
+const std::map<int, int> &PlaneArrangement::cell2label() const {
+    return _cell2label;
+}
+
+const std::vector<int> &PlaneArrangement::labels() const {
+    return _labels;
+}
+
+const std::vector<int> &PlaneArrangement::gtLabels() const {
+    return _gtLabels;
+}
+
+const CGAL::Bbox_3 &PlaneArrangement::bbox() const {
+    return _bbox;
 }
 
 vector<classKeywordsColor> loadSemanticClasses(const string& path)

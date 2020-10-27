@@ -8,11 +8,11 @@ TEST(RegionGrowing, PlaneClass)
 {
     PlaneClass planeClass;
     Eigen::Matrix3d triangle;
-    triangle.row(0) = Point(1., 0., 0.);
-    triangle.row(1) = Point(0., 1., 0.);
-    triangle.row(2) = Point(1., 1., 0.);
-    Point normal(0., 0., 1.);
-    Point average = triangle.colwise().mean();
+    triangle.row(0) = PointRg(1., 0., 0.);
+    triangle.row(1) = PointRg(0., 1., 0.);
+    triangle.row(2) = PointRg(1., 1., 0.);
+    PointRg normal(0., 0., 1.);
+    PointRg average = triangle.colwise().mean();
     int idx=0;
     double triangleArea = 0.5*(triangle.row(2) - triangle.row(0)).cross(triangle.row(1) - triangle.row(0)).norm();
     planeClass.addTriangle(triangleArea, idx, normal, average);
@@ -26,11 +26,11 @@ TEST(RegionGrowing, PlaneClassFusion)
     //Class 1
     PlaneClass planeClassOne;
     Eigen::Matrix3d triangle;
-    triangle.row(0) = Point(1., 0., 0.);
-    triangle.row(1) = Point(0., 1., 0.);
-    triangle.row(2) = Point(1., 1., 0.);
-    Point normal(0., 0., 1.);
-    Point average = triangle.colwise().mean();
+    triangle.row(0) = PointRg(1., 0., 0.);
+    triangle.row(1) = PointRg(0., 1., 0.);
+    triangle.row(2) = PointRg(1., 1., 0.);
+    PointRg normal(0., 0., 1.);
+    PointRg average = triangle.colwise().mean();
     int idx=0;
     double triangleArea = 0.5*(triangle.row(2) - triangle.row(0)).cross(triangle.row(1) - triangle.row(0)).norm();
     planeClassOne.addTriangle(triangleArea, idx, normal, average);
@@ -38,11 +38,11 @@ TEST(RegionGrowing, PlaneClassFusion)
     //Class 2
     PlaneClass planeClassTwo;
     Eigen::Matrix3d triangleTwo;
-    triangleTwo.row(0) = Point(1., 0., 0.);
-    triangleTwo.row(1) = Point(0., 1., 0.);
-    triangleTwo.row(2) = Point(0., 0., 0.);
-    Point normalTwo(0., 0., 1.);
-    Point averageTwo = triangleTwo.colwise().mean();
+    triangleTwo.row(0) = PointRg(1., 0., 0.);
+    triangleTwo.row(1) = PointRg(0., 1., 0.);
+    triangleTwo.row(2) = PointRg(0., 0., 0.);
+    PointRg normalTwo(0., 0., 1.);
+    PointRg averageTwo = triangleTwo.colwise().mean();
     int two=1;
     double triangleAreaTwo = 0.5*(triangle.row(2) - triangle.row(0)).cross(triangle.row(1) - triangle.row(0)).norm();
     planeClassTwo.addTriangle(triangleAreaTwo, two, normalTwo, averageTwo);
@@ -50,8 +50,8 @@ TEST(RegionGrowing, PlaneClassFusion)
     // Test Merging
     planeClassOne.mergeWith(planeClassTwo);
     ASSERT_EQ(planeClassOne.getArea(), 1);
-    ASSERT_EQ(planeClassOne.getNormal(), Point(0., 0., 1.));
-    ASSERT_EQ(planeClassOne.getRefPoint(), Point(0.5, 0.5, 0.));
+    ASSERT_EQ(planeClassOne.getNormal(), PointRg(0., 0., 1.));
+    ASSERT_EQ(planeClassOne.getRefPoint(), PointRg(0.5, 0.5, 0.));
 }
 
 TEST(RegionGrowing, RegionGrowing)
@@ -100,4 +100,5 @@ TEST(RegionGrowing, WeirdCube)
     RegionGrowing rg((string) TEST_DIR + "weirdCube.obj", epsilonPoint, epsilonNormal, sigmaPoint, sigmaNormal, false);
     int nbPrimitives = rg.run();
     rg.saveAsObj((string) TEST_DIR + "coloredGtPlanes2.obj");
+    rg.saveAsJson((string) TEST_DIR + "coloredGtPlanes2.json", true);
 }

@@ -64,12 +64,10 @@ int main(int argc, char *argv[]) {
     cout << "Ground truth loaded." << endl;
 
     // Loading plane arrangement
-    map<int, int> cell2label;
-    vector<bool> labels;
-    vector<int> gtLabelsOr;
-    Arrangement arr;
-    CGAL::Bbox_3 bbox;
-    loadArrangement(inputPath, arr, cell2label, gtLabelsOr, labels, bbox);
+    PlaneArrangement currentArrangement(inputPath);
+    Arrangement &arr = currentArrangement.arrangement();
+    const map<int, int> &cell2label = currentArrangement.cell2label();
+    CGAL::Bbox_3 bbox = currentArrangement.bbox();
 
 #ifndef NDEBUG
     const int nbSamples = 100000;

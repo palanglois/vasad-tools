@@ -103,6 +103,38 @@ typedef std::tuple<std::string, std::vector<std::string>, colorTuple> classKeywo
 // Typedef for storing a shape (faces, label, name)
 typedef std::tuple<std::vector<Triangle>, int, std::string> facesLabelName;
 
+struct Plane
+{
+    Kernel2::Point_3 inlier;
+    Kernel2::Vector_3 normal;
+    std::vector<std::vector<int>> faces;
+    double cumulatedPercentage;
+};
+
+// A class for the Plane Arrangement and its attributes
+class PlaneArrangement
+{
+public:
+    explicit PlaneArrangement(const std::string& name);
+
+    // Accessors
+    [[nodiscard]] Arrangement &arrangement();
+    [[nodiscard]] const std::map<int, int> &cell2label() const;
+    [[nodiscard]] const std::vector<int> &labels() const;
+    [[nodiscard]] const std::vector<int> &gtLabels() const;
+    [[nodiscard]] const CGAL::Bbox_3 &bbox() const;
+
+private:
+    Arrangement _arr;
+    std::map<int, int> _cell2label;
+    std::vector<int> _labels;
+    std::vector<int> _gtLabels;
+    CGAL::Bbox_3 _bbox;
+    std::vector<Point> _points;
+    std::vector<Plane> _planes;
+
+};
+
 // Input functions
 std::pair<std::vector<Triangle>, TriangleColorMap> loadTrianglesFromObj(const std::string &objFile,
                                                                  const std::vector<classKeywordsColor> &classes);
@@ -110,8 +142,6 @@ std::vector<Point> loadPointOfViews(const std::string &jsonFile);
 std::vector<Point> loadPointCloudObj(const std::string &inFile);
 std::vector<facesLabelName> loadTreesFromObj(const std::string &inFile,
         const std::vector<classKeywordsColor> &classes);
-void loadArrangement(const std::string &name, Arrangement &arr, std::map<int, int> &cell2label,
-                     std::vector<int> &gtLabels, std::vector<bool> &labels, CGAL::Bbox_3 &bbox);
 
 // Output functions
 void savePointsAsObj(const std::vector<Point>& points, const std::string &outPath);
@@ -122,7 +152,7 @@ void saveArrangement(const std::string &name, const std::vector<Kernel::Plane_3>
         const CGAL::Bbox_3 &bbox, const std::map<int, int> &cell2label, const std::vector<bool> &labels);
 
 template <class T>
-void savePlyFromLabel(const std::string &filename, Arrangement &arr, std::map<int, int> &fh_to_node,
+void savePlyFromLabel(const std::string &filename, Arrangement &arr, const std::map<int, int> &fh_to_node,
         const std::vector<T> &labels, const std::vector<classKeywordsColor> &classesWithColor)
 {
     // Making colormap
@@ -144,9 +174,9 @@ void savePlyFromLabel(const std::string &filename, Arrangement &arr, std::map<in
         Arrangement::Face_handle ch0 = f.superface(0), ch1 = f.superface(1);
         //if(!(is_cell_bounded(ch0) && is_cell_bounded(ch1))){continue;}
         if(fh_to_node.count((int)ch0) ==0 || fh_to_node.count((int)ch1) == 0){continue;}
-        T label1 = labels[fh_to_node[int(ch0)]];
-        T label2 = labels[fh_to_node[int(ch1)]];
-        if(labels[fh_to_node[int(ch0)]] != labels[fh_to_node[int(ch1)]]){
+        T label1 = labels[fh_to_node.at(int(ch0))];
+        T label2 = labels[fh_to_node.at(int(ch1))];
+        if(labels[fh_to_node.at(int(ch0))] != labels[fh_to_node.at(int(ch1))]){
             f.to_draw = true;
         }
         if(label1 == -1 && label2 != -1)

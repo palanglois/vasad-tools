@@ -20,7 +20,7 @@
 // Json
 #include <json/json.hpp>
 
-typedef Eigen::Vector3d                        Point;      // A type for points
+typedef Eigen::Vector3d                        PointRg;      // A type for points
 typedef Eigen::Matrix<double, 2, 3>            Edge;       // A type for edges
 typedef Eigen::Matrix<double,Eigen::Dynamic,3> PointCloud; // A type for the point clouds
 typedef Eigen::Matrix<double,Eigen::Dynamic,3> Normals;    // A type for the normals
@@ -48,12 +48,12 @@ public:
     PlaneClass();
 
     // Main functions
-    void addTriangle(const double &triangleArea, int index, const Point& curNormal, const Point& average);
+    void addTriangle(const double &triangleArea, int index, const PointRg& curNormal, const PointRg& average);
     void mergeWith(const PlaneClass& other);
 
     // Accessors
-    const Point& getNormal() const;
-    const Point& getRefPoint() const;
+    const PointRg& getNormal() const;
+    const PointRg& getRefPoint() const;
     const double& getTotalArea() const;
     double getArea() const;
     const std::vector<int>& getInlierIndex() const;
@@ -65,11 +65,11 @@ protected:
 
 private:
     std::vector<int> inlierIndex;
-    Point normalAccumulator;
-    Point averagePointAccumulator;
+    PointRg normalAccumulator;
+    PointRg averagePointAccumulator;
     double triangleAreaAccumulator;
-    Point normal;
-    Point averagePoint;
+    PointRg normal;
+    PointRg averagePoint;
 };
 
 class RegionGrowing
@@ -80,10 +80,10 @@ public:
     // Main functions
     int run();
     void saveAsObj(const std::string& outFile) const;
-    void saveAsJson(const std::string& outFile);
+    void saveAsJson(const std::string& outFile, bool fullPlaneData=false);
 
     // Region growing criteria
-    inline bool isTriangleInClass(const Point &averagePoint, const Point &triangleNormal, const PlaneClass &planeClass) const;
+    inline bool isTriangleInClass(const PointRg &averagePoint, const PointRg &triangleNormal, const PlaneClass &planeClass) const;
     inline bool areClassesSame(const PlaneClass &planeClassOne, const PlaneClass &planeClassTwo);
 
     // Internal functions

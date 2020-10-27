@@ -1,5 +1,7 @@
 #include <gtest/gtest.h>
+
 #include "graph_fixture.h"
+#include "../lib/RegionGrowing.h"
 
 using namespace std;
 
@@ -133,4 +135,16 @@ TEST_F(PlaneArrangementFixture, LabelingWithObjLoad)
     ASSERT_EQ(gtLabels[1], -1);
     ASSERT_EQ(gtLabels[2], -1);
     ASSERT_EQ(gtLabels[3], 3);
+}
+
+TEST(GraphStatistics, SplitingModel)
+{
+    double epsilonPoint = 0.01;
+    double epsilonNormal = 0.005;
+    double sigmaPoint = 0.04;
+    double sigmaNormal = 0.001;
+    RegionGrowing rg((string) TEST_DIR + "weirdCube.obj", epsilonPoint, epsilonNormal, sigmaPoint, sigmaNormal, false);
+    int nbPrimitives = rg.run();
+    rg.saveAsJson((string) TEST_DIR + "coloredGtPlanes2.json", true);
+    // TODO make a test file, make algo
 }

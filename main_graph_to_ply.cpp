@@ -36,12 +36,10 @@ int main(int argc, char *argv[]) {
     const string outputPath = opt["-o"];
 
     // Loading plane arrangement
-    map<int, int> cell2label;
-    vector<bool> labels;
-    vector<int> gtLabels;
-    Arrangement arr;
-    CGAL::Bbox_3 bbox;
-    loadArrangement(inputPath, arr, cell2label, gtLabels, labels, bbox);
+    PlaneArrangement currentArrangement(inputPath);
+    Arrangement &arr = currentArrangement.arrangement();
+    const map<int, int> &cell2label = currentArrangement.cell2label();
+    const std::vector<int> &gtLabels = currentArrangement.gtLabels();
 
     // Load semantic_classes
     vector<classKeywordsColor> classesWithColor = loadSemanticClasses((string) TEST_DIR + "semantic_classes.json");
