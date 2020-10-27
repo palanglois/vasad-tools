@@ -18,6 +18,8 @@ int main(int argc, char *argv[]) {
     opt.add_option("-i", "--input", "Path to the input plane arrangement", "");
     opt.add_option("-o", "--output", "Path to the output folder", "");
     opt.add_option("-m", "--mesh", "Path to the input obj ground truth", "");
+    opt.add_option("-p", "--proba", "Proba of giving the empty occupency information for each empty cell", "1.");
+    opt.add_option("-g", "--geom", "Adds the bounding box dimensions of each cell as a node feature");
 
     //Parsing options
     bool correctParsing = opt.parse_options(argc, argv);
@@ -49,6 +51,8 @@ int main(int argc, char *argv[]) {
 
     const string inputPath = opt["-i"];
     const string outputPath = opt["-o"][opt["-o"].size() - 1] == '/' ? opt["-o"] : opt["-o"] + '/';
+    const double proba = op::str2double(opt["-p"]);
+    const bool geom = op::str2bool(opt["-g"]);
 
     // Load semantic_classes
     vector<classKeywordsColor> classesWithColor = loadSemanticClasses((string) TEST_DIR + "semantic_classes.json");
@@ -85,7 +89,7 @@ int main(int argc, char *argv[]) {
 
     cout << "Computing statistics" << endl;
     int nbClasses = classesWithColor.size();
-    pair<NodeFeatures, EdgeFeatures> nodesEdges = computeGraph(gtLabels, cell2label, arr, nbClasses, true);
+    pair<NodeFeatures, EdgeFeatures> nodesEdges = computeGraph(gtLabels, cell2label, arr, nbClasses, proba, geom, true);
     cout << "Statistics Computed" << endl;
 
     cout << "Save the arrangement with labels and features" << endl;

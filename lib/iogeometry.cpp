@@ -348,7 +348,9 @@ void loadArrangement(const string &name, Arrangement &arr, map<int, int> &cell2l
     //DEBUG
     int nbPlanesUsed = 0;
     // END DEBUG
-    for(int i=0; i < nbPlanes; i++)
+    auto tqNbPlanes = tq::trange(nbPlanes);
+    tqNbPlanes.set_prefix("Inserting " + to_string(nbPlanes) + " planes: ");
+    for(int i: tqNbPlanes)
     {
         Json &norm = planes[i]["normal"];
         Kernel2::Vector_3 normal((double) norm[0], (double) norm[1], (double) norm[2]);
@@ -358,7 +360,6 @@ void loadArrangement(const string &name, Arrangement &arr, map<int, int> &cell2l
         //DEBUG
         nbPlanesUsed++;
         //END DEBUG
-        cout << "Inserted plane " << i + 1 << " out of " << nbPlanes << endl;
     }
     //DEBUG
     cout << "Nb of planes used " << nbPlanesUsed << endl;

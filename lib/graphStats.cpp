@@ -1,5 +1,6 @@
 #include "graphStats.h"
 
+
 using namespace std;
 
 template <typename T, typename A>
@@ -221,10 +222,10 @@ vector<int> assignLabel(const Arrangement &arr, const map<int, int> &cell2label,
     // For every point, test it for every shape
     Tree tree;
     vector<int> pointsLabel(queryPoints.size(), voidClass);
-    for(int j=0; j < labeledShapes.size(); j++)
+    auto tqLabeledShapes = tq::trange(labeledShapes.size()); // works for rvalues too!
+    tqLabeledShapes.set_prefix("Labeling each point: ");
+    for (int j : tqLabeledShapes)
     {
-        if(verbose)
-            cout << "Processed " << j << " shapes out of " << labeledShapes.size() << endl;
         auto &labeledTree = labeledShapes[j];
         tree.rebuild(get<0>(labeledTree).begin(), get<0>(labeledTree).end());
 #pragma omp parallel for schedule(static)
@@ -275,7 +276,9 @@ vector<int> assignLabel(const Arrangement &arr, const map<int, int> &cell2label,
             }
         }
     }
-    for(int i=0; i < queryPoints.size(); i++) {
+    auto tqQueryPoints = tq::trange(queryPoints.size());
+    tqQueryPoints.set_prefix("Computing cell votes: ");
+    for(int i: tqQueryPoints) {
         // Find the current cell
         Arrangement::Face_handle cellHandle;
         if(queryPoints[i].second == -1)
@@ -365,16 +368,51 @@ vector<int> assignLabel(const Arrangement &arr, const map<int, int> &cell2label,
 
 pair<NodeFeatures, EdgeFeatures>
 computeGraph(const vector<int> &labels, const map<int, int> &cell2label, const Arrangement &arr,
-        const int nbClasses, bool verbose) {
+        const int nbClasses, const int proba, const bool withGeom, bool verbose) {
 
     // Graph nodes
-    NodeFeatures nodeFeatures(cell2label.size(), vector<int>(1, 0));
+    default_random_engine generator;
+    uniform_real_distribution<double> unitRandom(0., 1.);
+    NodeFeatures nodeFeatures(cell2label.size(), vector<double>(1, 0));
     for(auto cellIt = arr.cells_begin(); cellIt != arr.cells_end(); cellIt++)
     {
         if(!arr.is_cell_bounded(*cellIt)) continue;
         auto cellHandle = arr.cell_handle(*cellIt);
         int labelIdx = cell2label.at(cellHandle);
-        nodeFeatures[labelIdx] = {int(labels[labelIdx] != -1)};
+	double feature = 1.; // We suppose the current cell is full
+	if(labels[labelIdx] == -1)
+	{
+	    // If it was actually empty, we only say it in proba% of the cases
+	    if(unitRandom(generator) < proba)
+	        feature = 0.;
+	}
+	    
+        nodeFeatures[labelIdx] = {feature};
+
+	// Node geometry
+	if(withGeom)
+	{
+            vector<double> curBbox = {DBL_MAX, DBL_MAX, DBL_MAX, -DBL_MAX, -DBL_MAX, -DBL_MAX};
+            for(auto facetIt = cellIt->subfaces_begin(); facetIt != cellIt->subfaces_end(); facetIt++)
+            {
+                auto facet = arr.facet(*facetIt);
+                for(auto edgeIt = facet.subfaces_begin(); edgeIt != facet.subfaces_end(); edgeIt++) {
+                    auto edge = arr.edge(*edgeIt);
+                    for(auto pointIt = edge.subfaces_begin(); pointIt != edge.subfaces_end(); pointIt++)
+                    {
+                        curBbox[0] = min(curBbox[0], CGAL::to_double(arr.point(*pointIt).x()));
+                        curBbox[1] = min(curBbox[1], CGAL::to_double(arr.point(*pointIt).y()));
+                        curBbox[2] = min(curBbox[2], CGAL::to_double(arr.point(*pointIt).z()));
+                        curBbox[3] = max(curBbox[3], CGAL::to_double(arr.point(*pointIt).x()));
+                        curBbox[4] = max(curBbox[4], CGAL::to_double(arr.point(*pointIt).y()));
+                        curBbox[5] = max(curBbox[5], CGAL::to_double(arr.point(*pointIt).z()));
+	            }
+	        }
+	    }
+	    nodeFeatures[labelIdx].push_back(curBbox[3] - curBbox[0]);
+	    nodeFeatures[labelIdx].push_back(curBbox[4] - curBbox[1]);
+	    nodeFeatures[labelIdx].push_back(curBbox[5] - curBbox[2]);
+	}
     }
 
     // Graph edges

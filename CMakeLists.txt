@@ -1,6 +1,9 @@
 cmake_minimum_required(VERSION 3.1)
 project(bim_data)
 
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
 #Data folder
 add_definitions(-DTEST_DIR="${CMAKE_CURRENT_SOURCE_DIR}/data/")
 
@@ -39,7 +42,6 @@ set(CGAL_QT_SOURCE
 	#${CGAL_INCLUDE_DIRS}/CGAL/Qt/qglviewer_impl.h
 	)
 
-
 # External
 include_directories(external)
 
@@ -75,7 +77,7 @@ add_executable(graph_statistics main_graph_statistics.cpp
         lib/iogeometry.cpp lib/graphStats.cpp lib/graphStats.h)
 
 add_executable(graph2ply main_graph_to_ply.cpp
-        lib/iogeometry.cpp lib/graphStats.cpp lib/graphStats.h)
+        lib/iogeometry.cpp )
 
 add_executable(mesh2plane main_mesh_to_plane.cpp
         lib/RegionGrowing.cpp lib/RegionGrowing.h)

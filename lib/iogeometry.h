@@ -36,6 +36,7 @@
 
 // External
 #include "json/json.hpp"
+#include "tqdm/tqdm.hpp"
 
 // Ours
 #include "Colormap.h"
