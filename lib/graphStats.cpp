@@ -2,6 +2,7 @@
 
 
 using namespace std;
+using Json = nlohmann::json;
 
 template <typename T, typename A>
 int arg_max(vector<T, A> const& vec) {
@@ -123,8 +124,8 @@ pair<Nodes, Edges> computeGraphStatistics(const vector<bool> &labels, const map<
 }
 
 vector<int> assignLabel(const Arrangement &arr, const map<int, int> &cell2label, CGAL::Bbox_3 bbox,
-                        vector<facesLabelName> &labeledShapes, int nbSamples,
-                        bool fill, bool verbose)
+                        vector<facesLabelName> &labeledShapes, int nbClasses,
+                        int nbSamplesPerCell, bool verbose)
 {
     Simple_to_Epeck s2e;
     Epeck_to_Simple e2s;
@@ -133,11 +134,11 @@ vector<int> assignLabel(const Arrangement &arr, const map<int, int> &cell2label,
     for(const auto& labeledShape: labeledShapes)
         bboxes.push_back(CGAL::bbox_3(get<0>(labeledShape).begin(), get<0>(labeledShape).end()));
     // Number of classes to consider
-    int nbClasses = 0;
-    for(auto &labeledTree: labeledShapes)
-        if(get<1>(labeledTree) + 2 > nbClasses)
-            nbClasses = get<1>(labeledTree) + 2;
-    int voidClass = nbClasses - 1;
+//    int nbClasses = 0;
+//    for(auto &labeledTree: labeledShapes)
+//        if(get<1>(labeledTree) + 2 > nbClasses)
+//            nbClasses = get<1>(labeledTree) + 2;
+    int voidClass = nbClasses;
 
     vector<int> labels;
 
@@ -154,7 +155,7 @@ vector<int> assignLabel(const Arrangement &arr, const map<int, int> &cell2label,
 //    cout << endl;
     //END DEBUG
 
-    vector<vector<int>> votes(cell2label.size(), vector<int>(nbClasses, 0));
+    vector<vector<int>> votes(cell2label.size(), vector<int>(nbClasses + 1, 0));
 
 
     //DEBUG
@@ -164,49 +165,47 @@ vector<int> assignLabel(const Arrangement &arr, const map<int, int> &cell2label,
     //queryPoints.reserve(nbSamples);
     //for(int i=0; i < nbSamples; i++)
         //queryPoints.emplace_back(Point(xDist(generator), yDist(generator), zDist(generator)), -1);
-    if(fill)
+    for(auto cellIt = arr.cells_begin(); cellIt != arr.cells_end(); cellIt++)
     {
-        for(auto cellIt = arr.cells_begin(); cellIt != arr.cells_end(); cellIt++)
+        if(!arr.is_cell_bounded(*cellIt)) continue;
+        vector<Kernel2::Point_3> points;
+        for(auto facetIt = cellIt->subfaces_begin(); facetIt != cellIt->subfaces_end(); facetIt++)
         {
-            if(!arr.is_cell_bounded(*cellIt)) continue;
-            vector<Kernel2::Point_3> points;
-            for(auto facetIt = cellIt->subfaces_begin(); facetIt != cellIt->subfaces_end(); facetIt++)
-            {
-                auto facet = arr.facet(*facetIt);
-                for(auto edgeIt = facet.subfaces_begin(); edgeIt != facet.subfaces_end(); edgeIt++) {
-                    auto edge = arr.edge(*edgeIt);
-                    for(auto pointIt = edge.subfaces_begin(); pointIt != edge.subfaces_end(); pointIt++)
-                        points.push_back(arr.point(*pointIt));
-                }
+            auto facet = arr.facet(*facetIt);
+            for(auto edgeIt = facet.subfaces_begin(); edgeIt != facet.subfaces_end(); edgeIt++) {
+                auto edge = arr.edge(*edgeIt);
+                for(auto pointIt = edge.subfaces_begin(); pointIt != edge.subfaces_end(); pointIt++)
+                    points.push_back(arr.point(*pointIt));
             }
+        }
 
-            // Note: We explicitely compute the bounding box, the function CGAL::bbox_3 gives too big
-            // bounding boxes!
-            Point pt = e2s(points[0]);
-            double xmin = pt.x();
-            double xmax = pt.x();
-            double ymin = pt.y();
-            double ymax = pt.y();
-            double zmin = pt.z();
-            double zmax = pt.z();
-            for(const auto& point: points)
-            {
-                Point pt2 = e2s(point);
-                xmin = min(xmin, pt2.x());
-                xmax = max(xmax, pt2.x());
-                ymin = min(ymin, pt2.y());
-                ymax = max(ymax, pt2.y());
-                zmin = min(zmin, pt2.z());
-                zmax = max(zmax, pt2.z());
-            }
-            auto curBbox = CGAL::Bbox_3(xmin, ymin, zmin, xmax, ymax, zmax);
+        // Note: We explicitely compute the bounding box, the function CGAL::bbox_3 gives too big
+        // bounding boxes!
+        Point pt = e2s(points[0]);
+        double xmin = pt.x();
+        double xmax = pt.x();
+        double ymin = pt.y();
+        double ymax = pt.y();
+        double zmin = pt.z();
+        double zmax = pt.z();
+        for(const auto& point: points)
+        {
+            Point pt2 = e2s(point);
+            xmin = min(xmin, pt2.x());
+            xmax = max(xmax, pt2.x());
+            ymin = min(ymin, pt2.y());
+            ymax = max(ymax, pt2.y());
+            zmin = min(zmin, pt2.z());
+            zmax = max(zmax, pt2.z());
+        }
+        auto curBbox = CGAL::Bbox_3(xmin, ymin, zmin, xmax, ymax, zmax);
 
-            // Drawing points in the bounding box
-            uniform_real_distribution<double> curXDist(curBbox.xmin(), curBbox.xmax());
-            uniform_real_distribution<double> curYDist(curBbox.ymin(), curBbox.ymax());
-            uniform_real_distribution<double> curZDist(curBbox.zmin(), curBbox.zmax());
-            for(int i=0; i< 40; i++)
-                queryPoints.emplace_back(Point(curXDist(generator), curYDist(generator), curZDist(generator)), arr.cell_handle(*cellIt));
+        // Drawing points in the bounding box
+        uniform_real_distribution<double> curXDist(curBbox.xmin(), curBbox.xmax());
+        uniform_real_distribution<double> curYDist(curBbox.ymin(), curBbox.ymax());
+        uniform_real_distribution<double> curZDist(curBbox.zmin(), curBbox.zmax());
+        for(int i=0; i< nbSamplesPerCell; i++)
+            queryPoints.emplace_back(Point(curXDist(generator), curYDist(generator), curZDist(generator)), arr.cell_handle(*cellIt));
 
 //            // DEBUG
 //            if(int(arr.cell_handle(*cellIt)) == 125161) {
@@ -216,7 +215,6 @@ vector<int> assignLabel(const Arrangement &arr, const map<int, int> &cell2label,
 //                for(const auto& point: points)
 //                    cout << "Point " << point << " bbox " << point.bbox() << endl;
 //            }
-        }
     }
 
     // For every point, test it for every shape
@@ -368,7 +366,7 @@ vector<int> assignLabel(const Arrangement &arr, const map<int, int> &cell2label,
 
 pair<NodeFeatures, EdgeFeatures>
 computeGraph(const vector<int> &labels, const map<int, int> &cell2label, const Arrangement &arr,
-        const int nbClasses, const int proba, const bool withGeom, bool verbose) {
+        const int nbClasses, const double proba, const bool withGeom, bool verbose) {
 
     // Graph nodes
     default_random_engine generator;
@@ -496,4 +494,152 @@ vector<vector<double>> getCellsBbox(const map<int, int> &cell2label, const Arran
     }
 
     return cellsPoints;
+}
+
+inline bool isInBbox(const Triangle& tri, const CGAL::Bbox_3 &bbox)
+{
+    if(tri.bbox().xmin() < bbox.xmin()) return false;
+    if(tri.bbox().ymin() < bbox.ymin()) return false;
+    if(tri.bbox().zmin() < bbox.zmin()) return false;
+    if(tri.bbox().xmax() > bbox.xmax()) return false;
+    if(tri.bbox().ymax() > bbox.ymax()) return false;
+    return !(tri.bbox().zmax() > bbox.zmax());
+}
+
+vector<int> computePlanesInBoundingBox(const vector<Plane> &planes, const vector<Point> &points, CGAL::Bbox_3 bbox)
+{
+    vector<int> planeIdx;
+    vector<Point> bboxPoints = {
+            Point(bbox.xmin(), bbox.ymin(), bbox.zmin()),
+            Point(bbox.xmin(), bbox.ymin(), bbox.zmax()),
+            Point(bbox.xmin(), bbox.ymax(), bbox.zmin()),
+            Point(bbox.xmin(), bbox.ymax(), bbox.zmax()),
+            Point(bbox.xmax(), bbox.ymin(), bbox.zmin()),
+            Point(bbox.xmax(), bbox.ymin(), bbox.zmax()),
+            Point(bbox.xmax(), bbox.ymax(), bbox.zmin()),
+            Point(bbox.xmax(), bbox.ymax(), bbox.zmax()),
+    };
+    vector<Triangle> bboxTriangles = {
+            Triangle(bboxPoints[0], bboxPoints[1], bboxPoints[5]),
+            Triangle(bboxPoints[0], bboxPoints[5], bboxPoints[4]),
+            Triangle(bboxPoints[4], bboxPoints[5], bboxPoints[6]),
+            Triangle(bboxPoints[6], bboxPoints[5], bboxPoints[7]),
+            Triangle(bboxPoints[1], bboxPoints[3], bboxPoints[5]),
+            Triangle(bboxPoints[5], bboxPoints[3], bboxPoints[7]),
+            Triangle(bboxPoints[0], bboxPoints[4], bboxPoints[2]),
+            Triangle(bboxPoints[2], bboxPoints[4], bboxPoints[6]),
+            Triangle(bboxPoints[0], bboxPoints[2], bboxPoints[1]),
+            Triangle(bboxPoints[1], bboxPoints[2], bboxPoints[3]),
+            Triangle(bboxPoints[2], bboxPoints[7], bboxPoints[3]),
+            Triangle(bboxPoints[2], bboxPoints[6], bboxPoints[7]),
+    };
+    Tree tree(bboxTriangles.begin(), bboxTriangles.end());
+    for(int i=0; i < planes.size(); i++)
+    {
+        if(planes[i].cumulatedPercentage > 0.95) continue;
+        bool doesIntersect = false;
+        for(int j=0; j < planes[i].faces.size() && !doesIntersect; j++) {
+            Triangle query(points[planes[i].faces[j][0]], points[planes[i].faces[j][1]],
+                    points[planes[i].faces[j][2]]);
+            doesIntersect = isInBbox(query, bbox) || tree.do_intersect(query);
+        }
+        if(doesIntersect)
+            planeIdx.push_back(i);
+        if(i==0)
+            cout << "Debug" << endl;
+    }
+    return planeIdx;
+}
+
+void subdivideBbox(stack<CGAL::Bbox_3> &bboxes, CGAL::Bbox_3 curBbox)
+{
+    //  subdivide pillar and add the 2 resulting pillars to the stack
+    //  we subdivide along x axis which is arbitrary
+    bboxes.emplace(curBbox.xmin(), curBbox.ymin(), curBbox.zmin(),
+                   curBbox.xmin() + (curBbox.xmax() - curBbox.xmin()) / 2., curBbox.ymax(), curBbox.zmax());
+    bboxes.emplace(curBbox.xmin() + (curBbox.xmax() - curBbox.xmin()) / 2., curBbox.ymin(), curBbox.zmin(),
+                   curBbox.xmax(), curBbox.ymax(), curBbox.zmax());
+}
+
+vector<Json>
+splitArrangementInBatch(const PlaneArrangement &planeArr, vector<facesLabelName> &labeledShapes, int nbClasses,
+        double step, int maxNodes, int maxNbPlanes, int nbSamplesPerCell, double proba, bool geom,
+        bool verbose) {
+
+    vector<Json> computedArrangements;
+
+    // Computing steps along x axis
+    vector<double> xSteps;
+    for (int i = 0; i < int(floor((planeArr.bbox().xmax() - planeArr.bbox().xmin()) / step)); i++)
+        xSteps.push_back(planeArr.bbox().xmin() + double(i) * step);
+    xSteps.push_back(planeArr.bbox().xmax());
+
+    // Computing steps along y axis
+    vector<double> ySteps;
+    for(int j = 0; j < int(floor((planeArr.bbox().ymax() - planeArr.bbox().ymin()) / step)); j++)
+        ySteps.push_back(planeArr.bbox().ymin() + double(j) * step);
+    ySteps.push_back(planeArr.bbox().ymax());
+
+    // Computing initial bboxes
+    stack<CGAL::Bbox_3> bboxes;
+    for(int i = 0; i < xSteps.size() - 1; i++)
+        for(int j = 0; j < ySteps.size() - 1; j++)
+            bboxes.emplace(xSteps[i], ySteps[j], planeArr.bbox().zmin(),
+                           xSteps[i + 1], ySteps[j + 1], planeArr.bbox().zmax());
+    while(!bboxes.empty()) {
+        if(verbose)
+            cout << "Bbox stack size: " << bboxes.size() << endl;
+        CGAL::Bbox_3 curBbox = bboxes.top();
+        bboxes.pop();
+        // Compute planes in current pillar
+        vector<int> validPlaneIdx = computePlanesInBoundingBox(planeArr.planes(), planeArr.points(), curBbox);
+        if(validPlaneIdx.size() > maxNbPlanes)
+        {
+            subdivideBbox(bboxes, curBbox);
+            continue;
+        }
+        // Compute plane arrangement
+        if(validPlaneIdx.empty())
+            continue;
+        if(verbose)
+            cout << "Found " << validPlaneIdx.size() << " valid planes in current bbox which is: " << curBbox << endl;
+        auto fullArrangement = PlaneArrangement(planeArr.planes(), validPlaneIdx, curBbox);
+        auto& onlyArrangement = fullArrangement.arrangement();
+        // Compute number of cells
+        int nbCells = 0;
+        for(auto cellIt = onlyArrangement.cells_begin(); cellIt != onlyArrangement.cells_end(); cellIt++)
+            if(onlyArrangement.is_cell_bounded(*cellIt))
+                nbCells++;
+        // We need at least 2 nodes to have a valid chunk
+        if(nbCells < 2) continue;
+        if(nbCells <= maxNodes) {
+            // labelling, feature computing
+            vector<int> gtLabels = assignLabel(onlyArrangement, fullArrangement.cell2label(), curBbox,
+                                    labeledShapes, nbClasses,  nbSamplesPerCell, verbose);
+            pair<NodeFeatures, EdgeFeatures> nodesEdges = computeGraph(gtLabels, fullArrangement.cell2label(),
+                    onlyArrangement, nbClasses, proba, geom, true);
+
+            // Compiling into json
+            Json data;
+            Json cell2labelJ;
+            for(auto idx: fullArrangement.cell2label())
+                cell2labelJ[to_string(idx.first)] = idx.second;
+            data["map"] = cell2labelJ;
+            data["NodeFeatures"] = nodesEdges.first;
+            data["EdgeFeatures"] = nodesEdges.second;
+            data["gtLabels"] = gtLabels;
+            data["NodePoints"] = getCellsPoints(fullArrangement.cell2label(), onlyArrangement);
+            data["NodeBbox"] = getCellsBbox(fullArrangement.cell2label(), onlyArrangement);
+            data["planes"] = planeArr.planes();
+            data["bbox"] = {curBbox.xmin(), curBbox.ymin(), curBbox.zmin(), curBbox.xmax(), curBbox.ymax(), curBbox.zmax()};
+            data["nbPlanes"] = validPlaneIdx.size();
+
+            // Adding to the valid arrangements
+            computedArrangements.push_back(data);
+        }
+        else
+            subdivideBbox(bboxes, curBbox);
+    }
+
+    return computedArrangements;
 }

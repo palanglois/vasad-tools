@@ -32,7 +32,7 @@ typedef CGAL::Second_of_pair_property_map<Point_with_normal> Normal_map;
 typedef CGAL::Shape_detection::Efficient_RANSAC_traits
         <Kernel, Pwn_vector, Point_map, Normal_map>             Traits;
 typedef CGAL::Shape_detection::Efficient_RANSAC<Traits> Efficient_ransac;
-typedef CGAL::Shape_detection::Plane<Traits>            Plane;
+typedef CGAL::Shape_detection::Plane<Traits>            PlaneCgal;
 
 
 struct Timeout_callback {
@@ -201,7 +201,7 @@ int main(int argc, char *argv[]) {
     cout << "Running RANSAC..." << endl;
     Efficient_ransac ransac;
     ransac.set_input(pwnCloud);
-    ransac.add_shape_factory<Plane>();
+    ransac.add_shape_factory<PlaneCgal>();
     Timeout_callback timeout_callback(timout);
     Efficient_ransac::Parameters parameters;
     parameters.min_points = 10;
@@ -216,9 +216,9 @@ int main(int argc, char *argv[]) {
     bbox += CGAL::bbox_3(pov.begin(), pov.end());
 
     arrangement.set_bbox(bbox);
-    vector<Plane*> shapes;
+    vector<PlaneCgal*> shapes;
     for(const auto & planeIt : ransac.shapes())
-        shapes.push_back(dynamic_cast<Plane*>(planeIt.get()));
+        shapes.push_back(dynamic_cast<PlaneCgal*>(planeIt.get()));
     auto it = shapes.begin();
     Simple_to_Epeck s2e;
     int planeIter = 0;

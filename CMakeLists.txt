@@ -82,11 +82,15 @@ add_executable(graph2ply main_graph_to_ply.cpp
 add_executable(mesh2plane main_mesh_to_plane.cpp
         lib/RegionGrowing.cpp lib/RegionGrowing.h)
 
+add_executable(splitGraph main_split_graph.cpp
+        lib/iogeometry.cpp lib/graphStats.cpp)
+
 
 target_link_libraries(bim_data ${CGAL_LIBRARIES})
 target_link_libraries(closeness_checker ${CGAL_LIBRARIES} Qt5::Widgets Qt5::Xml Qt5::OpenGL)
 target_link_libraries(boolean_operations_check ${CGAL_LIBRARIES} Qt5::Widgets Qt5::Xml Qt5::OpenGL gmpxx)
 target_link_libraries(graph_statistics ${CGAL_LIBRARIES})
+target_link_libraries(splitGraph ${CGAL_LIBRARIES})
 if(MKL_FOUND)
     target_link_libraries(mesh2plane ${MKL_LIBRARIES})
 endif()

@@ -40,6 +40,6 @@ int main(int argc, char *argv[]) {
     RegionGrowing regionGrowing(inPath, epsilonPoint, epsilonNormal, sigmaPoint, sigmaNormal, true);
     int nbOfPrimitives = regionGrowing.run();
     regionGrowing.saveAsObj(outPath + "coloredGtPlanes.obj");
-    regionGrowing.saveAsJson(outPath + "coloredGtPlanes.json");
+    regionGrowing.saveAsJson(outPath + "coloredGtPlanes.json", true);
     return 0;
 }

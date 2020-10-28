@@ -111,11 +111,34 @@ struct Plane
     double cumulatedPercentage;
 };
 
+inline void to_json(nlohmann::json& j, const Plane& p) {
+    j = nlohmann::json{{"inlier", {CGAL::to_double(p.inlier.x()), CGAL::to_double(p.inlier.y()), CGAL::to_double(p.inlier.z())}},
+                       {"normal", {CGAL::to_double(p.normal.x()), CGAL::to_double(p.normal.y()), CGAL::to_double(p.normal.z())}},
+                       {"cumulatedPercentage", p.cumulatedPercentage}};
+    nlohmann::json faces;
+    for(const auto & face : p.faces)
+    {
+        nlohmann::json faceJson;
+        for(int coordinate : face)
+            faceJson.push_back(coordinate);
+        faces.push_back(faceJson);
+    }
+    j["faces"] = faces;
+}
+
+inline void from_json(const nlohmann::json& j, Plane& p) {
+    p.inlier = Kernel2::Point_3(j.at("inlier")[0].get<double>(), j.at("inlier")[1].get<double>(), j.at("inlier")[2].get<double>());
+    p.normal = Kernel2::Vector_3(j.at("normal")[0].get<double>(), j.at("normal")[1].get<double>(), j.at("normal")[2].get<double>());
+    p.cumulatedPercentage = j.at("cumulatedPercentage").get<double>();
+    p.faces = j.at("faces").get<std::vector<std::vector<int>>>();
+}
+
 // A class for the Plane Arrangement and its attributes
 class PlaneArrangement
 {
 public:
     explicit PlaneArrangement(const std::string& name);
+    PlaneArrangement(const std::vector<Plane> &inPlanes, const std::vector<int>& validPlaneIdx, const CGAL::Bbox_3 &inBbox);
 
     // Accessors
     [[nodiscard]] Arrangement &arrangement();
@@ -123,6 +146,8 @@ public:
     [[nodiscard]] const std::vector<int> &labels() const;
     [[nodiscard]] const std::vector<int> &gtLabels() const;
     [[nodiscard]] const CGAL::Bbox_3 &bbox() const;
+    [[nodiscard]] const std::vector<Plane> &planes() const;
+    [[nodiscard]] const std::vector<Point> &points() const;
 
 private:
     Arrangement _arr;
@@ -132,6 +157,8 @@ private:
     CGAL::Bbox_3 _bbox;
     std::vector<Point> _points;
     std::vector<Plane> _planes;
+
+    bool isArrangementComputed;
 
 };
 

@@ -325,7 +325,7 @@ void saveArrangement(const string &name, const vector<Kernel::Plane_3> &planes, 
     outFile << outputData;
 }
 
-PlaneArrangement::PlaneArrangement(const string& name)
+PlaneArrangement::PlaneArrangement(const string& name) : isArrangementComputed(false)
 {
     cout << "Loading arrangement!" << endl;
     fstream inStream(name);
@@ -335,7 +335,6 @@ PlaneArrangement::PlaneArrangement(const string& name)
     // Bounding box
     vector<double> box = data["bbox"];
     _bbox = CGAL::Bbox_3(box[0], box[1], box[2], box[3], box[4], box[5]);
-    _arr.set_bbox(_bbox);
 
     // Planes
     vector<Json> planes = data["planes"];
@@ -347,15 +346,12 @@ PlaneArrangement::PlaneArrangement(const string& name)
     //DEBUG
     int nbPlanesUsed = 0;
     // END DEBUG
-    auto tqNbPlanes = tq::trange(nbPlanes);
-    tqNbPlanes.set_prefix("Inserting " + to_string(nbPlanes) + " planes: ");
-    for(int i: tqNbPlanes)
+    for(int i = 0; i < nbPlanes; i++)
     {
         Json &norm = planes[i]["normal"];
         Kernel2::Vector_3 normal((double) norm[0], (double) norm[1], (double) norm[2]);
         Json &inl = planes[i]["inlier"];
         Kernel2::Point_3 inlier((double) inl[0], (double) inl[1], (double) inl[2]);
-        _arr.insert(Kernel2::Plane_3(inlier, normal));
 
         if (planes[i].find("faces") != planes[i].end() &&
         planes[i].find("cumulatedPercentage") != planes[i].end()) {
@@ -373,6 +369,14 @@ PlaneArrangement::PlaneArrangement(const string& name)
     //DEBUG
     cout << "Nb of planes used " << nbPlanesUsed << endl;
     //END DEBUG
+
+    // Points
+    if (data.find("pointCloud") != data.end())
+    {
+        _points = vector<Point>(data["pointCloud"].size(), Point());
+        for(int i=0; i < data["pointCloud"].size(); i++)
+            _points[i] = Point(data["pointCloud"][i][0], data["pointCloud"][i][1], data["pointCloud"][i][2]);
+    }
 
     //Mapping and labels
     if (data["map"].find("NOMAP") != data["map"].end())
@@ -403,7 +407,36 @@ PlaneArrangement::PlaneArrangement(const string& name)
     cout << "Arrangement loaded" << endl;
 }
 
+PlaneArrangement::PlaneArrangement(const vector<Plane> &inPlanes, const vector<int>& validPlaneIdx,
+        const CGAL::Bbox_3 &inBbox) : isArrangementComputed(false) {
+    // Planes
+    for(auto idx: validPlaneIdx)
+        _planes.push_back(inPlanes[idx]);
+
+    // Bbox
+    _bbox = inBbox;
+
+    // cell2Label
+    int idx = 0;
+    auto &arr = arrangement();
+    for(auto cellIt = _arr.cells_begin(); cellIt != _arr.cells_end(); cellIt++)
+    {
+        if(!_arr.is_cell_bounded(*cellIt)) continue;
+        _cell2label[_arr.cell_handle(*cellIt)] = idx++;
+    }
+
+}
+
 Arrangement &PlaneArrangement::arrangement() {
+    if(!isArrangementComputed)
+    {
+        isArrangementComputed = true;
+        _arr.set_bbox(_bbox);
+        auto tqPlanes = tq::tqdm(_planes);
+        tqPlanes.set_prefix("Inserting " + to_string(_planes.size()) + " planes: ");
+        for(const auto& plane: tqPlanes)
+            _arr.insert(Kernel2::Plane_3(plane.inlier, plane.normal));
+    }
     return _arr;
 }
 
@@ -421,6 +454,14 @@ const std::vector<int> &PlaneArrangement::gtLabels() const {
 
 const CGAL::Bbox_3 &PlaneArrangement::bbox() const {
     return _bbox;
+}
+
+const vector<Plane> &PlaneArrangement::planes() const {
+    return _planes;
+}
+
+const vector<Point> &PlaneArrangement::points() const {
+    return _points;
 }
 
 vector<classKeywordsColor> loadSemanticClasses(const string& path)
