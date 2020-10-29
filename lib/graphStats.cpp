@@ -140,7 +140,7 @@ vector<int> assignLabel(const Arrangement &arr, const map<int, int> &cell2label,
 //            nbClasses = get<1>(labeledTree) + 2;
     int voidClass = nbClasses;
 
-    vector<int> labels;
+    vector<int> labels(cell2label.size(), -1);
 
     // Draw points in the arrangement
     default_random_engine generator;
@@ -294,12 +294,12 @@ vector<int> assignLabel(const Arrangement &arr, const map<int, int> &cell2label,
         if(verbose && (i % 100000 == 0))
             cout << "Processed " << i << " points out of " << queryPoints.size() << endl;
     }
-    for(const auto & vote : votes)
-        if(*max_element(vote.begin(), vote.end()) == 0)
+    for(int i = 0; i < votes.size(); i++)
+        if(*max_element(votes[i].begin(), votes[i].end()) == 0)
             // If the cell is too thin, there can be no vote. In this case, we'll assume the cell is empty
-            labels.push_back(-1);
+            labels[i] = -1;
         else
-            labels.push_back(arg_max(vote) == voidClass ? -1 : arg_max(vote));
+            labels[i] = arg_max(votes[i]) == voidClass ? -1 : arg_max(votes[i]);
 
 //    if(verbose) {
 //        for (int i = 0; i < votes.size(); i++) {
@@ -321,11 +321,12 @@ vector<int> assignLabel(const Arrangement &arr, const map<int, int> &cell2label,
 ////    Point query(37.7275666666667, -30.2528, 8.59148666666667);
 //    Point query(34.5212666666667, -30.2528, 8.17148666666667);
 //    Point query(9.60298666666667, 6.73633666666667, 5.93695333333333);
+//    Point query(47.3597333333333, -9.72466666666667, 12.0712666666667);
 //    Arrangement::Face_handle debugCell = find_containing_cell(arr, s2e(query));
-//    cout << "Cell id: " << debugCell << endl;
-//    cout << "votes: " << endl;
 //
 //    if(arr.is_cell_bounded(debugCell)) {
+//        cout << "Cell id: " << debugCell << endl;
+//        cout << "votes: " << endl;
 //        for (auto nb: votes[cell2label.at(debugCell)])
 //            cout << nb << " ";
 //        cout << endl;
@@ -506,7 +507,8 @@ inline bool isInBbox(const Triangle& tri, const CGAL::Bbox_3 &bbox)
     return !(tri.bbox().zmax() > bbox.zmax());
 }
 
-vector<int> computePlanesInBoundingBox(const vector<Plane> &planes, const vector<Point> &points, CGAL::Bbox_3 bbox)
+vector<int> computePlanesInBoundingBox(const vector<Plane> &planes, const vector<Point> &points, CGAL::Bbox_3 bbox,
+        double ratioReconstructed)
 {
     vector<int> planeIdx;
     vector<Point> bboxPoints = {
@@ -536,7 +538,7 @@ vector<int> computePlanesInBoundingBox(const vector<Plane> &planes, const vector
     Tree tree(bboxTriangles.begin(), bboxTriangles.end());
     for(int i=0; i < planes.size(); i++)
     {
-        if(planes[i].cumulatedPercentage > 0.95) continue;
+        if(planes[i].cumulatedPercentage > ratioReconstructed) continue;
         bool doesIntersect = false;
         for(int j=0; j < planes[i].faces.size() && !doesIntersect; j++) {
             Triangle query(points[planes[i].faces[j][0]], points[planes[i].faces[j][1]],
@@ -545,25 +547,29 @@ vector<int> computePlanesInBoundingBox(const vector<Plane> &planes, const vector
         }
         if(doesIntersect)
             planeIdx.push_back(i);
-        if(i==0)
-            cout << "Debug" << endl;
     }
     return planeIdx;
 }
 
 void subdivideBbox(stack<CGAL::Bbox_3> &bboxes, CGAL::Bbox_3 curBbox)
 {
-    //  subdivide pillar and add the 2 resulting pillars to the stack
+    //  subdivide pillar and add the 4 resulting pillars to the stack
     //  we subdivide along x axis which is arbitrary
+    double xHalf = curBbox.xmin() + (curBbox.xmax() - curBbox.xmin()) / 2.;
+    double yHalf = curBbox.ymin() + (curBbox.ymax() - curBbox.ymin()) / 2.;
     bboxes.emplace(curBbox.xmin(), curBbox.ymin(), curBbox.zmin(),
-                   curBbox.xmin() + (curBbox.xmax() - curBbox.xmin()) / 2., curBbox.ymax(), curBbox.zmax());
-    bboxes.emplace(curBbox.xmin() + (curBbox.xmax() - curBbox.xmin()) / 2., curBbox.ymin(), curBbox.zmin(),
+                   xHalf, yHalf, curBbox.zmax());
+    bboxes.emplace(xHalf, curBbox.ymin(), curBbox.zmin(),
+                   curBbox.xmax(), yHalf, curBbox.zmax());
+    bboxes.emplace(curBbox.xmin(), yHalf, curBbox.zmin(),
+                   xHalf, curBbox.ymax(), curBbox.zmax());
+    bboxes.emplace(xHalf, yHalf, curBbox.zmin(),
                    curBbox.xmax(), curBbox.ymax(), curBbox.zmax());
 }
 
 vector<Json>
 splitArrangementInBatch(const PlaneArrangement &planeArr, vector<facesLabelName> &labeledShapes, int nbClasses,
-        double step, int maxNodes, int maxNbPlanes, int nbSamplesPerCell, double proba, bool geom,
+        double step, int maxNodes, int maxNbPlanes, int nbSamplesPerCell, double proba, bool geom, double ratioReconstructed,
         bool verbose) {
 
     vector<Json> computedArrangements;
@@ -592,7 +598,8 @@ splitArrangementInBatch(const PlaneArrangement &planeArr, vector<facesLabelName>
         CGAL::Bbox_3 curBbox = bboxes.top();
         bboxes.pop();
         // Compute planes in current pillar
-        vector<int> validPlaneIdx = computePlanesInBoundingBox(planeArr.planes(), planeArr.points(), curBbox);
+        vector<int> validPlaneIdx = computePlanesInBoundingBox(planeArr.planes(), planeArr.points(), curBbox,
+                ratioReconstructed);
         if(validPlaneIdx.size() > maxNbPlanes)
         {
             subdivideBbox(bboxes, curBbox);
@@ -630,7 +637,10 @@ splitArrangementInBatch(const PlaneArrangement &planeArr, vector<facesLabelName>
             data["gtLabels"] = gtLabels;
             data["NodePoints"] = getCellsPoints(fullArrangement.cell2label(), onlyArrangement);
             data["NodeBbox"] = getCellsBbox(fullArrangement.cell2label(), onlyArrangement);
-            data["planes"] = planeArr.planes();
+            vector<Plane> currentPlanes;
+            for(int validIdx: validPlaneIdx)
+                currentPlanes.push_back(planeArr.planes()[validIdx]);
+            data["planes"] = currentPlanes;
             data["bbox"] = {curBbox.xmin(), curBbox.ymin(), curBbox.zmin(), curBbox.xmax(), curBbox.ymax(), curBbox.zmax()};
             data["nbPlanes"] = validPlaneIdx.size();
 

@@ -396,7 +396,7 @@ void RegionGrowing::saveAsJson(const string &outFile, bool fullPlaneData) {
             // Faces that belong to current plane
             vector<vector<int>> allFaces(planeClass.getInlierIndex().size(), vector<int>(3));
             for (int i = 0; i < allFaces.size(); i++)
-                allFaces[i] = {faces(i, 0), faces(i, 1), faces(i, 2)};
+                allFaces[i] = {faces(planeClass.getInlierIndex()[i], 0), faces(planeClass.getInlierIndex()[i], 1), faces(planeClass.getInlierIndex()[i], 2)};
             planeData["faces"] = allFaces;
         }
 
@@ -417,7 +417,7 @@ void RegionGrowing::saveAsJson(const string &outFile, bool fullPlaneData) {
     Json bbox = {minPoint(0), minPoint(1), minPoint(2), maxPoint(0), maxPoint(1), maxPoint(2)};
 
     // Number of planes
-    Json nbPlanes = min((int) computedClasses.size(), 180);
+    Json nbPlanes = computedClasses.size();
 
     // Compile data
     Json outputData = {{"planes",   planesData},

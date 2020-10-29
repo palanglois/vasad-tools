@@ -24,10 +24,10 @@ std::vector<std::vector<double>> getCellsBbox(const std::map<int, int> &cell2lab
 std::vector<int> assignLabel(const Arrangement &arr,const std::map<int, int> &cell2label, CGAL::Bbox_3 bbox,
         std::vector<facesLabelName> &labeledTrees, int nbClasses, int nbSamplesPerCell=40, bool verbose=false);
 
-std::vector<int> computePlanesInBoundingBox(const std::vector<Plane> &planes, const std::vector<Point> &points, CGAL::Bbox_3 bbox);
+std::vector<int> computePlanesInBoundingBox(const std::vector<Plane> &planes, const std::vector<Point> &points, CGAL::Bbox_3 bbox, double ratioReconstructed=0.98);
 
 std::vector<nlohmann::json> splitArrangementInBatch(const PlaneArrangement &planeArr,
         std::vector<facesLabelName> &labeledShapes, int nbClasses, double step, int maxNodes,
-        int maxNbPlanes=250, int nbSamplesPerCell=40, double proba=1, bool geom=false, bool verbose=false);
+        int maxNbPlanes=250, int nbSamplesPerCell=40, double proba=1, bool geom=false, double ratioReconstructed=0.98, bool verbose=false);
 
 #endif //BIM_DATA_GRAPHSTATS_H

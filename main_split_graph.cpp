@@ -19,12 +19,14 @@ int main(int argc, char *argv[]) {
     opt.add_option("-h", "--help", "show option help");
     opt.add_option("-i", "--input", "Path to the input plane arrangement", "");
     opt.add_option("-o", "--output", "Path to the output folder", "");
+    opt.add_option("-pr", "--prefix", "Prefix to the output files", "");
     opt.add_option("-m", "--mesh", "Path to the input obj ground truth", "");
     opt.add_option("-p", "--proba", "Proba of giving the empty occupency information for each empty cell", "1.");
     opt.add_option("-g", "--geom", "Adds the bounding box dimensions of each cell as a node feature");
     opt.add_option("-s", "--step", "Subdivision step in meters", "4");
     opt.add_option("-mn", "--max-nodes", "Max number of nodes per split", "10000");
     opt.add_option("-mp", "--max-planes", "Max number of planes per split", "250");
+    opt.add_option("-r", "--ration-recons", "Ratio of the total surface reconstructed", "0.98");
     opt.add_option("-v", "--verbose", "Verbosity trigger");
 
     //Parsing options
@@ -57,16 +59,21 @@ int main(int argc, char *argv[]) {
 
     const string inputPath = opt["-i"];
     const string outputPath = opt["-o"][opt["-o"].size() - 1] == '/' ? opt["-o"] : opt["-o"] + '/';
+    const string prefix = opt["-pr"];
     const double proba = op::str2double(opt["-p"]);
     const double step = op::str2double(opt["-s"]);
     const bool geom = op::str2bool(opt["-g"]);
     const int nbSamplesPerCell = 40;
     const int maxNodes = op::str2int(opt["-mn"]);
     const int maxNbPlanes = op::str2int(opt["-mp"]);
+    const double ratioReconstructed = op::str2double(opt["-r"]);
     bool verbose = op::str2bool(opt["-v"]);
 
     // Load semantic_classes
     vector<classKeywordsColor> classesWithColor = loadSemanticClasses((string) TEST_DIR + "semantic_classes.json");
+    if(verbose)
+        for(int i=0; i < classesWithColor.size(); i++)
+            cout << "Class " << i << " is " << get<0>(classesWithColor[i]) << endl;
 
     // Load the ground truth
     const string gtPath = opt["-m"];
@@ -81,10 +88,11 @@ int main(int argc, char *argv[]) {
 
     // Make splits
     vector<Json> allSplits = splitArrangementInBatch(currentArrangement, shapesAndClasses, classesWithColor.size(),
-                                                     step, maxNodes, maxNbPlanes, nbSamplesPerCell, proba, geom, verbose);
+                                                     step, maxNodes, maxNbPlanes, nbSamplesPerCell, proba, geom,
+                                                     ratioReconstructed, verbose);
     for(int i=0; i < allSplits.size(); i++)
     {
-        ofstream outStream(outputPath + padTo(to_string(i), 4) + ".json");
+        ofstream outStream(outputPath + prefix + padTo(to_string(i), 4) + ".json");
         outStream << allSplits[i];
         outStream.close();
     }

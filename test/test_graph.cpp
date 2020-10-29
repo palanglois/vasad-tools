@@ -212,7 +212,7 @@ TEST(GraphStatistics, ComputePlanesInBoundingBox)
 
     vector<Plane> allPlanes = {plane1, plane2, plane3, plane4, plane5, plane6};
 
-    vector<int> inlierPlaneIdx = computePlanesInBoundingBox(allPlanes, points, bbox);
+    vector<int> inlierPlaneIdx = computePlanesInBoundingBox(allPlanes, points, bbox, 0.95);
 
     ASSERT_EQ(inlierPlaneIdx.size(), (size_t) 4);
     ASSERT_EQ(inlierPlaneIdx[0], 0);
@@ -245,7 +245,7 @@ TEST(GraphStatistics, SplitingModel)
     PlaneArrangement myArrangement(outPath);
     auto allTrees = loadTreesFromObj(testObjPath, classesWithColor);
     vector<Json> allSplits = splitArrangementInBatch(myArrangement, allTrees, classesWithColor.size(),
-            step, maxNodes, maxNbPlanes, nbSamplesPerCell, proba, geom, false);
+            step, maxNodes, maxNbPlanes, nbSamplesPerCell, proba, geom, 0.95, false);
     cout.clear();
     cerr.clear();
     ASSERT_GE(allSplits.size(), 1);
