@@ -21,7 +21,7 @@ int main(int argc, char *argv[]) {
     opt.add_option("-o", "--output", "Path to the output folder", "");
     opt.add_option("-pr", "--prefix", "Prefix to the output files", "");
     opt.add_option("-m", "--mesh", "Path to the input obj ground truth", "");
-    opt.add_option("-p", "--proba", "Proba of giving the empty occupency information for each empty cell", "1.");
+    opt.add_option("-p", "--proba", "Proba of giving the empty occupancy information for each empty cell", "1.");
     opt.add_option("-g", "--geom", "Adds the bounding box dimensions of each cell as a node feature");
     opt.add_option("-s", "--step", "Subdivision step in meters", "4");
     opt.add_option("-mn", "--max-nodes", "Max number of nodes per split", "10000");
