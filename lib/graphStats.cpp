@@ -262,7 +262,7 @@ vector<int> assignLabel(const Arrangement &arr, const map<int, int> &cell2label,
             for(const auto& inter: intersections)
                 odd += int(inter.size() % 2 == 1);
             if(odd == 2)
-                cout << "Potential issue with shape " << get<2>(labeledTree) << endl;
+                cout << "\033[1;34mPotential issue with shape " << get<2>(labeledTree) << "\033[0m" << endl;
 
             // Test the nb of intersections for parity
             if(odd >= 2)
@@ -291,8 +291,6 @@ vector<int> assignLabel(const Arrangement &arr, const map<int, int> &cell2label,
         assert(pointsLabel[i] < votes[cell2label.at(cellHandle)].size());
         assert(pointsLabel[i] >= 0);
         votes[cell2label.at(cellHandle)][pointsLabel[i]]++;
-        if(verbose && (i % 100000 == 0))
-            cout << "Processed " << i << " points out of " << queryPoints.size() << endl;
     }
     for(int i = 0; i < votes.size(); i++)
         if(*max_element(votes[i].begin(), votes[i].end()) == 0)
@@ -594,7 +592,7 @@ splitArrangementInBatch(const PlaneArrangement &planeArr, vector<facesLabelName>
                            xSteps[i + 1], ySteps[j + 1], planeArr.bbox().zmax());
     while(!bboxes.empty()) {
         if(verbose)
-            cout << "Bbox stack size: " << bboxes.size() << endl;
+            cout << endl << "Bbox stack size: \033[1;31m"  << bboxes.size() << "\033[0m" << endl;
         CGAL::Bbox_3 curBbox = bboxes.top();
         bboxes.pop();
         // Compute planes in current pillar
