@@ -23,6 +23,8 @@
 #include <CGAL/AABB_tree.h>
 #include <CGAL/AABB_traits.h>
 #include <CGAL/AABB_triangle_primitive.h>
+#include <CGAL/Orthogonal_k_neighbor_search.h>
+#include <CGAL/Search_traits_3.h>
 
 // Boost
 #include <boost/functional/hash.hpp>
@@ -73,6 +75,11 @@ typedef boost::optional<Tree::Intersection_and_primitive_id<Ray>::Type> Ray_inte
 
 /* Typedef for plane arrangement */
 typedef Polyhedral_complex_3::Arrangement_3<Kernel2> Arrangement;
+
+/* Typedef for nearest neighbour search */
+typedef CGAL::Search_traits_3<Kernel> TreeTraits;
+typedef CGAL::Orthogonal_k_neighbor_search<TreeTraits> Neighbor_search;
+typedef Neighbor_search::Tree kdTree;
 
 
 // Hash for Triangle

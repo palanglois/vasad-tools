@@ -437,23 +437,23 @@ computeGraph(const vector<int> &labels, const map<int, int> &cell2label, const A
             int cellFeatureIdx2 = cell2label.at(cellIdx2);
             int cellLabel1 = labels[cellFeatureIdx1];
             int cellLabel2 = labels[cellFeatureIdx2];
-            vector<int> edgeFeature(nbClasses + 1, 0);
+            vector<double> edgeFeature(nbClasses + 1, 0.);
             if(cellLabel1 == -1 && cellLabel2 != -1)
             {
                 // We're at a void/full transition
-                edgeFeature[cellLabel2] = 1;
+                edgeFeature[cellLabel2] = 1.;
                 edgeFeatures[make_pair(cellFeatureIdx1, cellFeatureIdx2)] = edgeFeature;
             }
             else if(cellLabel1 != -1 && cellLabel2 == -1)
             {
                 // Same here but different direction
-                edgeFeature[cellLabel1] = 1;
+                edgeFeature[cellLabel1] = 1.;
                 edgeFeatures[make_pair(cellFeatureIdx1, cellFeatureIdx2)] = edgeFeature;
             }
             else
             {
                 // We're not at a transition
-                edgeFeature[nbClasses] = 1;
+                edgeFeature[nbClasses] = 1.;
                 edgeFeatures[make_pair(cellFeatureIdx1, cellFeatureIdx2)] = edgeFeature;
             }
         }
@@ -461,6 +461,123 @@ computeGraph(const vector<int> &labels, const map<int, int> &cell2label, const A
 
     return make_pair(nodeFeatures, edgeFeatures);
 }
+
+pair<vector<Point>, map<Point, int>> sampleFacets(const Arrangement &arr, const int factor)
+{
+    auto e2s = Epeck_to_Simple();
+    double minArea = DBL_MAX;
+    double totalArea = 0;
+    vector<double> cumulHisto;
+    vector<vector<Point>> triangles;
+    vector<int> triangleToHandle;
+    for(auto facetIt = arr.facets_begin(); facetIt != arr.facets_end(); facetIt++) {
+
+        // Compute area of current facet
+        double facetArea = 0.;
+        if (!arr.is_facet_bounded(*facetIt)) continue;
+        std::vector<Arrangement::Face_handle> vertices;
+        arr.facet_to_polygon(*facetIt, std::back_inserter(vertices));
+
+        if (vertices.size() >= 3) {
+
+            std::vector<Arrangement::Face_handle>::const_iterator vhi = vertices.begin();
+            Arrangement::Point first = arr.point(*vhi);
+            ++vhi;
+            Arrangement::Point second = arr.point(*vhi);
+            ++vhi;
+            while (vhi != vertices.end()) {
+                Arrangement::Point third = arr.point(*vhi);
+                double triangleArea = sqrt(CGAL::to_double(CGAL::squared_area(first, second, third)));
+                cumulHisto.push_back(triangleArea + totalArea);
+                totalArea += triangleArea;
+                facetArea += triangleArea;
+                triangles.push_back({e2s(first), e2s(second), e2s(third)});
+                triangleToHandle.push_back(arr.facet_handle(*facetIt));
+                second = third;
+                ++vhi;
+            }
+        }
+        // Update
+        minArea = min(minArea, facetArea);
+    }
+
+    // Normalize the histogram
+    for(double &cumulatedArea: cumulHisto)
+        cumulatedArea /= totalArea;
+    int nbPointsToSample = factor * int(totalArea / minArea);
+    // Actual sampling
+    vector<Point> sampledPoints(nbPointsToSample);
+    map<Point, int> pointToHandle;
+#pragma omp parallel for
+    for(int i=0; i < nbPointsToSample; i++)
+    {
+        // Select a random triangle according to the areas distribution
+        double r = ((double) rand() / (RAND_MAX));
+        size_t found_index = 0;
+        for (size_t j = 0; j < cumulHisto.size() && r > cumulHisto[j]; j++)
+            found_index = j + 1;
+
+        // Draw a random point in this triangle
+        double r1 = ((double) rand() / (RAND_MAX));
+        double r2 = ((double) rand() / (RAND_MAX));
+        const Point& A = triangles[found_index][0];
+        const Point& B = triangles[found_index][1];
+        const Point& C = triangles[found_index][2];
+        Point P = CGAL::ORIGIN + (1 - sqrt(r1)) * (A  - CGAL::ORIGIN)
+                + (sqrt(r1) * (1 - r2)) * (B - CGAL::ORIGIN)
+                + (sqrt(r1) * r2) * (C - CGAL::ORIGIN);
+#pragma omp critical
+        {
+            pointToHandle[P] = triangleToHandle[found_index];
+            sampledPoints[i] = P;
+        }
+    }
+    return make_pair(sampledPoints, pointToHandle);
+}
+
+EdgeFeatures computeFeaturesFromLabeledPoints(const Arrangement &arr, const vector<Point> &points,
+                                              const vector<int> &labels, const int nbClasses, const int factor)
+{
+    // Make tree
+    pair<vector<Point>, map<Point, int>> samples = sampleFacets(arr, factor);
+    kdTree tree(samples.first.begin(), samples.first.end());
+
+    // Find closest facet by nearest neighbour search
+    EdgeFeatures features;
+    for(int i=0; i < points.size(); i++)
+    {
+        const auto& point = points[i];
+        Neighbor_search search(tree, point, 1);
+        int closestFacetHandle = samples.second[search.begin()->first];
+
+        // Update corresponding feature
+        int cell1 = arr.facet(closestFacetHandle).superface(0);
+        int cell2 = arr.facet(closestFacetHandle).superface(1);
+        auto pair1 = make_pair(cell1, cell2);
+        auto pair2 = make_pair(cell2, cell1);
+        if(features.find(pair1) != features.end())
+            features[pair1][labels[i]] += 1;
+        else if(features.find(pair2) != features.end())
+            features[pair2][labels[i]] += 1;
+        else
+        {
+            features[pair1] = vector<double>(nbClasses, 0);
+            features[pair1][labels[i]] += 1;
+        }
+    }
+
+    // Normalize features
+    for(auto& edgeFeat: features)
+    {
+        double sum_of_elems = accumulate(edgeFeat.second.begin(), edgeFeat.second.end(), 0.);
+        if(sum_of_elems != 0.)
+            for(auto& elem: edgeFeat.second)
+                elem /= sum_of_elems;
+    }
+
+    return features;
+}
+
 
 vector<vector<double>> getCellsPoints(const map<int, int> &cell2label, const Arrangement &arr) {
     vector<vector<double>> cellsPoints(cell2label.size(), {0., 0., 0.});

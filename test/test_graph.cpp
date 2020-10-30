@@ -54,6 +54,25 @@ void PlaneArrangementFixture::SetUp()
                 label2cell[3] = myPlaneArrangement->cell_handle(*cellIt);
         }
     }
+    for(auto facetIt = myPlaneArrangement->facets_begin(); facetIt != myPlaneArrangement->facets_end(); facetIt++)
+    {
+        if(!myPlaneArrangement->is_facet_bounded(*facetIt)) continue;
+        ASSERT_EQ(facetIt->number_of_superfaces(), 2);
+        int cell1 = facetIt->superface(0);
+        int cell2 = facetIt->superface(1);
+        if (cell1 == label2cell[0] && cell2 == label2cell[1] ||
+            cell2 == label2cell[0] && cell1 == label2cell[1])
+            label2facet[0] = myPlaneArrangement->facet_handle(*facetIt);
+        else if (cell1 == label2cell[1] && cell2 == label2cell[2] ||
+                 cell2 == label2cell[2] && cell1 == label2cell[1])
+            label2facet[1] = myPlaneArrangement->facet_handle(*facetIt);
+        else if (cell1 == label2cell[2] && cell2 == label2cell[3] ||
+                 cell2 == label2cell[3] && cell1 == label2cell[2])
+            label2facet[2] = myPlaneArrangement->facet_handle(*facetIt);
+        else if (cell1 == label2cell[0] && cell2 == label2cell[3] ||
+                 cell2 == label2cell[3] && cell1 == label2cell[0])
+            label2facet[3] = myPlaneArrangement->facet_handle(*facetIt);
+    }
     for(auto mapIt: label2cell)
         cell2label[mapIt.second] = mapIt.first;
 
@@ -144,6 +163,44 @@ TEST_F(PlaneArrangementFixture, LabelingWithObjLoad)
     ASSERT_EQ(gtLabels[1], -1);
     ASSERT_EQ(gtLabels[2], -1);
     ASSERT_EQ(gtLabels[3], 3);
+}
+
+TEST_F(PlaneArrangementFixture, pointSampling)
+{
+    const int factor = 20;
+    pair<vector<Point>, map<Point, int>> samples = sampleFacets(*myPlaneArrangement, factor);
+    ASSERT_EQ(samples.first.size(), 640);
+
+    // Simulated points
+    const int nbClasses = 3;
+    vector<Point> inPoints;
+    vector<int> inLabels;
+
+    // Point A
+    inPoints.emplace_back(0.5, 0.5, 0.25);
+    inLabels.push_back(0);
+
+    // Point B
+    inPoints.emplace_back(0.5, 0.5, 0.26);
+    inLabels.push_back(0);
+
+    // Point C
+    inPoints.emplace_back(0.5, 0.51, 0.24);
+    inLabels.push_back(1);
+
+    EdgeFeatures features = computeFeaturesFromLabeledPoints(*myPlaneArrangement, inPoints, inLabels, nbClasses, 20);
+    ASSERT_EQ(features.size(), 1);
+
+    int cell1 = myPlaneArrangement->facet(label2facet[0]).superface(0);
+    int cell2 = myPlaneArrangement->facet(label2facet[0]).superface(1);
+    pair<int, int> edgeZeroV1(cell1, cell2);
+    pair<int, int> edgeZeroV2(cell2, cell1);
+    ASSERT_TRUE((features.find(edgeZeroV1) != features.end()) ||
+                (features.find(edgeZeroV2) != features.end()));
+    vector<double> targetDistrib = {2./3., 1./3., 0.};
+    if(features.find(edgeZeroV1) != features.end())
+        for(int i=0; i < 3; i++)
+            ASSERT_EQ(features.at(edgeZeroV1)[i], targetDistrib[i]);
 }
 
 TEST(GraphStatistics, ComputePlanesInBoundingBox)

@@ -15,6 +15,7 @@ protected:
     Arrangement* myPlaneArrangement;
     std::map<int, int> label2cell;
     std::map<int, int> cell2label;
+    std::map<int, int> label2facet;
     CGAL::Bbox_3 bbox;
 
 };
