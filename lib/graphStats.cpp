@@ -226,6 +226,7 @@ vector<int> assignLabel(const Arrangement &arr, const map<int, int> &cell2label,
     {
         auto &labeledTree = labeledShapes[j];
         tree.rebuild(get<0>(labeledTree).begin(), get<0>(labeledTree).end());
+        bool warningSent = false;
 #pragma omp parallel for schedule(static)
 	for(int i=0; i < queryPoints.size(); i++)
         {
@@ -262,7 +263,15 @@ vector<int> assignLabel(const Arrangement &arr, const map<int, int> &cell2label,
             for(const auto& inter: intersections)
                 odd += int(inter.size() % 2 == 1);
             if(odd == 2)
-                cout << "\033[1;34mPotential issue with shape " << get<2>(labeledTree) << "\033[0m" << endl;
+            {
+                if(!warningSent) {
+#pragma omp critical
+{
+                    warningSent = true;
+                    cout << endl << "\033[1;34mPotential issue with shape " << get<2>(labeledTree) << "\033[0m" << endl;
+}
+                }
+            }
 
             // Test the nb of intersections for parity
             if(odd >= 2)
