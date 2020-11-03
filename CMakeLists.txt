@@ -85,12 +85,24 @@ add_executable(mesh2plane main_mesh_to_plane.cpp
 add_executable(splitGraph main_split_graph.cpp
         lib/iogeometry.cpp lib/graphStats.cpp)
 
+add_executable(trivialScanSimulator main_trivial_scan_simulator.cpp
+        lib/iogeometry.cpp)
+
+add_executable(makePointEdgeFeatures main_make_point_edge_features.cpp
+        lib/iogeometry.cpp lib/graphStats.cpp)
+
+add_executable(labeledPc2Obj main_labeled_pc_to_obj.cpp
+        lib/iogeometry.cpp)
+
 
 target_link_libraries(bim_data ${CGAL_LIBRARIES})
 target_link_libraries(closeness_checker ${CGAL_LIBRARIES} Qt5::Widgets Qt5::Xml Qt5::OpenGL)
 target_link_libraries(boolean_operations_check ${CGAL_LIBRARIES} Qt5::Widgets Qt5::Xml Qt5::OpenGL gmpxx)
 target_link_libraries(graph_statistics ${CGAL_LIBRARIES})
 target_link_libraries(splitGraph ${CGAL_LIBRARIES})
+target_link_libraries(trivialScanSimulator ${CGAL_LIBRARIES})
+target_link_libraries(makePointEdgeFeatures ${CGAL_LIBRARIES})
+target_link_libraries(labeledPc2Obj ${CGAL_LIBRARIES})
 if(MKL_FOUND)
     target_link_libraries(mesh2plane ${MKL_LIBRARIES})
 endif()

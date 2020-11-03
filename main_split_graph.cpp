@@ -23,6 +23,7 @@ int main(int argc, char *argv[]) {
     opt.add_option("-m", "--mesh", "Path to the input obj ground truth", "");
     opt.add_option("-p", "--proba", "Proba of giving the empty occupancy information for each empty cell", "1.");
     opt.add_option("-g", "--geom", "Adds the bounding box dimensions of each cell as a node feature");
+    opt.add_option("-pt", "--pointCloud", "Path to the input point cloud. If set, edge features are computed thanks to it.", "");
     opt.add_option("-s", "--step", "Subdivision step in meters", "4");
     opt.add_option("-mn", "--max-nodes", "Max number of nodes per split", "10000");
     opt.add_option("-mp", "--max-planes", "Max number of planes per split", "250");
@@ -58,6 +59,7 @@ int main(int argc, char *argv[]) {
     }
 
     const string inputPath = opt["-i"];
+    const string pointCloudPath = opt["-pt"];
     const string outputPath = opt["-o"][opt["-o"].size() - 1] == '/' ? opt["-o"] : opt["-o"] + '/';
     const string prefix = opt["-pr"];
     const double proba = op::str2double(opt["-p"]);
@@ -86,12 +88,16 @@ int main(int argc, char *argv[]) {
     const map<int, int> &cell2label = currentArrangement.cell2label();
     const CGAL::Bbox_3 &bbox = currentArrangement.bbox();
 
+    // Loading points with label
+    pair<vector<Point>, vector<int>> pointsWithLabel;
+    if(!pointCloudPath.empty())
+        pointsWithLabel = loadPointsWithLabel(pointCloudPath);
+
     // Make splits
     vector<Json> allSplits = splitArrangementInBatch(currentArrangement, shapesAndClasses, classesWithColor.size(),
-                                                     step, maxNodes, maxNbPlanes, nbSamplesPerCell, proba, geom,
-                                                     ratioReconstructed, verbose);
-    for(int i=0; i < allSplits.size(); i++)
-    {
+                                                     step, maxNodes, pointsWithLabel, maxNbPlanes, nbSamplesPerCell,
+                                                     proba, geom, ratioReconstructed, verbose);
+    for (int i = 0; i < allSplits.size(); i++) {
         ofstream outStream(outputPath + prefix + padTo(to_string(i), 4) + ".json");
         outStream << allSplits[i];
         outStream.close();

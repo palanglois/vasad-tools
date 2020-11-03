@@ -81,6 +81,12 @@ typedef CGAL::Search_traits_3<Kernel> TreeTraits;
 typedef CGAL::Orthogonal_k_neighbor_search<TreeTraits> Neighbor_search;
 typedef Neighbor_search::Tree kdTree;
 
+/* Typedefs for the graph representation */
+typedef std::vector<std::vector<int>> Nodes;
+typedef std::vector<std::pair<int, int>> Edges;
+typedef std::vector<std::vector<double>> NodeFeatures;
+typedef std::map<std::pair<int, int>, std::vector<double>> EdgeFeatures;
+
 
 // Hash for Triangle
 namespace std
@@ -102,7 +108,7 @@ namespace std
 
 // Typedefs for triangles and colors
 typedef std::tuple<int, int, int> colorTuple;
-typedef std::unordered_map<Triangle, colorTuple> TriangleColorMap;
+typedef std::unordered_map<Triangle, int> TriangleClassMap;
 
 // Typedef for storing semantic classes (name, keywords, color)
 typedef std::tuple<std::string, std::vector<std::string>, colorTuple> classKeywordsColor;
@@ -118,6 +124,7 @@ struct Plane
     double cumulatedPercentage;
 };
 
+// Input/Output json for the Plane type
 inline void to_json(nlohmann::json& j, const Plane& p) {
     j = nlohmann::json{{"inlier", {CGAL::to_double(p.inlier.x()), CGAL::to_double(p.inlier.y()), CGAL::to_double(p.inlier.z())}},
                        {"normal", {CGAL::to_double(p.normal.x()), CGAL::to_double(p.normal.y()), CGAL::to_double(p.normal.z())}},
@@ -140,12 +147,29 @@ inline void from_json(const nlohmann::json& j, Plane& p) {
     p.faces = j.at("faces").get<std::vector<std::vector<int>>>();
 }
 
+// Input/Output json for the CGAL::Bbox_3 type
+namespace CGAL {
+    inline void to_json(nlohmann::json &j, const CGAL::Bbox_3 &b) {
+        j = {b.xmin(), b.ymin(), b.zmin(), b.xmax(), b.ymax(), b.zmax()};
+    }
+
+    inline void from_json(const nlohmann::json &j, CGAL::Bbox_3 &b) {
+        b = CGAL::Bbox_3(j[0].get<double>(), j[1].get<double>(), j[2].get<double>(),
+                         j[3].get<double>(), j[4].get<double>(), j[5].get<double>());
+    }
+}
+
 // A class for the Plane Arrangement and its attributes
 class PlaneArrangement
 {
 public:
     explicit PlaneArrangement(const std::string& name);
     PlaneArrangement(const std::vector<Plane> &inPlanes, const std::vector<int>& validPlaneIdx, const CGAL::Bbox_3 &inBbox);
+
+    void saveAsJson(const std::string& outPath) const;
+
+    // Setters
+    void setEdgeLabels(const EdgeFeatures& edgeFeatures);
 
     // Accessors
     [[nodiscard]] Arrangement &arrangement();
@@ -155,6 +179,7 @@ public:
     [[nodiscard]] const CGAL::Bbox_3 &bbox() const;
     [[nodiscard]] const std::vector<Plane> &planes() const;
     [[nodiscard]] const std::vector<Point> &points() const;
+    [[nodiscard]] const EdgeFeatures &edgeFeatures() const;
 
 private:
     Arrangement _arr;
@@ -164,24 +189,32 @@ private:
     CGAL::Bbox_3 _bbox;
     std::vector<Point> _points;
     std::vector<Plane> _planes;
+    NodeFeatures _nodeFeatures;
+    EdgeFeatures _edgeFeatures;
+    std::vector<std::vector<double>> _cellPoints;
+    std::vector<CGAL::Bbox_3> _nodeBboxes;
+    int _nbPlanes;
+
 
     bool isArrangementComputed;
 
 };
 
 // Input functions
-std::pair<std::vector<Triangle>, TriangleColorMap> loadTrianglesFromObj(const std::string &objFile,
-                                                                 const std::vector<classKeywordsColor> &classes);
+std::pair<std::vector<Triangle>, TriangleClassMap> loadTrianglesFromObj(const std::string &objFile,
+                                                                        const std::vector<classKeywordsColor> &classes);
 std::vector<Point> loadPointOfViews(const std::string &jsonFile);
 std::vector<Point> loadPointCloudObj(const std::string &inFile);
 std::vector<facesLabelName> loadTreesFromObj(const std::string &inFile,
         const std::vector<classKeywordsColor> &classes);
+std::pair<std::vector<Point>, std::vector<int>> loadPointsWithLabel(const std::string &inFile);
 
 // Output functions
 void savePointsAsObj(const std::vector<Point>& points, const std::string &outPath);
+void savePointsAsObjWithLabel(const std::pair<std::vector<Point>, std::map<Point, int>> &pointsWithLabel, const std::string &outPath);
 void savePointsAsObjWithColors(std::vector<Point> points, std::vector<colorTuple> colors, const std::string &outPath);
-void saveTrianglesAsObj(const std::vector<Triangle>& triangles, const std::string &outPath, TriangleColorMap colors);
-void saveSeparatedObj(std::vector<Triangle> triangles, const std::string &outPath, TriangleColorMap colors);
+void saveTrianglesAsObj(const std::vector<Triangle>& triangles, const std::string &outPath, TriangleClassMap triangleClasses, const std::vector<classKeywordsColor> &classes);
+void saveSeparatedObj(std::vector<Triangle> triangles, const std::string &outPath, TriangleClassMap triangleClasses, const std::vector<classKeywordsColor> &classes);
 void saveArrangement(const std::string &name, const std::vector<Kernel::Plane_3> &planes, int maxNumberOfPlanes,
         const CGAL::Bbox_3 &bbox, const std::map<int, int> &cell2label, const std::vector<bool> &labels);
 
@@ -235,5 +268,10 @@ void savePlyFromLabel(const std::string &filename, Arrangement &arr, const std::
 
 // Semantics
 std::vector<classKeywordsColor> loadSemanticClasses(const std::string& path);
+
+// Utilities
+
+std::vector<std::vector<double>> getCellsPoints(const std::map<int, int> &cell2label, const Arrangement &arr);
+std::vector<std::vector<double>> getCellsBbox(const std::map<int, int> &cell2label, const Arrangement &arr);
 
 #endif

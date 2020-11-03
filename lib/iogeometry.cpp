@@ -4,7 +4,7 @@ using namespace std;
 using Json = nlohmann::json;
 
 /* Load points from an obj files */
-pair<vector<Triangle>, TriangleColorMap>
+pair<vector<Triangle>, TriangleClassMap>
 loadTrianglesFromObj(const string &objFile, const vector<classKeywordsColor> &classes) {
     vector<Triangle> triangles;
     vector<Point> points;
@@ -15,14 +15,14 @@ loadTrianglesFromObj(const string &objFile, const vector<classKeywordsColor> &cl
     ifstream inputStream(objFile.c_str());
     if (!inputStream) {
         cerr << "Could not load file located at : " << objFile << endl;
-        return pair<vector<Triangle>, TriangleColorMap>();
+        return pair<vector<Triangle>, TriangleClassMap>();
     }
 
     //Loading the triangles
     string currentLine;
-    colorTuple cur_class_color(0, 0, 0);
-    vector<colorTuple> triClasses;
-    TriangleColorMap triangleToColors;
+    int cur_class_idx(0);
+    vector<int> triClasses;
+    TriangleClassMap triangleToColors;
     while (getline(inputStream, currentLine)) {
         stringstream ss(currentLine);
         string firstCaracter;
@@ -41,16 +41,17 @@ loadTrianglesFromObj(const string &objFile, const vector<classKeywordsColor> &cl
             for (auto idxStr: curFace)
                 curFaceIdx.push_back(stoi(idxStr.substr(0, idxStr.find("/"))) - 1);
             faces.emplace_back(curFaceIdx);
-            triClasses.push_back(cur_class_color);
+            triClasses.push_back(cur_class_idx);
         } else if (firstCaracter == "o") {
             // Object - Finding the corresponding class
             ss >> obj_name;
-            cur_class_color = colorTuple(0, 0, 0);
+            cur_class_idx = 0;
             bool classFound = false;
-            for (auto cl: classes) {
+            for (int i=0; i < classes.size(); i++) {
+                const auto& cl = classes[i];
                 for (auto keyword: get<1>(cl)) {
                     if (obj_name.find(keyword) != string::npos) {
-                        cur_class_color = get<2>(cl);
+                        cur_class_idx = i;
                         classFound = true;
                         break;
                     }
@@ -70,7 +71,7 @@ loadTrianglesFromObj(const string &objFile, const vector<classKeywordsColor> &cl
         triangleToColors[cur_triangle] = triClasses[i];
     }
 
-    return pair<vector<Triangle>, TriangleColorMap>(triangles, triangleToColors);
+    return pair<vector<Triangle>, TriangleClassMap>(triangles, triangleToColors);
 }
 
 vector<Point> loadPointOfViews(const string &jsonFile) {
@@ -116,6 +117,35 @@ vector<Point> loadPointCloudObj(const string &inFile)
     return points;
 }
 
+pair<vector<Point>, vector<int>> loadPointsWithLabel(const string &inFile)
+{
+    //Loading the obj data
+    ifstream inputStream(inFile.c_str());
+    if (!inputStream) {
+        cerr << "Could not load file located at : " << inFile << endl;
+        return make_pair(vector<Point>(), vector<int>());
+    }
+    vector<Point> points;
+    vector<int> labels;
+    string currentLine;
+    while (getline(inputStream, currentLine)) {
+        stringstream ss(currentLine);
+        string firstCaracter;
+        float vx, vy, vz, idx;
+        ss >> firstCaracter;
+        if (firstCaracter == "v") {
+            ss >> vx >> vy >> vz;
+            points.emplace_back(vx, vy, vz);
+        }
+        else if(firstCaracter == "vla") {
+            ss >> idx;
+            labels.push_back(idx);
+        }
+    }
+    return make_pair(points, labels);
+
+}
+
 vector<facesLabelName> loadTreesFromObj(const string &inFile, const vector<classKeywordsColor> &classes)
 {
     vector<facesLabelName> allTrees;
@@ -130,7 +160,7 @@ vector<facesLabelName> loadTreesFromObj(const string &inFile, const vector<class
     //Loading the triangles
     string currentLine;
     vector<colorTuple> triClasses;
-    TriangleColorMap triangleToColors;
+    TriangleClassMap triangleToColors;
     vector<Point> points;
     vector<vector<int>> faces;
     int curClass = -1;
@@ -240,21 +270,35 @@ void savePointsAsObj(const vector<Point>& points, const string &outPath) {
     fileOut.close();
 }
 
+void savePointsAsObjWithLabel(const pair<vector<Point>, map<Point, int>> &pointsWithLabel, const string &outPath) {
+    stringstream fileOut(outPath);
+    for(const auto point: pointsWithLabel.first)
+    {
+        fileOut << "v " << point.x() << " " << point.y() << " " << point.z() << endl;
+        fileOut << "vla " << pointsWithLabel.second.at(point) << endl;
+    }
+    ofstream realFileOut(outPath.c_str());
+    realFileOut << fileOut.rdbuf();
+    realFileOut.close();
+}
+
 void savePointsAsObjWithColors(vector<Point> points, vector<colorTuple> colors, const string &outPath) {
-    ofstream fileOut(outPath);
+    stringstream fileOut(outPath);
     for (int i = 0; i < points.size(); i++) {
         const Point &point = points[i];
         const colorTuple &color = colors[i];
         fileOut << "v " << point.x() << " " << point.y() << " " << point.z()
                 << " " << get<0>(color) << " " << get<1>(color) << " " << get<2>(color) << endl;
     }
-    fileOut.close();
+    ofstream realFileOut(outPath.c_str());
+    realFileOut << fileOut.rdbuf();
+    realFileOut.close();
 }
 
-void saveTrianglesAsObj(const vector<Triangle>& triangles, const string &outPath, TriangleColorMap colors) {
+void saveTrianglesAsObj(const vector<Triangle>& triangles, const string &outPath, TriangleClassMap triangleClasses, const vector<classKeywordsColor> &classes) {
     stringstream fileOut;
     for (auto triangle : triangles) {
-        colorTuple color = colors[triangle];
+        colorTuple color = get<2>(classes[triangleClasses[triangle]]);
         for (int i = 0; i < 3; i++)
             fileOut << "v " << triangle[i].x() << " " << triangle[i].y() << " " << triangle[i].z() << " "
                     << get<0>(color) << " " << get<1>(color) << " " << get<2>(color) << endl;
@@ -266,13 +310,13 @@ void saveTrianglesAsObj(const vector<Triangle>& triangles, const string &outPath
     realFileOut.close();
 }
 
-void saveSeparatedObj(vector<Triangle> triangles, const string &outPath, TriangleColorMap colors) {
+void saveSeparatedObj(vector<Triangle> triangles, const string &outPath, TriangleClassMap triangleClasses, const vector<classKeywordsColor> &classes) {
     ofstream fileOut(outPath + to_string(0) + ".obj");
     int fileIdx(1);
-    colorTuple curColor = colors[triangles[0]];
+    colorTuple curColor = get<2>(classes[triangleClasses[triangles[0]]]);
     int curTriangleIndex = 0;
     for (auto triangle : triangles) {
-        colorTuple color = colors[triangle];
+        colorTuple color = get<2>(classes[triangleClasses[triangle]]);
         if (curColor != color) {
             //fileOut = ofstream(outPath + to_string(fileIdx) + ".obj");
             fileIdx++;
@@ -339,14 +383,14 @@ PlaneArrangement::PlaneArrangement(const string& name) : isArrangementComputed(f
     // Planes
     vector<Json> planes = data["planes"];
 #ifndef NDEBUG
-    int nbPlanes = min(data["nbPlanes"].get<int>(), 30);
+    _nbPlanes = min(data["nbPlanes"].get<int>(), 30);
 #else
-    int nbPlanes = data["nbPlanes"].get<int>();
+    _nbPlanes = data["nbPlanes"].get<int>();
 #endif
     //DEBUG
     int nbPlanesUsed = 0;
     // END DEBUG
-    for(int i = 0; i < nbPlanes; i++)
+    for(int i = 0; i < _nbPlanes; i++)
     {
         Json &norm = planes[i]["normal"];
         Kernel2::Vector_3 normal((double) norm[0], (double) norm[1], (double) norm[2]);
@@ -370,7 +414,7 @@ PlaneArrangement::PlaneArrangement(const string& name) : isArrangementComputed(f
     cout << "Nb of planes used " << nbPlanesUsed << endl;
     //END DEBUG
 
-    // Points
+    // Point cloud of the underlying mesh
     if (data.find("pointCloud") != data.end())
     {
         _points = vector<Point>(data["pointCloud"].size(), Point());
@@ -404,12 +448,96 @@ PlaneArrangement::PlaneArrangement(const string& name) : isArrangementComputed(f
             _gtLabels = data["gtLabels"].get<vector<int>>();
     }
 
+    // Node features
+    if (data.find("NodeFeatures") != data.end())
+        _nodeFeatures = data["NodeFeatures"].get<NodeFeatures>();
+
+    // Edge features
+    if (data.find("EdgeFeatures") != data.end())
+    {
+        for(auto edgeFeat = data["EdgeFeatures"].begin(); edgeFeat != data["EdgeFeatures"].end(); edgeFeat++)
+        {
+            vector<int> keyVec = edgeFeat[0][0].get<vector<int>>();
+            pair<int, int> key(keyVec[0], keyVec[1]);
+            vector<double> val = edgeFeat[0][1].get<vector<double>>();
+            _edgeFeatures[key] = val;
+
+//            // DEBUG
+//            bool display = true;
+//            for(auto bin: val)
+//                if(bin != 0. && bin != 1.)
+//                    display = true;
+//            if(display) {
+//                cout << "Key (" << key.first << ", " << key.second << ") has value ";
+//                for (auto bin: val)
+//                    cout << bin << " ";
+//                cout << endl;
+//            }
+//            // END DEBUG
+        }
+    }
+
+    // Node features
+    if (data.find("NodePoints") != data.end()) {
+        for(auto point: data["NodePoints"])
+            _cellPoints.push_back(point.get<vector<double>>());
+    }
+
+    // Node Bboxes
+    if (data.find("NodeBbox") != data.end()) {
+        for(auto bbox: data["NodeBbox"])
+            _nodeBboxes.emplace_back(bbox[0], bbox[1], bbox[2], bbox[3], bbox[4], bbox[5]);
+    }
+
     cout << "Arrangement loaded" << endl;
+}
+
+void PlaneArrangement::saveAsJson(const string& outPath) const
+{
+    // Compiling data into json
+    Json data;
+    Json cell2labelJ;
+    for(auto idx: _cell2label)
+        cell2labelJ[to_string(idx.first)] = idx.second;
+    data["map"] = cell2labelJ;
+    data["NodeFeatures"] = _nodeFeatures;
+    data["EdgeFeatures"] = _edgeFeatures;
+    data["labels"] = _labels;
+    data["gtLabels"] = _gtLabels;
+    if(_cellPoints.empty())
+        data["NodePoints"] = getCellsPoints(_cell2label, _arr);
+    else
+        data["NodePoints"] = _cellPoints;
+    if(_nodeBboxes.empty())
+        data["NodeBbox"] = getCellsBbox(_cell2label, _arr);
+    else
+        data["NodeBbox"] = _nodeBboxes;
+    data["planes"] = _planes;
+    data["bbox"] = _bbox;
+    data["nbPlanes"] = _nbPlanes;
+    vector<vector<double>> pointCloud(_points.size(), vector<double>(3));
+    for(int i=0; i < _points.size(); i++)
+        pointCloud[i] = {_points[i].x(), _points[i].y(), _points[i].z()};
+    data["pointCloud"] = pointCloud;
+
+    // Save to disk
+    ofstream outFile(outPath);
+    outFile << data;
+    outFile.close();
+}
+
+void PlaneArrangement::setEdgeLabels(const EdgeFeatures& edgeFeatures)
+{
+    if(!_edgeFeatures.empty() && _edgeFeatures.size() != edgeFeatures.size())
+        cout << "Careful! Replacing edge features by new features with different size..." << endl;
+    _edgeFeatures = edgeFeatures;
 }
 
 PlaneArrangement::PlaneArrangement(const vector<Plane> &inPlanes, const vector<int>& validPlaneIdx,
         const CGAL::Bbox_3 &inBbox) : isArrangementComputed(false) {
+
     // Planes
+    _nbPlanes = validPlaneIdx.size();
     for(auto idx: validPlaneIdx)
         _planes.push_back(inPlanes[idx]);
 
@@ -464,6 +592,10 @@ const vector<Point> &PlaneArrangement::points() const {
     return _points;
 }
 
+const EdgeFeatures &PlaneArrangement::edgeFeatures() const {
+    return _edgeFeatures;
+}
+
 vector<classKeywordsColor> loadSemanticClasses(const string& path)
 {
     vector<classKeywordsColor> semanticClasses;
@@ -494,5 +626,48 @@ vector<classKeywordsColor> loadSemanticClasses(const string& path)
         semanticClasses.emplace_back(itr.key(), keywords, color);
     }
     return semanticClasses;
+}
+
+
+vector<vector<double>> getCellsPoints(const map<int, int> &cell2label, const Arrangement &arr) {
+    vector<vector<double>> cellsPoints(cell2label.size(), {0., 0., 0.});
+    Epeck_to_Simple e2s;
+
+    for(auto cellIt = arr.cells_begin(); cellIt != arr.cells_end(); cellIt++) {
+        if(!arr.is_cell_bounded(*cellIt)) continue;
+
+        auto pt = e2s(cellIt->point());
+        cellsPoints[cell2label.at(arr.cell_handle(*cellIt))] = {pt.x(), pt.y(), pt.z()};
+    }
+
+    return cellsPoints;
+}
+
+vector<vector<double>> getCellsBbox(const map<int, int> &cell2label, const Arrangement &arr) {
+    vector<vector<double>> cellsPoints(cell2label.size(), {0., 0., 0.});
+    Epeck_to_Simple e2s;
+
+    for(auto cellIt = arr.cells_begin(); cellIt != arr.cells_end(); cellIt++) {
+        if(!arr.is_cell_bounded(*cellIt)) continue;
+        cellsPoints[cell2label.at(arr.cell_handle(*cellIt))] = {DBL_MAX, DBL_MAX, DBL_MAX, -DBL_MAX, -DBL_MAX, -DBL_MAX};
+        for(auto facetIt = cellIt->subfaces_begin(); facetIt != cellIt->subfaces_end(); facetIt++)
+        {
+            auto facet = arr.facet(*facetIt);
+            for(auto edgeIt = facet.subfaces_begin(); edgeIt != facet.subfaces_end(); edgeIt++) {
+                auto edge = arr.edge(*edgeIt);
+                for(auto pointIt = edge.subfaces_begin(); pointIt != edge.subfaces_end(); pointIt++)
+                {
+                    cellsPoints[cell2label.at(arr.cell_handle(*cellIt))][0] = min(cellsPoints[cell2label.at(arr.cell_handle(*cellIt))][0], CGAL::to_double(arr.point(*pointIt).x()));
+                    cellsPoints[cell2label.at(arr.cell_handle(*cellIt))][1] = min(cellsPoints[cell2label.at(arr.cell_handle(*cellIt))][1], CGAL::to_double(arr.point(*pointIt).y()));
+                    cellsPoints[cell2label.at(arr.cell_handle(*cellIt))][2] = min(cellsPoints[cell2label.at(arr.cell_handle(*cellIt))][2], CGAL::to_double(arr.point(*pointIt).z()));
+                    cellsPoints[cell2label.at(arr.cell_handle(*cellIt))][3] = max(cellsPoints[cell2label.at(arr.cell_handle(*cellIt))][3], CGAL::to_double(arr.point(*pointIt).x()));
+                    cellsPoints[cell2label.at(arr.cell_handle(*cellIt))][4] = max(cellsPoints[cell2label.at(arr.cell_handle(*cellIt))][4], CGAL::to_double(arr.point(*pointIt).y()));
+                    cellsPoints[cell2label.at(arr.cell_handle(*cellIt))][5] = max(cellsPoints[cell2label.at(arr.cell_handle(*cellIt))][5], CGAL::to_double(arr.point(*pointIt).z()));
+                }
+            }
+        }
+    }
+
+    return cellsPoints;
 }
 

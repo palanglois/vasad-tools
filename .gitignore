@@ -5,5 +5,6 @@ semantic_classes.json
 debug
 build
 data/coloredGtPlanes*
+data/debugEdgeFeatures*
 data/debug_triangles.obj
 .clion.source.upload.marker

@@ -61,14 +61,14 @@ int main(int argc, char *argv[]) {
     // Load 3D model
     vector<Triangle> triangles;
     const string inputPath = opt["-i"];
-    auto trianglesAndColors = loadTrianglesFromObj(inputPath, classesWithColor);
-    triangles = trianglesAndColors.first;
+    auto trianglesAndClasses = loadTrianglesFromObj(inputPath, classesWithColor);
+    triangles = trianglesAndClasses.first;
     if (op::str2bool(opt["-gt"]))
         saveTrianglesAsObj(vector<Triangle>(triangles.begin(), triangles.end()),
-                           outPath + "coloredTriangles.obj", trianglesAndColors.second);
+                           outPath + "coloredTriangles.obj", trianglesAndClasses.second, classesWithColor);
     if (op::str2bool(opt["-so"]))
         saveSeparatedObj(vector<Triangle>(triangles.begin(), triangles.end()),
-                         outPath + "sep_obj", trianglesAndColors.second);
+                         outPath + "sep_obj", trianglesAndClasses.second, classesWithColor);
 
     //Build intersection tree
     Tree tree(triangles.begin(), triangles.end());
@@ -102,8 +102,8 @@ int main(int argc, char *argv[]) {
 #pragma omp critical
                 {
                     if (boost::get<Point>(&(intersection->first))) {
-                        colorTuple color = trianglesAndColors.second[*boost::get<Primitive_id>(intersection->second)];
-                        pointColors.push_back(color);
+                        int classIdx = trianglesAndClasses.second[*boost::get<Primitive_id>(intersection->second)];
+                        pointColors.push_back(get<2>(classesWithColor[classIdx]));
                         const Point *p = boost::get<Point>(&(intersection->first));
                         sampledPoints.push_back(*p);
                         if(op::str2bool(opt["-pov"]))

@@ -167,9 +167,8 @@ TEST_F(PlaneArrangementFixture, LabelingWithObjLoad)
 
 TEST_F(PlaneArrangementFixture, pointSampling)
 {
-    const int factor = 20;
-    pair<vector<Point>, map<Point, int>> samples = sampleFacets(*myPlaneArrangement, factor);
-    ASSERT_EQ(samples.first.size(), 640);
+    pair<vector<Point>, map<Point, int>> samples = sampleFacets(*myPlaneArrangement);
+    ASSERT_EQ(samples.first.size(), (int) 1e6);
 
     // Simulated points
     const int nbClasses = 3;
@@ -188,11 +187,15 @@ TEST_F(PlaneArrangementFixture, pointSampling)
     inPoints.emplace_back(0.5, 0.51, 0.24);
     inLabels.push_back(1);
 
-    EdgeFeatures features = computeFeaturesFromLabeledPoints(*myPlaneArrangement, inPoints, inLabels, nbClasses, 20);
-    ASSERT_EQ(features.size(), 1);
+    cout.setstate(ios_base::failbit);
+    cerr.setstate(ios_base::failbit);
+    EdgeFeatures features = computeFeaturesFromLabeledPoints(*myPlaneArrangement, cell2label, bbox, inPoints, inLabels, nbClasses);
+    cout.clear();
+    cerr.clear();
+    ASSERT_EQ(features.size(), 4);
 
-    int cell1 = myPlaneArrangement->facet(label2facet[0]).superface(0);
-    int cell2 = myPlaneArrangement->facet(label2facet[0]).superface(1);
+    int cell1 = cell2label.at(myPlaneArrangement->facet(label2facet[0]).superface(0));
+    int cell2 = cell2label.at(myPlaneArrangement->facet(label2facet[0]).superface(1));
     pair<int, int> edgeZeroV1(cell1, cell2);
     pair<int, int> edgeZeroV2(cell2, cell1);
     ASSERT_TRUE((features.find(edgeZeroV1) != features.end()) ||
@@ -301,8 +304,9 @@ TEST(GraphStatistics, SplitingModel)
     cerr.setstate(ios_base::failbit);
     PlaneArrangement myArrangement(outPath);
     auto allTrees = loadTreesFromObj(testObjPath, classesWithColor);
+    pair<vector<Point>, vector<int>> pointsWithLabel;
     vector<Json> allSplits = splitArrangementInBatch(myArrangement, allTrees, classesWithColor.size(),
-            step, maxNodes, maxNbPlanes, nbSamplesPerCell, proba, geom, 0.95, false);
+            step, maxNodes, pointsWithLabel, maxNbPlanes, nbSamplesPerCell, proba, geom, 0.95, false);
     cout.clear();
     cerr.clear();
     ASSERT_GE(allSplits.size(), 1);

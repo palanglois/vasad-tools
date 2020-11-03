@@ -39,7 +39,7 @@ int main(int argc, char *argv[]) {
 
     // Save it
     saveTrianglesAsObj(vector<Triangle>(trianglesAndColors.first.begin(), trianglesAndColors.first.end()),
-                       outPath, trianglesAndColors.second);
+                       outPath, trianglesAndColors.second, classesWithColor);
 
     cout << "Saved model in " << outPath << endl;
 

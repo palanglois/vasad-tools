@@ -351,7 +351,7 @@ vector<int> assignLabel(const Arrangement &arr, const map<int, int> &cell2label,
 //        }
 //    }
 //    vector<Triangle> triangles;
-//    TriangleColorMap colorMap;
+//    TriangleClassMap colorMap;
 //    cout << "nb of faces: " << cell.number_of_subfaces() << endl;
 //    for(auto facetIt = cell.subfaces_begin(); facetIt != cell.subfaces_end(); facetIt++) {
 //        auto facet = arr.facet(*facetIt);
@@ -380,45 +380,40 @@ computeGraph(const vector<int> &labels, const map<int, int> &cell2label, const A
     default_random_engine generator;
     uniform_real_distribution<double> unitRandom(0., 1.);
     NodeFeatures nodeFeatures(cell2label.size(), vector<double>(1, 0));
-    for(auto cellIt = arr.cells_begin(); cellIt != arr.cells_end(); cellIt++)
-    {
-        if(!arr.is_cell_bounded(*cellIt)) continue;
+    for (auto cellIt = arr.cells_begin(); cellIt != arr.cells_end(); cellIt++) {
+        if (!arr.is_cell_bounded(*cellIt)) continue;
         auto cellHandle = arr.cell_handle(*cellIt);
         int labelIdx = cell2label.at(cellHandle);
-	double feature = 1.; // We suppose the current cell is full
-	if(labels[labelIdx] == -1)
-	{
-	    // If it was actually empty, we only say it in proba% of the cases
-	    if(unitRandom(generator) < proba)
-	        feature = 0.;
-	}
-	    
+        double feature = 1.; // We suppose the current cell is full
+        if (labels[labelIdx] == -1) {
+            // If it was actually empty, we only say it in proba% of the cases
+            if (unitRandom(generator) < proba)
+                feature = 0.;
+        }
+
         nodeFeatures[labelIdx] = {feature};
 
-	// Node geometry
-	if(withGeom)
-	{
+        // Node geometry
+        if (withGeom) {
             vector<double> curBbox = {DBL_MAX, DBL_MAX, DBL_MAX, -DBL_MAX, -DBL_MAX, -DBL_MAX};
-            for(auto facetIt = cellIt->subfaces_begin(); facetIt != cellIt->subfaces_end(); facetIt++)
-            {
+            for (auto facetIt = cellIt->subfaces_begin(); facetIt != cellIt->subfaces_end(); facetIt++) {
                 auto facet = arr.facet(*facetIt);
-                for(auto edgeIt = facet.subfaces_begin(); edgeIt != facet.subfaces_end(); edgeIt++) {
+                for (auto edgeIt = facet.subfaces_begin(); edgeIt != facet.subfaces_end(); edgeIt++) {
                     auto edge = arr.edge(*edgeIt);
-                    for(auto pointIt = edge.subfaces_begin(); pointIt != edge.subfaces_end(); pointIt++)
-                    {
+                    for (auto pointIt = edge.subfaces_begin(); pointIt != edge.subfaces_end(); pointIt++) {
                         curBbox[0] = min(curBbox[0], CGAL::to_double(arr.point(*pointIt).x()));
                         curBbox[1] = min(curBbox[1], CGAL::to_double(arr.point(*pointIt).y()));
                         curBbox[2] = min(curBbox[2], CGAL::to_double(arr.point(*pointIt).z()));
                         curBbox[3] = max(curBbox[3], CGAL::to_double(arr.point(*pointIt).x()));
                         curBbox[4] = max(curBbox[4], CGAL::to_double(arr.point(*pointIt).y()));
                         curBbox[5] = max(curBbox[5], CGAL::to_double(arr.point(*pointIt).z()));
-	            }
-	        }
-	    }
-	    nodeFeatures[labelIdx].push_back(curBbox[3] - curBbox[0]);
-	    nodeFeatures[labelIdx].push_back(curBbox[4] - curBbox[1]);
-	    nodeFeatures[labelIdx].push_back(curBbox[5] - curBbox[2]);
-	}
+                    }
+                }
+            }
+            nodeFeatures[labelIdx].push_back(curBbox[3] - curBbox[0]);
+            nodeFeatures[labelIdx].push_back(curBbox[4] - curBbox[1]);
+            nodeFeatures[labelIdx].push_back(curBbox[5] - curBbox[2]);
+        }
     }
 
     // Graph edges
@@ -462,12 +457,12 @@ computeGraph(const vector<int> &labels, const map<int, int> &cell2label, const A
     return make_pair(nodeFeatures, edgeFeatures);
 }
 
-pair<vector<Point>, map<Point, int>> sampleFacets(const Arrangement &arr, const int factor)
+pair<vector<Point>, map<Point, int>> sampleFacets(const Arrangement &arr)
 {
     auto e2s = Epeck_to_Simple();
     double minArea = DBL_MAX;
     double totalArea = 0;
-    vector<double> cumulHisto;
+    vector<double> triangleAreas;
     vector<vector<Point>> triangles;
     vector<int> triangleToHandle;
     for(auto facetIt = arr.facets_begin(); facetIt != arr.facets_end(); facetIt++) {
@@ -488,7 +483,7 @@ pair<vector<Point>, map<Point, int>> sampleFacets(const Arrangement &arr, const 
             while (vhi != vertices.end()) {
                 Arrangement::Point third = arr.point(*vhi);
                 double triangleArea = sqrt(CGAL::to_double(CGAL::squared_area(first, second, third)));
-                cumulHisto.push_back(triangleArea + totalArea);
+                triangleAreas.push_back(triangleArea);
                 totalArea += triangleArea;
                 facetArea += triangleArea;
                 triangles.push_back({e2s(first), e2s(second), e2s(third)});
@@ -501,124 +496,155 @@ pair<vector<Point>, map<Point, int>> sampleFacets(const Arrangement &arr, const 
         minArea = min(minArea, facetArea);
     }
 
-    // Normalize the histogram
-    for(double &cumulatedArea: cumulHisto)
-        cumulatedArea /= totalArea;
-    int nbPointsToSample = factor * int(totalArea / minArea);
+    // Normalize the area vector
+    for(double &currentArea: triangleAreas)
+        currentArea /= totalArea;
+    int nbPointsToSample = (int) 1e6;
     // Actual sampling
-    vector<Point> sampledPoints(nbPointsToSample);
+    vector<Point> sampledPoints;
     map<Point, int> pointToHandle;
 #pragma omp parallel for
-    for(int i=0; i < nbPointsToSample; i++)
+    for(int i=0; i < triangles.size(); i++)
     {
-        // Select a random triangle according to the areas distribution
-        double r = ((double) rand() / (RAND_MAX));
-        size_t found_index = 0;
-        for (size_t j = 0; j < cumulHisto.size() && r > cumulHisto[j]; j++)
-            found_index = j + 1;
-
-        // Draw a random point in this triangle
-        double r1 = ((double) rand() / (RAND_MAX));
-        double r2 = ((double) rand() / (RAND_MAX));
-        const Point& A = triangles[found_index][0];
-        const Point& B = triangles[found_index][1];
-        const Point& C = triangles[found_index][2];
-        Point P = CGAL::ORIGIN + (1 - sqrt(r1)) * (A  - CGAL::ORIGIN)
-                + (sqrt(r1) * (1 - r2)) * (B - CGAL::ORIGIN)
-                + (sqrt(r1) * r2) * (C - CGAL::ORIGIN);
+        // Number of points to sample on this triangle
+        int currentNbPtToSample = max(1, int(triangleAreas[i] * nbPointsToSample));
+        for (int j = 0; j < currentNbPtToSample; j++) {
+            // Draw a random point in this triangle
+            double r1 = ((double) rand() / (RAND_MAX));
+            double r2 = ((double) rand() / (RAND_MAX));
+            const Point &A = triangles[i][0];
+            const Point &B = triangles[i][1];
+            const Point &C = triangles[i][2];
+            Point P = CGAL::ORIGIN + (1 - sqrt(r1)) * (A - CGAL::ORIGIN)
+                      + (sqrt(r1) * (1 - r2)) * (B - CGAL::ORIGIN)
+                      + (sqrt(r1) * r2) * (C - CGAL::ORIGIN);
 #pragma omp critical
-        {
-            pointToHandle[P] = triangleToHandle[found_index];
-            sampledPoints[i] = P;
+            {
+                pointToHandle[P] = triangleToHandle[i];
+                sampledPoints.push_back(P);
+            }
         }
     }
     return make_pair(sampledPoints, pointToHandle);
 }
 
-EdgeFeatures computeFeaturesFromLabeledPoints(const Arrangement &arr, const vector<Point> &points,
-                                              const vector<int> &labels, const int nbClasses, const int factor)
+EdgeFeatures computeFeaturesFromLabeledPoints(const Arrangement &arr, const map<int, int> &cell2label,
+                                              const CGAL::Bbox_3& bbox,
+                                              const vector<Point> &points,
+                                              const vector<int> &labels, const int nbClasses,
+                                              bool verbose)
 {
+    auto s2e = Simple_to_Epeck();
+    if(verbose)
+        cout << endl << "Sampling plane arrangement... " << endl;
     // Make tree
-    pair<vector<Point>, map<Point, int>> samples = sampleFacets(arr, factor);
+    pair<vector<Point>, map<Point, int>> samples = sampleFacets(arr);
+    if(verbose)
+        cout << "Sampled " << samples.first.size() << " points." << endl << "Building tree..." << endl;
     kdTree tree(samples.first.begin(), samples.first.end());
+    if(verbose)
+        cout << "Tree built!" << endl;
+
+    // Initializing edge features
+    EdgeFeatures features;
+    for(auto facetIt = arr.facets_begin(); facetIt != arr.facets_end(); facetIt++)
+    {
+        if(!arr.is_facet_bounded(*facetIt)) continue;
+        int cell1 = facetIt->superface(0);
+        if(!arr.is_cell_bounded(cell1)) continue;
+        int cell2 = facetIt->superface(1);
+        if(!arr.is_cell_bounded(cell2)) continue;
+        pair<int, int> facetId(cell2label.at(cell1), cell2label.at(cell2));
+        features[facetId] = vector<double>(nbClasses + 1, 0);
+        features[facetId][nbClasses] = 1.;
+    }
 
     // Find closest facet by nearest neighbour search
-    EdgeFeatures features;
-    for(int i=0; i < points.size(); i++)
+    auto tqPoints = tq::trange(points.size());
+    tqPoints.set_prefix("Making edge features: ");
+    for (int i : tqPoints)
     {
         const auto& point = points[i];
+        if(point.x() <= bbox.xmin()) continue;
+        if(point.y() <= bbox.ymin()) continue;
+        if(point.z() <= bbox.zmin()) continue;
+        if(point.x() >= bbox.xmax()) continue;
+        if(point.y() >= bbox.ymax()) continue;
+        if(point.z() >= bbox.zmax()) continue;
         Neighbor_search search(tree, point, 1);
         int closestFacetHandle = samples.second[search.begin()->first];
+        int cell1Raw = arr.facet(closestFacetHandle).superface(0);
+        int cell2Raw = arr.facet(closestFacetHandle).superface(1);
+        if(!arr.is_cell_bounded(cell1Raw) || !arr.is_cell_bounded(cell2Raw)) continue;
+
+        // Refine facet handle
+        auto closestPoint = s2e(search.begin()->first);
+        auto curPointEpeck = s2e(point);
+        int curPointCellIdx = find_containing_cell(arr, closestPoint, cell1Raw);
+        double bestDistance = DBL_MAX;
+        for (auto facetIt = arr.cell(curPointCellIdx).subfaces_begin();
+             facetIt != arr.cell(curPointCellIdx).subfaces_end(); facetIt++) {
+            const Arrangement::Plane& curPlane = arr.plane(arr.facet_plane(arr.facet(*facetIt)));
+            double projDist = CGAL::to_double((curPlane.projection(curPointEpeck) - curPointEpeck).squared_length());
+            if(projDist < bestDistance)
+            {
+                bestDistance = projDist;
+                closestFacetHandle = *facetIt;
+            }
+        }
 
         // Update corresponding feature
-        int cell1 = arr.facet(closestFacetHandle).superface(0);
-        int cell2 = arr.facet(closestFacetHandle).superface(1);
+        int cell1 = cell2label.at(cell1Raw);
+        int cell2 = cell2label.at(cell2Raw);
         auto pair1 = make_pair(cell1, cell2);
         auto pair2 = make_pair(cell2, cell1);
-        if(features.find(pair1) != features.end())
+        pair<int, int> goodPair;
+        if(features.find(pair1) != features.end()) {
             features[pair1][labels[i]] += 1;
-        else if(features.find(pair2) != features.end())
-            features[pair2][labels[i]] += 1;
-        else
-        {
-            features[pair1] = vector<double>(nbClasses, 0);
-            features[pair1][labels[i]] += 1;
+            features[pair1][nbClasses] = 0;
+            goodPair = pair1;
         }
+        else if(features.find(pair2) != features.end()) {
+            features[pair2][labels[i]] += 1;
+            features[pair2][nbClasses] = 0;
+            goodPair = pair2;
+        }
+        else
+            cerr << "Issue: edge " << cell1 << ", " << cell2 << " should have been initialized." << endl;
+
+//        // DEBUG
+//        if(oldFeatures.find(goodPair) != oldFeatures.end())
+//        {
+//            int oldLabel = -1;
+//            for(int k = 0; k < oldFeatures.at(goodPair).size(); k++)
+//                if(oldFeatures.at(goodPair)[k] == 1)
+//                {
+//                    oldLabel = k;
+//                    break;
+//                }
+//            if(oldLabel != nbClasses && oldLabel != labels[i])
+//                cout << "Old/New label: " << oldLabel << " " << labels[i] << endl;
+//        }
+//        // END DEBUG
     }
 
     // Normalize features
+    vector<double> emptyVec( nbClasses + 1, 0.);
+    emptyVec[nbClasses] = 1.;
     for(auto& edgeFeat: features)
     {
         double sum_of_elems = accumulate(edgeFeat.second.begin(), edgeFeat.second.end(), 0.);
+//        if(sum_of_elems <= 2.)
+//        {
+//            // Just 2 point is not enough, we discard this data
+//            edgeFeat.second = emptyVec;
+//        }
         if(sum_of_elems != 0.)
             for(auto& elem: edgeFeat.second)
                 elem /= sum_of_elems;
     }
 
     return features;
-}
-
-
-vector<vector<double>> getCellsPoints(const map<int, int> &cell2label, const Arrangement &arr) {
-    vector<vector<double>> cellsPoints(cell2label.size(), {0., 0., 0.});
-    Epeck_to_Simple e2s;
-
-    for(auto cellIt = arr.cells_begin(); cellIt != arr.cells_end(); cellIt++) {
-        if(!arr.is_cell_bounded(*cellIt)) continue;
-
-        auto pt = e2s(cellIt->point());
-        cellsPoints[cell2label.at(arr.cell_handle(*cellIt))] = {pt.x(), pt.y(), pt.z()};
-    }
-
-    return cellsPoints;
-}
-
-vector<vector<double>> getCellsBbox(const map<int, int> &cell2label, const Arrangement &arr) {
-    vector<vector<double>> cellsPoints(cell2label.size(), {0., 0., 0.});
-    Epeck_to_Simple e2s;
-
-    for(auto cellIt = arr.cells_begin(); cellIt != arr.cells_end(); cellIt++) {
-        if(!arr.is_cell_bounded(*cellIt)) continue;
-        cellsPoints[cell2label.at(arr.cell_handle(*cellIt))] = {DBL_MAX, DBL_MAX, DBL_MAX, -DBL_MAX, -DBL_MAX, -DBL_MAX};
-        for(auto facetIt = cellIt->subfaces_begin(); facetIt != cellIt->subfaces_end(); facetIt++)
-        {
-            auto facet = arr.facet(*facetIt);
-            for(auto edgeIt = facet.subfaces_begin(); edgeIt != facet.subfaces_end(); edgeIt++) {
-                auto edge = arr.edge(*edgeIt);
-                for(auto pointIt = edge.subfaces_begin(); pointIt != edge.subfaces_end(); pointIt++)
-		{
-		    cellsPoints[cell2label.at(arr.cell_handle(*cellIt))][0] = min(cellsPoints[cell2label.at(arr.cell_handle(*cellIt))][0], CGAL::to_double(arr.point(*pointIt).x()));
-		    cellsPoints[cell2label.at(arr.cell_handle(*cellIt))][1] = min(cellsPoints[cell2label.at(arr.cell_handle(*cellIt))][1], CGAL::to_double(arr.point(*pointIt).y()));
-		    cellsPoints[cell2label.at(arr.cell_handle(*cellIt))][2] = min(cellsPoints[cell2label.at(arr.cell_handle(*cellIt))][2], CGAL::to_double(arr.point(*pointIt).z()));
-		    cellsPoints[cell2label.at(arr.cell_handle(*cellIt))][3] = max(cellsPoints[cell2label.at(arr.cell_handle(*cellIt))][3], CGAL::to_double(arr.point(*pointIt).x()));
-		    cellsPoints[cell2label.at(arr.cell_handle(*cellIt))][4] = max(cellsPoints[cell2label.at(arr.cell_handle(*cellIt))][4], CGAL::to_double(arr.point(*pointIt).y()));
-		    cellsPoints[cell2label.at(arr.cell_handle(*cellIt))][5] = max(cellsPoints[cell2label.at(arr.cell_handle(*cellIt))][5], CGAL::to_double(arr.point(*pointIt).z()));
-		}
-            }
-        }
-    }
-
-    return cellsPoints;
 }
 
 inline bool isInBbox(const Triangle& tri, const CGAL::Bbox_3 &bbox)
@@ -693,8 +719,8 @@ void subdivideBbox(stack<CGAL::Bbox_3> &bboxes, CGAL::Bbox_3 curBbox)
 
 vector<Json>
 splitArrangementInBatch(const PlaneArrangement &planeArr, vector<facesLabelName> &labeledShapes, int nbClasses,
-        double step, int maxNodes, int maxNbPlanes, int nbSamplesPerCell, double proba, bool geom, double ratioReconstructed,
-        bool verbose) {
+        double step, int maxNodes, const pair<vector<Point>, vector<int>> &labeledPointCloud, int maxNbPlanes,
+        int nbSamplesPerCell, double proba, bool geom, double ratioReconstructed, bool verbose) {
 
     vector<Json> computedArrangements;
 
@@ -757,7 +783,15 @@ splitArrangementInBatch(const PlaneArrangement &planeArr, vector<facesLabelName>
                 cell2labelJ[to_string(idx.first)] = idx.second;
             data["map"] = cell2labelJ;
             data["NodeFeatures"] = nodesEdges.first;
-            data["EdgeFeatures"] = nodesEdges.second;
+            if(labeledPointCloud.first.empty())
+                data["EdgeFeatures"] = nodesEdges.second;
+            else
+                data["EdgeFeatures"] = computeFeaturesFromLabeledPoints(onlyArrangement,
+                                                                        fullArrangement.cell2label(),
+                                                                        curBbox,
+                                                                        labeledPointCloud.first,
+                                                                        labeledPointCloud.second,
+                                                                        nbClasses, verbose);
             data["gtLabels"] = gtLabels;
             data["NodePoints"] = getCellsPoints(fullArrangement.cell2label(), onlyArrangement);
             data["NodeBbox"] = getCellsBbox(fullArrangement.cell2label(), onlyArrangement);
@@ -765,7 +799,7 @@ splitArrangementInBatch(const PlaneArrangement &planeArr, vector<facesLabelName>
             for(int validIdx: validPlaneIdx)
                 currentPlanes.push_back(planeArr.planes()[validIdx]);
             data["planes"] = currentPlanes;
-            data["bbox"] = {curBbox.xmin(), curBbox.ymin(), curBbox.zmin(), curBbox.xmax(), curBbox.ymax(), curBbox.zmax()};
+            data["bbox"] = curBbox;
             data["nbPlanes"] = validPlaneIdx.size();
 
             // Adding to the valid arrangements
