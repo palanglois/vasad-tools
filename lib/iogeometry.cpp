@@ -20,7 +20,7 @@ loadTrianglesFromObj(const string &objFile, const vector<classKeywordsColor> &cl
 
     //Loading the triangles
     string currentLine;
-    int cur_class_idx(0);
+    int cur_class_idx(-1);
     vector<int> triClasses;
     TriangleClassMap triangleToColors;
     while (getline(inputStream, currentLine)) {
@@ -40,12 +40,14 @@ loadTrianglesFromObj(const string &objFile, const vector<classKeywordsColor> &cl
             vector<int> curFaceIdx;
             for (auto idxStr: curFace)
                 curFaceIdx.push_back(stoi(idxStr.substr(0, idxStr.find("/"))) - 1);
-            faces.emplace_back(curFaceIdx);
-            triClasses.push_back(cur_class_idx);
+            if(cur_class_idx != -1) {
+                faces.emplace_back(curFaceIdx);
+                triClasses.push_back(cur_class_idx);
+            }
         } else if (firstCaracter == "o") {
             // Object - Finding the corresponding class
             ss >> obj_name;
-            cur_class_idx = 0;
+            cur_class_idx = -1;
             bool classFound = false;
             for (int i=0; i < classes.size(); i++) {
                 const auto& cl = classes[i];

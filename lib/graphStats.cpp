@@ -227,7 +227,7 @@ vector<int> assignLabel(const Arrangement &arr, const map<int, int> &cell2label,
         auto &labeledTree = labeledShapes[j];
         tree.rebuild(get<0>(labeledTree).begin(), get<0>(labeledTree).end());
         bool warningSent = false;
-#pragma omp parallel for schedule(static)
+#pragma omp parallel for schedule(static) num_threads(14)
 	for(int i=0; i < queryPoints.size(); i++)
         {
 
