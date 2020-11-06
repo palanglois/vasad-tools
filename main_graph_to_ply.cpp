@@ -11,6 +11,7 @@ int main(int argc, char *argv[]) {
     opt.add_option("-h", "--help", "show option help");
     opt.add_option("-i", "--input", "Path to the input plane arrangement", "");
     opt.add_option("-o", "--output", "Path to the output ply file", "");
+    opt.add_option("-v", "--verbose", "Verbosity trigger");
 
     //Parsing options
     bool correctParsing = opt.parse_options(argc, argv);
@@ -34,6 +35,7 @@ int main(int argc, char *argv[]) {
 
     const string inputPath = opt["-i"];
     const string outputPath = opt["-o"];
+    const bool verbose = op::str2bool(opt["-v"]);
 
     // Loading plane arrangement
     PlaneArrangement currentArrangement(inputPath);
@@ -43,6 +45,10 @@ int main(int argc, char *argv[]) {
 
     // Load semantic_classes
     vector<classKeywordsColor> classesWithColor = loadSemanticClasses((string) TEST_DIR + "semantic_classes.json");
+    if(verbose)
+        for(int i=0; i < classesWithColor.size(); i++)
+            cout << endl << "Class " << i << " is " << get<0>(classesWithColor[i]);
+        cout << endl;
 
     // Extract mesh
     savePlyFromLabel(outputPath, arr, cell2label, gtLabels, classesWithColor);

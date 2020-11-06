@@ -457,7 +457,7 @@ computeGraph(const vector<int> &labels, const map<int, int> &cell2label, const A
     return make_pair(nodeFeatures, edgeFeatures);
 }
 
-pair<vector<Point>, map<Point, int>> sampleFacets(const Arrangement &arr)
+pair<vector<Point>, map<Point, int>> sampleFacets(const Arrangement &arr, map<int, double> &facetAreas)
 {
     auto e2s = Epeck_to_Simple();
     double minArea = DBL_MAX;
@@ -492,6 +492,7 @@ pair<vector<Point>, map<Point, int>> sampleFacets(const Arrangement &arr)
                 ++vhi;
             }
         }
+        facetAreas[arr.facet_handle(*facetIt)] = facetArea;
         // Update
         minArea = min(minArea, facetArea);
     }
@@ -499,7 +500,7 @@ pair<vector<Point>, map<Point, int>> sampleFacets(const Arrangement &arr)
     // Normalize the area vector
     for(double &currentArea: triangleAreas)
         currentArea /= totalArea;
-    int nbPointsToSample = (int) 1e6;
+    int nbPointsToSample = 1; // TODO remove in the future
     // Actual sampling
     vector<Point> sampledPoints;
     map<Point, int> pointToHandle;
@@ -538,7 +539,9 @@ EdgeFeatures computeFeaturesFromLabeledPoints(const Arrangement &arr, const map<
     if(verbose)
         cout << endl << "Sampling plane arrangement... " << endl;
     // Make tree
-    pair<vector<Point>, map<Point, int>> samples = sampleFacets(arr);
+    map<int, double> facetAreas;
+    map<pair<int, int>, double> facetAreasMapping;
+    pair<vector<Point>, map<Point, int>> samples = sampleFacets(arr, facetAreas);
     if(verbose)
         cout << "Sampled " << samples.first.size() << " points." << endl << "Building tree..." << endl;
     kdTree tree(samples.first.begin(), samples.first.end());
@@ -557,10 +560,12 @@ EdgeFeatures computeFeaturesFromLabeledPoints(const Arrangement &arr, const map<
         pair<int, int> facetId(cell2label.at(cell1), cell2label.at(cell2));
         features[facetId] = vector<double>(nbClasses + 1, 0);
         features[facetId][nbClasses] = 1.;
+        facetAreasMapping[facetId] = facetAreas.at(arr.facet_handle(*facetIt));
     }
 
     // Find closest facet by nearest neighbour search
     auto tqPoints = tq::trange(points.size());
+    vector<Point> validPoints;
     tqPoints.set_prefix("Making edge features: ");
     for (int i : tqPoints)
     {
@@ -571,6 +576,7 @@ EdgeFeatures computeFeaturesFromLabeledPoints(const Arrangement &arr, const map<
         if(point.x() >= bbox.xmax()) continue;
         if(point.y() >= bbox.ymax()) continue;
         if(point.z() >= bbox.zmax()) continue;
+        validPoints.push_back(point);
         Neighbor_search search(tree, point, 1);
         int closestFacetHandle = samples.second[search.begin()->first];
         int cell1Raw = arr.facet(closestFacetHandle).superface(0);
@@ -628,20 +634,31 @@ EdgeFeatures computeFeaturesFromLabeledPoints(const Arrangement &arr, const map<
 //        // END DEBUG
     }
 
+    // Get the average distance between neighbour points in the point cloud
+    double averageNNDistance = 0.;
+    kdTree densityTree(validPoints.begin(), validPoints.end());
+    for(const auto& point: validPoints) {
+        Neighbor_search search(densityTree, point, 2);
+        averageNNDistance += sqrt(next(search.begin(), 1)->second);
+    }
+    averageNNDistance /= validPoints.size();
+
     // Normalize features
     vector<double> emptyVec( nbClasses + 1, 0.);
     emptyVec[nbClasses] = 1.;
     for(auto& edgeFeat: features)
     {
         double sum_of_elems = accumulate(edgeFeat.second.begin(), edgeFeat.second.end(), 0.);
-//        if(sum_of_elems <= 2.)
-//        {
-//            // Just 2 point is not enough, we discard this data
-//            edgeFeat.second = emptyVec;
-//        }
-        if(sum_of_elems != 0.)
-            for(auto& elem: edgeFeat.second)
-                elem /= sum_of_elems;
+        double expectedNbOfPoints = facetAreasMapping[edgeFeat.first] / (3.141592 * pow(averageNNDistance, 2));
+        if(expectedNbOfPoints >= 1. && edgeFeat.second[edgeFeat.second.size() - 1] != 1.) {
+            for (auto &elem: edgeFeat.second)
+                elem /= expectedNbOfPoints;
+        }
+	else
+		edgeFeat.second = emptyVec;
+	// Renormalization
+    for (auto &elem: edgeFeat.second)
+        elem = min(elem, 1.);
     }
 
     return features;
@@ -717,6 +734,30 @@ void subdivideBbox(stack<CGAL::Bbox_3> &bboxes, CGAL::Bbox_3 curBbox)
                    curBbox.xmax(), curBbox.ymax(), curBbox.zmax());
 }
 
+void subdivideBboxLongestAxis(stack<CGAL::Bbox_3> &bboxes, CGAL::Bbox_3 curBbox) {
+    // Subdivides curBbox in 2 along its longest axis
+    int longestDim = -1;
+    double dimX = curBbox.xmax() - curBbox.xmin();
+    double dimY = curBbox.ymax() - curBbox.ymin();
+    double dimZ = curBbox.zmax() - curBbox.zmin();
+    if (dimX >= dimY && dimX >= dimZ) {
+        bboxes.emplace(curBbox.xmin(), curBbox.ymin(), curBbox.zmin(),
+                       curBbox.xmin() + dimX / 2., curBbox.ymax(), curBbox.zmax());
+        bboxes.emplace(curBbox.xmin() + dimX / 2., curBbox.ymin(), curBbox.zmin(),
+                       curBbox.xmax(), curBbox.ymax(), curBbox.zmax());
+    } else if (dimY >= dimZ && dimY >= dimX) {
+        bboxes.emplace(curBbox.xmin(), curBbox.ymin(), curBbox.zmin(),
+                       curBbox.xmax(), curBbox.ymin() + dimY / 2., curBbox.zmax());
+        bboxes.emplace(curBbox.xmin(), curBbox.ymin() + dimY / 2., curBbox.zmin(),
+                       curBbox.xmax(), curBbox.ymax(), curBbox.zmax());
+    } else {
+        bboxes.emplace(curBbox.xmin(), curBbox.ymin(), curBbox.zmin(),
+                       curBbox.xmax(), curBbox.ymax(), curBbox.zmin() + dimZ / 2.);
+        bboxes.emplace(curBbox.xmin(), curBbox.ymin(), curBbox.zmin() + dimZ / 2.,
+                       curBbox.xmax(), curBbox.ymax(), curBbox.zmax());
+    }
+}
+
 vector<Json>
 splitArrangementInBatch(const PlaneArrangement &planeArr, vector<facesLabelName> &labeledShapes, int nbClasses,
         double step, int maxNodes, const pair<vector<Point>, vector<int>> &labeledPointCloud, int maxNbPlanes,
@@ -738,10 +779,12 @@ splitArrangementInBatch(const PlaneArrangement &planeArr, vector<facesLabelName>
 
     // Computing initial bboxes
     stack<CGAL::Bbox_3> bboxes;
-    for(int i = 0; i < xSteps.size() - 1; i++)
+    bboxes.push(planeArr.bbox());
+    // Pillar Initialization. May be removed in the future
+    /*for(int i = 0; i < xSteps.size() - 1; i++)
         for(int j = 0; j < ySteps.size() - 1; j++)
             bboxes.emplace(xSteps[i], ySteps[j], planeArr.bbox().zmin(),
-                           xSteps[i + 1], ySteps[j + 1], planeArr.bbox().zmax());
+                           xSteps[i + 1], ySteps[j + 1], planeArr.bbox().zmax());*/
     while(!bboxes.empty()) {
         if(verbose)
             cout << endl << "Bbox stack size: \033[1;31m"  << bboxes.size() << "\033[0m" << endl;
@@ -752,7 +795,7 @@ splitArrangementInBatch(const PlaneArrangement &planeArr, vector<facesLabelName>
                 ratioReconstructed);
         if(validPlaneIdx.size() > maxNbPlanes)
         {
-            subdivideBbox(bboxes, curBbox);
+            subdivideBboxLongestAxis(bboxes, curBbox);
             continue;
         }
         // Compute plane arrangement
@@ -806,7 +849,7 @@ splitArrangementInBatch(const PlaneArrangement &planeArr, vector<facesLabelName>
             computedArrangements.push_back(data);
         }
         else
-            subdivideBbox(bboxes, curBbox);
+            subdivideBboxLongestAxis(bboxes, curBbox);
     }
 
     return computedArrangements;

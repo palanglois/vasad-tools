@@ -91,6 +91,10 @@ add_executable(trivialScanSimulator main_trivial_scan_simulator.cpp
 add_executable(makePointEdgeFeatures main_make_point_edge_features.cpp
         lib/iogeometry.cpp lib/graphStats.cpp)
 
+add_executable(datasetPointEdgeFeatures main_dataset_point_edge_features.cpp
+        lib/iogeometry.cpp lib/graphStats.cpp)
+target_link_libraries(datasetPointEdgeFeatures "-lstdc++fs")
+
 add_executable(labeledPc2Obj main_labeled_pc_to_obj.cpp
         lib/iogeometry.cpp)
 
@@ -102,6 +106,7 @@ target_link_libraries(graph_statistics ${CGAL_LIBRARIES})
 target_link_libraries(splitGraph ${CGAL_LIBRARIES})
 target_link_libraries(trivialScanSimulator ${CGAL_LIBRARIES})
 target_link_libraries(makePointEdgeFeatures ${CGAL_LIBRARIES})
+target_link_libraries(datasetPointEdgeFeatures ${CGAL_LIBRARIES})
 target_link_libraries(labeledPc2Obj ${CGAL_LIBRARIES})
 if(MKL_FOUND)
     target_link_libraries(mesh2plane ${MKL_LIBRARIES})

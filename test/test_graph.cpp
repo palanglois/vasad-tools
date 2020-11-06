@@ -167,7 +167,8 @@ TEST_F(PlaneArrangementFixture, LabelingWithObjLoad)
 
 TEST_F(PlaneArrangementFixture, pointSampling)
 {
-    pair<vector<Point>, map<Point, int>> samples = sampleFacets(*myPlaneArrangement);
+    map<int, double> facetAreas;
+    pair<vector<Point>, map<Point, int>> samples = sampleFacets(*myPlaneArrangement, facetAreas);
     ASSERT_EQ(samples.first.size(), (int) 1e6);
 
     // Simulated points

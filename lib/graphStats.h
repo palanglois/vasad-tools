@@ -10,9 +10,11 @@ std::pair<Nodes, Edges> computeGraphStatistics(const std::vector<bool> &labels,
         const std::map<int, int> &cell2label, const Arrangement &arr, bool verbose=false);
 
 std::pair<NodeFeatures, EdgeFeatures> computeGraph(const std::vector<int> &labels,
-        const std::map<int, int> &cell2label, const Arrangement &arr, const int nbClasses, const double proba=1., const bool withGeom=false, bool verbose=false);
+                                                   const std::map<int, int> &cell2label, const Arrangement &arr,
+                                                   const int nbClasses, const double proba=1.,
+                                                   const bool withGeom=false, bool verbose=false);
 
-std::pair<std::vector<Point>, std::map<Point, int>> sampleFacets(const Arrangement &arr);
+std::pair<std::vector<Point>, std::map<Point, int>> sampleFacets(const Arrangement &arr, std::map<int, double> &facetAreas);
 
 EdgeFeatures computeFeaturesFromLabeledPoints(const Arrangement &arr, const std::map<int, int> &cell2label,
                                               const CGAL::Bbox_3& bbox,

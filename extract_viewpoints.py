@@ -4,7 +4,23 @@ import argparse
 from os.path import join, abspath, dirname
 from os import makedirs
 
-
+"""
+To remove an element thanks to keyword
+"""
+def main2():
+    keyword = "IfcBuildingElementProxy"
+    nb_obj = 0
+    for obj in bpy.data.objects:
+        if keyword in obj.name:
+            nb_obj += 1;
+    objs = bpy.data.objects
+    for i, obj in enumerate(bpy.data.objects):
+        if keyword in obj.name:
+            print(f"Removing {obj.name}, {i} out of {nb_obj}")
+            objs.remove(objs[obj.name], do_unlink=True)
+"""
+To save current BIM model to obj
+"""
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", type=str, default="processed")
