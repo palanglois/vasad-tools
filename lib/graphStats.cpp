@@ -650,12 +650,11 @@ EdgeFeatures computeFeaturesFromLabeledPoints(const Arrangement &arr, const map<
     {
         double sum_of_elems = accumulate(edgeFeat.second.begin(), edgeFeat.second.end(), 0.);
         double expectedNbOfPoints = facetAreasMapping[edgeFeat.first] / (3.141592 * pow(averageNNDistance, 2));
-        if(expectedNbOfPoints >= 1. && edgeFeat.second[edgeFeat.second.size() - 1] != 1.) {
+        if (expectedNbOfPoints >= 1. && edgeFeat.second[edgeFeat.second.size() - 1] != 1.) {
             for (auto &elem: edgeFeat.second)
                 elem /= expectedNbOfPoints;
-        }
-	else
-		edgeFeat.second = emptyVec;
+        } else
+            edgeFeat.second = emptyVec;
 	// Renormalization
     for (auto &elem: edgeFeat.second)
         elem = min(elem, 1.);
@@ -734,7 +733,8 @@ void subdivideBbox(stack<CGAL::Bbox_3> &bboxes, CGAL::Bbox_3 curBbox)
                    curBbox.xmax(), curBbox.ymax(), curBbox.zmax());
 }
 
-void subdivideBboxLongestAxis(stack<CGAL::Bbox_3> &bboxes, CGAL::Bbox_3 curBbox) {
+//void subdivideBboxLongestAxis(stack<CGAL::Bbox_3> &bboxes, CGAL::Bbox_3 curBbox) {
+void subdivideBboxLongestAxis(queue<CGAL::Bbox_3> &bboxes, CGAL::Bbox_3 curBbox) {
     // Subdivides curBbox in 2 along its longest axis
     int longestDim = -1;
     double dimX = curBbox.xmax() - curBbox.xmin();
@@ -778,7 +778,8 @@ splitArrangementInBatch(const PlaneArrangement &planeArr, vector<facesLabelName>
     ySteps.push_back(planeArr.bbox().ymax());
 
     // Computing initial bboxes
-    stack<CGAL::Bbox_3> bboxes;
+//    stack<CGAL::Bbox_3> bboxes;
+    queue<CGAL::Bbox_3> bboxes;
     bboxes.push(planeArr.bbox());
     // Pillar Initialization. May be removed in the future
     /*for(int i = 0; i < xSteps.size() - 1; i++)
@@ -787,8 +788,10 @@ splitArrangementInBatch(const PlaneArrangement &planeArr, vector<facesLabelName>
                            xSteps[i + 1], ySteps[j + 1], planeArr.bbox().zmax());*/
     while(!bboxes.empty()) {
         if(verbose)
-            cout << endl << "Bbox stack size: \033[1;31m"  << bboxes.size() << "\033[0m" << endl;
-        CGAL::Bbox_3 curBbox = bboxes.top();
+//            cout << endl << "Bbox stack size: \033[1;31m"  << bboxes.size() << "\033[0m" << endl;
+            cout << endl << "Bbox queue size: \033[1;31m"  << bboxes.size() << "\033[0m" << endl;
+//        CGAL::Bbox_3 curBbox = bboxes.top();
+        CGAL::Bbox_3 curBbox = bboxes.front();
         bboxes.pop();
         // Compute planes in current pillar
         vector<int> validPlaneIdx = computePlanesInBoundingBox(planeArr.planes(), planeArr.points(), curBbox,
@@ -853,4 +856,61 @@ splitArrangementInBatch(const PlaneArrangement &planeArr, vector<facesLabelName>
     }
 
     return computedArrangements;
+}
+
+pair<Matrix, PointRg> computeTransform(const Eigen::MatrixXd &rotPoints)
+{
+
+    // Compute the covariance matrix of the input points
+    PointRg center = rotPoints.colwise().mean();
+    Eigen::MatrixXd centered = rotPoints.rowwise() - center.transpose();
+    Eigen::MatrixXd cov = centered.adjoint() * centered;
+
+    // Find its eigen values/vectors
+    Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> eig(cov);
+
+    // Build the rotation matrix out of the 2 main axis
+    Matrix rot;
+    rot.row(0) = eig.eigenvectors().real().col(2).normalized();
+    Eigen::Vector3d candidate = eig.eigenvectors().real().col(1).normalized();
+    rot.row(1) = (candidate.transpose() - candidate.transpose().dot(rot.row(0))*rot.row(0)).normalized();
+    rot.row(2) = rot.row(0).cross(rot.row(1));
+
+    return make_pair(rot, center);
+}
+
+void sampleBetweenPoints(const vector<Point>& points, vector<pair<Point, int>> &query, int nbSamples, int faceHandle)
+{
+    //CGal to Eigen
+    Eigen::MatrixXd eigenPoints(points.size(), 3);
+    for(int i=0; i < points.size(); i++)
+        for(int j=0; j < 3; j++)
+            eigenPoints(i, j) = points[i][j];
+
+    // Compute the transformation to better fit the bounding box
+    pair<Matrix, PointRg> transform = computeTransform(eigenPoints);
+    Eigen::MatrixXd transformedPoints = (transform.first*(eigenPoints.transpose().colwise() - transform.second));
+    PointRg minPt = transformedPoints.rowwise().minCoeff();
+    PointRg maxPt = transformedPoints.rowwise().maxCoeff();
+
+    // Sampling points in the bounding box
+    default_random_engine generator(time(nullptr));
+    uniform_real_distribution<double> curXDist(minPt(0), maxPt(0));
+    uniform_real_distribution<double> curYDist(minPt(1), maxPt(1));
+    uniform_real_distribution<double> curZDist(minPt(2), maxPt(2));
+    Eigen::MatrixXd rawSamples(nbSamples, 3);
+    for(int i = 0; i < nbSamples; i++)
+    {
+        rawSamples(i, 0) = curXDist(generator);
+        rawSamples(i, 1) = curYDist(generator);
+        rawSamples(i, 2) = curZDist(generator);
+    }
+
+    // Apply inverted transformation
+    Eigen::MatrixXd finalPoints = (transform.first.transpose() * rawSamples.transpose()).colwise() + transform.second;
+
+    // Add the samples to the query vector
+    for(int i=0; i< nbSamples; i++)
+        query.emplace_back(Point(finalPoints(0, i), finalPoints(1, i), finalPoints(2, i)),
+                           faceHandle);
 }

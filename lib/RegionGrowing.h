@@ -20,11 +20,12 @@
 // Json
 #include <json/json.hpp>
 
-typedef Eigen::Vector3d                        PointRg;      // A type for points
-typedef Eigen::Matrix<double, 2, 3>            Edge;       // A type for edges
-typedef Eigen::Matrix<double,Eigen::Dynamic,3> PointCloud; // A type for the point clouds
-typedef Eigen::Matrix<double,Eigen::Dynamic,3> Normals;    // A type for the normals
-typedef Eigen::Matrix<int,Eigen::Dynamic,3>    Faces;      // A type for the faces
+typedef Eigen::Vector3d                        PointRg;     // A type for points
+typedef Eigen::Matrix<double, 2, 3>            Edge;        // A type for edges
+typedef Eigen::Matrix<double,Eigen::Dynamic,3> PointCloud;  // A type for the point clouds
+typedef Eigen::Matrix<double,Eigen::Dynamic,3> Normals;     // A type for the normals
+typedef Eigen::Matrix<int,Eigen::Dynamic,3>    Faces;       // A type for the faces
+typedef Eigen::Matrix3d                        Matrix;      // A type for the faces
 
 // Hash for Eigen Matrix
 template<typename T>

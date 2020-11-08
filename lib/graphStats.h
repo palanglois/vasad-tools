@@ -4,7 +4,10 @@
 #include <random>
 #include <stack>
 
+#include <Eigen/Eigenvalues>
+
 #include "iogeometry.h"
+#include "RegionGrowing.h"
 
 std::pair<Nodes, Edges> computeGraphStatistics(const std::vector<bool> &labels,
         const std::map<int, int> &cell2label, const Arrangement &arr, bool verbose=false);
@@ -31,5 +34,9 @@ std::vector<nlohmann::json> splitArrangementInBatch(const PlaneArrangement &plan
         std::vector<facesLabelName> &labeledShapes, int nbClasses, double step, int maxNodes,
         const std::pair<std::vector<Point>, std::vector<int>> &labeledPointCloud,
         int maxNbPlanes=250, int nbSamplesPerCell=40, double proba=1, bool geom=false, double ratioReconstructed=0.98, bool verbose=false);
+
+std::pair<Matrix, PointRg> computeTransform(const Eigen::MatrixXd &rotPoints);
+void sampleBetweenPoints(const std::vector<Point>& points, std::vector<std::pair<Point, int>> &query,
+                                                       int nbSamples=40, int faceHandle=-1);
 
 #endif //BIM_DATA_GRAPHSTATS_H

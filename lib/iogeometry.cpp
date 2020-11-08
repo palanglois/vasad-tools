@@ -384,11 +384,11 @@ PlaneArrangement::PlaneArrangement(const string& name) : isArrangementComputed(f
 
     // Planes
     vector<Json> planes = data["planes"];
-#ifndef NDEBUG
-    _nbPlanes = min(data["nbPlanes"].get<int>(), 30);
-#else
+//#ifndef NDEBUG
+//    _nbPlanes = min(data["nbPlanes"].get<int>(), 30);
+//#else
     _nbPlanes = data["nbPlanes"].get<int>();
-#endif
+//#endif
     //DEBUG
     int nbPlanesUsed = 0;
     // END DEBUG

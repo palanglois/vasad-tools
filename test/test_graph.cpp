@@ -152,7 +152,7 @@ TEST_F(PlaneArrangementFixture, NodeLabeling)
 TEST_F(PlaneArrangementFixture, LabelingWithObjLoad)
 {
     const string testObjPath = (string) TEST_DIR + "test.obj";
-    vector<classKeywordsColor> classesWithColor = loadSemanticClasses("../semantic_classes.json");
+    vector<classKeywordsColor> classesWithColor = loadSemanticClasses((string) TEST_DIR + "semantic_classes.json");
     auto allTrees =  loadTreesFromObj(testObjPath, classesWithColor);
     cout.setstate(ios_base::failbit);
     cerr.setstate(ios_base::failbit);
@@ -169,7 +169,7 @@ TEST_F(PlaneArrangementFixture, pointSampling)
 {
     map<int, double> facetAreas;
     pair<vector<Point>, map<Point, int>> samples = sampleFacets(*myPlaneArrangement, facetAreas);
-    ASSERT_EQ(samples.first.size(), (int) 1e6);
+    ASSERT_EQ(samples.first.size(), 40);
 
     // Simulated points
     const int nbClasses = 3;
@@ -190,7 +190,8 @@ TEST_F(PlaneArrangementFixture, pointSampling)
 
     cout.setstate(ios_base::failbit);
     cerr.setstate(ios_base::failbit);
-    EdgeFeatures features = computeFeaturesFromLabeledPoints(*myPlaneArrangement, cell2label, bbox, inPoints, inLabels, nbClasses);
+    EdgeFeatures features = computeFeaturesFromLabeledPoints(*myPlaneArrangement, cell2label, bbox,
+                                                             inPoints, inLabels, nbClasses);
     cout.clear();
     cerr.clear();
     ASSERT_EQ(features.size(), 4);
@@ -201,7 +202,11 @@ TEST_F(PlaneArrangementFixture, pointSampling)
     pair<int, int> edgeZeroV2(cell2, cell1);
     ASSERT_TRUE((features.find(edgeZeroV1) != features.end()) ||
                 (features.find(edgeZeroV2) != features.end()));
-    vector<double> targetDistrib = {2./3., 1./3., 0.};
+    double nnDistance = (sqrt((inPoints[1] - inPoints[0]).squared_length()) +
+                        sqrt((inPoints[1] - inPoints[0]).squared_length()) +
+                        sqrt((inPoints[2] - inPoints[0]).squared_length()))/3.;
+    double expectedNbOfPoints = 0.5 / (3.141592 * pow(nnDistance, 2));
+    vector<double> targetDistrib = {2./expectedNbOfPoints, 1./expectedNbOfPoints, 0.};
     if(features.find(edgeZeroV1) != features.end())
         for(int i=0; i < 3; i++)
             ASSERT_EQ(features.at(edgeZeroV1)[i], targetDistrib[i]);
@@ -300,7 +305,7 @@ TEST(GraphStatistics, SplitingModel)
     int nbPrimitives = rg.run();
     ASSERT_EQ(nbPrimitives, 9);
     rg.saveAsJson((string) TEST_DIR + "coloredGtPlanes2.json", true);
-    vector<classKeywordsColor> classesWithColor = loadSemanticClasses("../semantic_classes.json");
+    vector<classKeywordsColor> classesWithColor = loadSemanticClasses((string) TEST_DIR + "semantic_classes.json");
     cout.setstate(ios_base::failbit);
     cerr.setstate(ios_base::failbit);
     PlaneArrangement myArrangement(outPath);
@@ -314,5 +319,54 @@ TEST(GraphStatistics, SplitingModel)
     for(const auto &split: allSplits) {
         ASSERT_LE(split.at("NodeFeatures").size(), maxNodes);
         ASSERT_GE(split.at("NodeFeatures").size(), 2);
+    }
+}
+
+TEST(GraphStatistics, SampleBoundingBox)
+{
+    Eigen::MatrixXd points(8, 3);
+    points.row(0) = PointRg(0.1, 0., 0.);
+    points.row(1) = PointRg(0., 0., 1.);
+    points.row(2) = PointRg(0., 2., 0.);
+    points.row(3) = PointRg(0., 2., 1.);
+    points.row(4) = PointRg(10., 0., 0.);
+    points.row(5) = PointRg(10.1, 0., 1.);
+    points.row(6) = PointRg(10., 2., 0.);
+    points.row(7) = PointRg(10., 2., 1.);
+
+    const double PI = 3.141592;
+    random_device rd;
+    mt19937 e2(rd());
+    uniform_real_distribution<> roll(0, PI);
+    uniform_real_distribution<> yaw(0, PI);
+    uniform_real_distribution<> pitch(0, PI);
+    Eigen::AngleAxisd rollAngle(roll(e2), Eigen::Vector3d::UnitZ());
+    Eigen::AngleAxisd yawAngle(yaw(e2), Eigen::Vector3d::UnitY());
+    Eigen::AngleAxisd pitchAngle(pitch(e2), Eigen::Vector3d::UnitX());
+
+    Eigen::Quaternion<double> q = rollAngle * yawAngle * pitchAngle;
+
+    Matrix rotationMatrix = q.matrix();
+    Eigen::MatrixXd rotPoints = points * rotationMatrix.transpose();
+
+    pair<Matrix, PointRg> transform = computeTransform(rotPoints);
+    for(int i=0; i < rotationMatrix.rows(); i++)
+        for(int j=0; j < rotationMatrix.cols(); j++)
+            ASSERT_NEAR(abs(rotationMatrix(i, j)), abs(transform.first(j, i)), 0.005);
+
+    vector<Point> cgalPoints;
+    for(int i=0; i < points.rows(); i++)
+        cgalPoints.emplace_back(points(i, 0), points(i, 1), points(i, 2));
+
+    vector<pair<Point, int>> samples;
+    sampleBetweenPoints(cgalPoints, samples);
+    for(const auto sample: samples)
+    {
+        ASSERT_LE(-0.1, sample.first.x());
+        ASSERT_LE(-0.1, sample.first.y());
+        ASSERT_LE(-0.1, sample.first.z());
+        ASSERT_GE(10.2, sample.first.x());
+        ASSERT_GE(2.1, sample.first.y());
+        ASSERT_GE(1.1, sample.first.z());
     }
 }
