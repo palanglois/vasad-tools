@@ -354,7 +354,7 @@ TEST(GraphStatistics, SampleBoundingBox)
         for(int j=0; j < rotationMatrix.cols(); j++)
             ASSERT_NEAR(abs(rotationMatrix(i, j)), abs(transform.first(j, i)), 0.005);
 
-    vector<Point> cgalPoints;
+    vector<Kernel2::Point_3> cgalPoints;
     for(int i=0; i < points.rows(); i++)
         cgalPoints.emplace_back(points(i, 0), points(i, 1), points(i, 2));
 

@@ -144,9 +144,9 @@ vector<int> assignLabel(const Arrangement &arr, const map<int, int> &cell2label,
 
     // Draw points in the arrangement
     default_random_engine generator;
-    uniform_real_distribution<double> xDist(bbox.xmin(), bbox.xmax());
-    uniform_real_distribution<double> yDist(bbox.ymin(), bbox.ymax());
-    uniform_real_distribution<double> zDist(bbox.zmin(), bbox.zmax());
+//    uniform_real_distribution<double> xDist(bbox.xmin(), bbox.xmax());
+//    uniform_real_distribution<double> yDist(bbox.ymin(), bbox.ymax());
+//    uniform_real_distribution<double> zDist(bbox.zmin(), bbox.zmax());
     vector<pair<Point, int>> queryPoints;
 
     //DEBUG
@@ -179,6 +179,9 @@ vector<int> assignLabel(const Arrangement &arr, const map<int, int> &cell2label,
             }
         }
 
+        // New sampling
+        sampleBetweenPoints(points, queryPoints, 40, arr.cell_handle(*cellIt));
+        /* Former bounding box drawing
         // Note: We explicitely compute the bounding box, the function CGAL::bbox_3 gives too big
         // bounding boxes!
         Point pt = e2s(points[0]);
@@ -206,6 +209,7 @@ vector<int> assignLabel(const Arrangement &arr, const map<int, int> &cell2label,
         uniform_real_distribution<double> curZDist(curBbox.zmin(), curBbox.zmax());
         for(int i=0; i< nbSamplesPerCell; i++)
             queryPoints.emplace_back(Point(curXDist(generator), curYDist(generator), curZDist(generator)), arr.cell_handle(*cellIt));
+         */
 
 //            // DEBUG
 //            if(int(arr.cell_handle(*cellIt)) == 125161) {
@@ -879,13 +883,13 @@ pair<Matrix, PointRg> computeTransform(const Eigen::MatrixXd &rotPoints)
     return make_pair(rot, center);
 }
 
-void sampleBetweenPoints(const vector<Point>& points, vector<pair<Point, int>> &query, int nbSamples, int faceHandle)
+void sampleBetweenPoints(const vector<Kernel2::Point_3>& points, vector<pair<Point, int>> &query, int nbSamples, int faceHandle)
 {
     //CGal to Eigen
     Eigen::MatrixXd eigenPoints(points.size(), 3);
     for(int i=0; i < points.size(); i++)
         for(int j=0; j < 3; j++)
-            eigenPoints(i, j) = points[i][j];
+            eigenPoints(i, j) = CGAL::to_double(points[i][j]);
 
     // Compute the transformation to better fit the bounding box
     pair<Matrix, PointRg> transform = computeTransform(eigenPoints);
@@ -911,6 +915,6 @@ void sampleBetweenPoints(const vector<Point>& points, vector<pair<Point, int>> &
 
     // Add the samples to the query vector
     for(int i=0; i< nbSamples; i++)
-        query.emplace_back(Point(finalPoints(0, i), finalPoints(1, i), finalPoints(2, i)),
-                           faceHandle);
+        query.emplace_back(Point(finalPoints(0, i), finalPoints(1, i),
+                                            finalPoints(2, i)), faceHandle);
 }
