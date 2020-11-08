@@ -169,7 +169,7 @@ TEST_F(PlaneArrangementFixture, pointSampling)
 {
     map<int, double> facetAreas;
     pair<vector<Point>, map<Point, int>> samples = sampleFacets(*myPlaneArrangement, facetAreas);
-    ASSERT_EQ(samples.first.size(), 40);
+    ASSERT_EQ(samples.first.size(), 8);
 
     // Simulated points
     const int nbClasses = 3;
@@ -208,8 +208,15 @@ TEST_F(PlaneArrangementFixture, pointSampling)
     double expectedNbOfPoints = 0.5 / (3.141592 * pow(nnDistance, 2));
     vector<double> targetDistrib = {2./expectedNbOfPoints, 1./expectedNbOfPoints, 0.};
     if(features.find(edgeZeroV1) != features.end())
+    {
+        stringstream outStream;
+        outStream << "We got the following feature on edge (" << cell1 << ", " << cell2 << ") : " ;
+        for(double i : features.at(edgeZeroV1))
+            outStream << i << " ";
+        outStream << endl;
         for(int i=0; i < 3; i++)
-            ASSERT_EQ(features.at(edgeZeroV1)[i], targetDistrib[i]);
+            ASSERT_EQ(features.at(edgeZeroV1)[i], targetDistrib[i]) << outStream.rdbuf();
+    }
 }
 
 TEST(GraphStatistics, ComputePlanesInBoundingBox)

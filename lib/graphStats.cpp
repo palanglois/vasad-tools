@@ -474,6 +474,8 @@ pair<vector<Point>, map<Point, int>> sampleFacets(const Arrangement &arr, map<in
         // Compute area of current facet
         double facetArea = 0.;
         if (!arr.is_facet_bounded(*facetIt)) continue;
+        if(!arr.is_cell_bounded(facetIt->superface(0))) continue;
+        if(!arr.is_cell_bounded(facetIt->superface(1))) continue;
         std::vector<Arrangement::Face_handle> vertices;
         arr.facet_to_polygon(*facetIt, std::back_inserter(vertices));
 
@@ -583,14 +585,11 @@ EdgeFeatures computeFeaturesFromLabeledPoints(const Arrangement &arr, const map<
         validPoints.push_back(point);
         Neighbor_search search(tree, point, 1);
         int closestFacetHandle = samples.second[search.begin()->first];
-        int cell1Raw = arr.facet(closestFacetHandle).superface(0);
-        int cell2Raw = arr.facet(closestFacetHandle).superface(1);
-        if(!arr.is_cell_bounded(cell1Raw) || !arr.is_cell_bounded(cell2Raw)) continue;
 
         // Refine facet handle
-        auto closestPoint = s2e(search.begin()->first);
         auto curPointEpeck = s2e(point);
-        int curPointCellIdx = find_containing_cell(arr, closestPoint, cell1Raw);
+        int cell1Raw = arr.facet(closestFacetHandle).superface(0);
+        int curPointCellIdx = find_containing_cell(arr, curPointEpeck, cell1Raw);
         double bestDistance = DBL_MAX;
         for (auto facetIt = arr.cell(curPointCellIdx).subfaces_begin();
              facetIt != arr.cell(curPointCellIdx).subfaces_end(); facetIt++) {
@@ -602,6 +601,9 @@ EdgeFeatures computeFeaturesFromLabeledPoints(const Arrangement &arr, const map<
                 closestFacetHandle = *facetIt;
             }
         }
+        cell1Raw = arr.facet(closestFacetHandle).superface(0);
+        int cell2Raw = arr.facet(closestFacetHandle).superface(1);
+        if(!arr.is_cell_bounded(cell1Raw) || !arr.is_cell_bounded(cell2Raw)) continue;
 
         // Update corresponding feature
         int cell1 = cell2label.at(cell1Raw);
