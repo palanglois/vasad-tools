@@ -72,9 +72,7 @@ int main(int argc, char *argv[]) {
                 PlaneArrangement currentArrangement(inModelPath);
 
                 // Compute the new features
-                EdgeFeatures edgeFeatures = computeFeaturesFromLabeledPoints(currentArrangement.arrangement(),
-                                                                             currentArrangement.cell2label(),
-                                                                             currentArrangement.bbox(),
+                EdgeFeatures edgeFeatures = computeFeaturesFromLabeledPoints(currentArrangement,
                                                                              curScan.first, curScan.second,
                                                                              classesWithColor.size(), true);
 
