@@ -115,11 +115,9 @@ int main(int argc, char *argv[]) {
     pair<vector<Point>, vector<int>> pointsWithLabel = loadPointsWithLabel(scanPath);
 
     // Compute the new features
-    EdgeFeatures edgeFeatures = computeFeaturesFromLabeledPoints(currentArrangement.arrangement(),
-                                                                 currentArrangement.cell2label(),
-                                                                 currentArrangement.bbox(),
+    EdgeFeatures edgeFeatures = computeFeaturesFromLabeledPoints(currentArrangement,
                                                                  pointsWithLabel.first, pointsWithLabel.second,
-                                                                 classesWithColor.size(), true);
+                                                                 classesWithColor.size(), 40, true);
 
     // DEBUG
     const EdgeFeatures& oldFeatures = currentArrangement.edgeFeatures();

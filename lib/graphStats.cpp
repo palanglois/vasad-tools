@@ -550,24 +550,59 @@ pair<vector<Point>, map<Point, int>> sampleFacets(const Arrangement &arr, map<in
     return make_pair(sampledPoints, pointToHandle);
 }
 
-EdgeFeatures computeFeaturesFromLabeledPoints(const Arrangement &arr, const map<int, int> &cell2label,
-                                              const CGAL::Bbox_3& bbox,
-                                              const vector<Point> &points,
-                                              const vector<int> &labels, const int nbClasses,
+inline double computeFacetArea(const Arrangement &arr, int facetHandle)
+{
+    // Compute area of current facet
+    double facetArea = 0.;
+    if (!arr.is_facet_bounded(facetHandle)) return -1.;
+    const auto& facet = arr.facet(facetHandle);
+    vector<Arrangement::Face_handle> vertices;
+    arr.facet_to_polygon(facet, back_inserter(vertices));
+
+    if (vertices.size() >= 3) {
+
+        vector<Arrangement::Face_handle>::const_iterator vhi = vertices.begin();
+        Arrangement::Point first = arr.point(*vhi);
+        ++vhi;
+        Arrangement::Point second = arr.point(*vhi);
+        ++vhi;
+        while (vhi != vertices.end()) {
+            Arrangement::Point third = arr.point(*vhi);
+            double triangleArea = sqrt(CGAL::to_double(CGAL::squared_area(first, second, third)));
+            facetArea += triangleArea;
+            second = third;
+            ++vhi;
+        }
+    }
+    return facetArea;
+}
+
+EdgeFeatures computeFeaturesFromLabeledPoints(PlaneArrangement &planeArr, const vector<Point> &points,
+                                              const vector<int> &labels, const int nbClasses, int nbSamplesPerCell,
                                               bool verbose)
 {
+    Arrangement &arr = planeArr.arrangement();
+    const map<int, int> &cell2label = planeArr.cell2label();
+    const CGAL::Bbox_3& bbox = planeArr.bbox();
     auto s2e = Simple_to_Epeck();
-    if(verbose)
-        cout << endl << "Sampling plane arrangement... " << endl;
-    // Make tree
-    map<int, double> facetAreas;
+
+    // Get samples
     map<pair<int, int>, double> facetAreasMapping;
-    pair<vector<Point>, map<Point, int>> samples = sampleFacets(arr, facetAreas);
+    const vector<pair<Point, int>> &samples = planeArr.getSamples(nbSamplesPerCell);
     if(verbose)
-        cout << "Sampled " << samples.first.size() << " points." << endl << "Building tree..." << endl;
-    kdTree tree(samples.first.begin(), samples.first.end());
-    if(verbose)
-        cout << "Tree built!" << endl;
+        cout << "Sampled " << samples.size() << " points." << endl;
+
+    // Extract samples
+    vector<Point> sampledPoints;
+    map<Point, int> pointToCellHandle;
+    for(const auto& sample: samples)
+    {
+        sampledPoints.push_back(sample.first);
+        pointToCellHandle[sample.first] = sample.second;
+    }
+
+    // Make tree
+    kdTree tree(sampledPoints.begin(), sampledPoints.end());
 
     // Initializing edge features
     EdgeFeatures features;
@@ -581,7 +616,7 @@ EdgeFeatures computeFeaturesFromLabeledPoints(const Arrangement &arr, const map<
         pair<int, int> facetId(cell2label.at(cell1), cell2label.at(cell2));
         features[facetId] = vector<double>(nbClasses + 1, 0);
         features[facetId][nbClasses] = 1.;
-        facetAreasMapping[facetId] = facetAreas.at(arr.facet_handle(*facetIt));
+        facetAreasMapping[facetId] = computeFacetArea(arr, arr.facet_handle(*facetIt));
     }
 
     // Find closest facet by nearest neighbour search
@@ -599,11 +634,11 @@ EdgeFeatures computeFeaturesFromLabeledPoints(const Arrangement &arr, const map<
         if(point.z() >= bbox.zmax()) continue;
         validPoints.push_back(point);
         Neighbor_search search(tree, point, 1);
-        int closestFacetHandle = samples.second[search.begin()->first];
 
-        // Refine facet handle
+        // Find facet handle
+        int closestFacetHandle = -1;
         auto curPointEpeck = s2e(point);
-        int cell1Raw = arr.facet(closestFacetHandle).superface(0);
+        int cell1Raw = pointToCellHandle.at(search.begin()->first);
         int curPointCellIdx = find_containing_cell(arr, curPointEpeck, cell1Raw);
         double bestDistance = DBL_MAX;
         for (auto facetIt = arr.cell(curPointCellIdx).subfaces_begin();
@@ -638,21 +673,6 @@ EdgeFeatures computeFeaturesFromLabeledPoints(const Arrangement &arr, const map<
         }
         else
             cerr << "Issue: edge " << cell1 << ", " << cell2 << " should have been initialized." << endl;
-
-//        // DEBUG
-//        if(oldFeatures.find(goodPair) != oldFeatures.end())
-//        {
-//            int oldLabel = -1;
-//            for(int k = 0; k < oldFeatures.at(goodPair).size(); k++)
-//                if(oldFeatures.at(goodPair)[k] == 1)
-//                {
-//                    oldLabel = k;
-//                    break;
-//                }
-//            if(oldLabel != nbClasses && oldLabel != labels[i])
-//                cout << "Old/New label: " << oldLabel << " " << labels[i] << endl;
-//        }
-//        // END DEBUG
     }
 
     // Get the average distance between neighbour points in the point cloud
@@ -786,20 +806,19 @@ splitArrangementInBatch(const PlaneArrangement &planeArr, vector<facesLabelName>
 
     vector<Json> computedArrangements;
 
-    // Computing steps along x axis
-    vector<double> xSteps;
-    for (int i = 0; i < int(floor((planeArr.bbox().xmax() - planeArr.bbox().xmin()) / step)); i++)
-        xSteps.push_back(planeArr.bbox().xmin() + double(i) * step);
-    xSteps.push_back(planeArr.bbox().xmax());
-
-    // Computing steps along y axis
-    vector<double> ySteps;
-    for(int j = 0; j < int(floor((planeArr.bbox().ymax() - planeArr.bbox().ymin()) / step)); j++)
-        ySteps.push_back(planeArr.bbox().ymin() + double(j) * step);
-    ySteps.push_back(planeArr.bbox().ymax());
+//    // Computing steps along x axis
+//    vector<double> xSteps;
+//    for (int i = 0; i < int(floor((planeArr.bbox().xmax() - planeArr.bbox().xmin()) / step)); i++)
+//        xSteps.push_back(planeArr.bbox().xmin() + double(i) * step);
+//    xSteps.push_back(planeArr.bbox().xmax());
+//
+//    // Computing steps along y axis
+//    vector<double> ySteps;
+//    for(int j = 0; j < int(floor((planeArr.bbox().ymax() - planeArr.bbox().ymin()) / step)); j++)
+//        ySteps.push_back(planeArr.bbox().ymin() + double(j) * step);
+//    ySteps.push_back(planeArr.bbox().ymax());
 
     // Computing initial bboxes
-//    stack<CGAL::Bbox_3> bboxes;
     queue<CGAL::Bbox_3> bboxes;
     bboxes.push(planeArr.bbox());
     // Pillar Initialization. May be removed in the future
@@ -809,9 +828,7 @@ splitArrangementInBatch(const PlaneArrangement &planeArr, vector<facesLabelName>
                            xSteps[i + 1], ySteps[j + 1], planeArr.bbox().zmax());*/
     while(!bboxes.empty()) {
         if(verbose)
-//            cout << endl << "Bbox stack size: \033[1;31m"  << bboxes.size() << "\033[0m" << endl;
             cout << endl << "Bbox queue size: \033[1;31m"  << bboxes.size() << "\033[0m" << endl;
-//        CGAL::Bbox_3 curBbox = bboxes.top();
         CGAL::Bbox_3 curBbox = bboxes.front();
         bboxes.pop();
         // Compute planes in current pillar
@@ -853,12 +870,10 @@ splitArrangementInBatch(const PlaneArrangement &planeArr, vector<facesLabelName>
             if(labeledPointCloud.first.empty())
                 data["EdgeFeatures"] = nodesEdges.second;
             else
-                data["EdgeFeatures"] = computeFeaturesFromLabeledPoints(onlyArrangement,
-                                                                        fullArrangement.cell2label(),
-                                                                        curBbox,
+                data["EdgeFeatures"] = computeFeaturesFromLabeledPoints(fullArrangement,
                                                                         labeledPointCloud.first,
                                                                         labeledPointCloud.second,
-                                                                        nbClasses, verbose);
+                                                                        nbClasses, nbSamplesPerCell, verbose);
             data["gtLabels"] = gtLabels;
             data["NodePoints"] = getCellsPoints(fullArrangement.cell2label(), onlyArrangement);
             data["NodeBbox"] = getCellsBbox(fullArrangement.cell2label(), onlyArrangement);

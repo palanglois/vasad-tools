@@ -16,13 +16,12 @@ std::pair<NodeFeatures, EdgeFeatures> computeGraph(const std::vector<int> &label
                                                    const int nbClasses, const double proba=1.,
                                                    const bool withGeom=false, bool verbose=false);
 
+inline double computeFacetArea(const Arrangement &arr, int facetHandle);
 std::pair<std::vector<Point>, std::map<Point, int>> sampleFacets(const Arrangement &arr, std::map<int, double> &facetAreas);
 
-EdgeFeatures computeFeaturesFromLabeledPoints(const Arrangement &arr, const std::map<int, int> &cell2label,
-                                              const CGAL::Bbox_3& bbox,
-                                              const std::vector<Point> &points, const std::vector<int> &labels,
-                                              const int nbClasses,
-                                              bool verbose=false);
+EdgeFeatures computeFeaturesFromLabeledPoints(PlaneArrangement &planeArr, const std::vector<Point> &points,
+                                              const std::vector<int> &labels, const int nbClasses,
+                                              int nbSamplesPerCell, bool verbose=false);
 
 std::vector<int> assignLabel(PlaneArrangement& planeArr,
         std::vector<facesLabelName> &labeledTrees, int nbClasses, int nbSamplesPerCell=40, bool verbose=false);

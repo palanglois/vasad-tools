@@ -204,8 +204,7 @@ TEST_F(PlaneArrangementFixture, pointSampling)
 
     cout.setstate(ios_base::failbit);
     cerr.setstate(ios_base::failbit);
-    EdgeFeatures features = computeFeaturesFromLabeledPoints(myPlaneArrangement, cell2label, bbox,
-                                                             inPoints, inLabels, nbClasses);
+    EdgeFeatures features = computeFeaturesFromLabeledPoints(planeArrangement, inPoints, inLabels, nbClasses, 40);
     cout.clear();
     cerr.clear();
     ASSERT_EQ(features.size(), 4);
