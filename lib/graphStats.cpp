@@ -179,8 +179,10 @@ vector<int> assignLabel(const Arrangement &arr, const map<int, int> &cell2label,
             }
         }
 
-        // New sampling
-        sampleBetweenPoints(points, queryPoints, 40, arr.cell_handle(*cellIt));
+        // The almighty great sampling
+        sampleInConvexCell(arr, arr.cell_handle(*cellIt), queryPoints, 40);
+//        // New sampling
+//        sampleBetweenPoints(points, queryPoints, 40, arr.cell_handle(*cellIt));
         /* Former bounding box drawing
         // Note: We explicitely compute the bounding box, the function CGAL::bbox_3 gives too big
         // bounding boxes!
@@ -925,4 +927,60 @@ void sampleBetweenPoints(const vector<Kernel2::Point_3>& points, vector<pair<Poi
     for(int i=0; i< nbSamples; i++)
         query.emplace_back(Point(finalPoints(0, i), finalPoints(1, i),
                                             finalPoints(2, i)), faceHandle);
+}
+/*
+ * Hit and run algorithm
+ * */
+void sampleInConvexCell(const Arrangement &arr, int cellHandle, vector<pair<Point, int>> &samples,
+                        int nbSamples)
+{
+    Epeck_to_Simple e2s;
+    const auto& cell = arr.cell(cellHandle);
+    default_random_engine generator(time(nullptr));
+    normal_distribution<double> normalDist(0., 1.);
+
+    Point curPoint = e2s(cell.point());
+    for(int i=0; i < nbSamples - 1; i++)
+    {
+        // Add new point to the samples
+        samples.emplace_back(curPoint, cellHandle);
+
+        // Shoot a ray in a random direction
+        Vector direction(normalDist(generator), normalDist(generator), normalDist(generator));
+        Ray rayP(curPoint, direction);
+        Ray rayN(curPoint, -direction);
+
+        double distP = DBL_MAX;
+        double distN = DBL_MAX;
+        for(auto facetIt = cell.subfaces_begin(); facetIt != cell.subfaces_end(); facetIt++)
+        {
+            const auto& facet = arr.facet(*facetIt);
+            const auto& curPlane = e2s(arr.plane(arr.facet_plane(arr.facet(*facetIt))));
+
+            // Intersection with the positive ray
+            auto intersectionP = CGAL::intersection(curPlane, rayP);
+            if(intersectionP) {
+                if (const Point *s = boost::get<Point>(&*intersectionP)) {
+                    double dist = (*s - curPoint).squared_length();
+                    if (dist < distP)
+                        distP = dist;
+                }
+            }
+
+            // Intersection with the negative ray
+            auto intersectionN = CGAL::intersection(curPlane, rayN);
+            if(intersectionN) {
+                if (const Point *s = boost::get<Point>(&*intersectionN)) {
+                    double dist = (*s - curPoint).squared_length();
+                    if (dist < distN)
+                        distN = dist;
+                }
+            }
+        }
+
+        // Make the new point
+        uniform_real_distribution<double> unifDist(-sqrt(distN), sqrt(distP));
+        double distToCurPoint = unifDist(generator);
+        curPoint = curPoint + distToCurPoint * direction / sqrt(direction.squared_length());
+    }
 }

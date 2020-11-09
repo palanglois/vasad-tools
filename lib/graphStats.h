@@ -38,5 +38,7 @@ std::vector<nlohmann::json> splitArrangementInBatch(const PlaneArrangement &plan
 std::pair<Matrix, PointRg> computeTransform(const Eigen::MatrixXd &rotPoints);
 void sampleBetweenPoints(const std::vector<Kernel2::Point_3>& points, std::vector<std::pair<Point, int>> &query,
                                                        int nbSamples=40, int faceHandle=-1);
+void sampleInConvexCell(const Arrangement &arr, int cellHandle, std::vector<std::pair<Point, int>> &samples,
+                        int nbSamples=40);
 
 #endif //BIM_DATA_GRAPHSTATS_H

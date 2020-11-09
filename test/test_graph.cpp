@@ -377,3 +377,26 @@ TEST(GraphStatistics, SampleBoundingBox)
         ASSERT_GE(1.1, sample.first.z());
     }
 }
+
+TEST_F(PlaneArrangementFixture, sampleInConvexCell)
+{
+    // Get a bounded cell
+    auto cellIt = myPlaneArrangement->cells_begin();
+    while(!myPlaneArrangement->is_cell_bounded(*cellIt))
+        cellIt++;
+    int cellHandle = myPlaneArrangement->cell_handle(*cellIt);
+
+    // Sample in it
+    const int nbSamples = 40;
+    vector<pair<Point, int>> samples;
+    Simple_to_Epeck s2e;
+    sampleInConvexCell(*myPlaneArrangement, cellHandle, samples, nbSamples);
+
+    // Check that samples are well in the cell
+    for(const auto& sample: samples)
+    {
+        int cellIdx = find_containing_cell(*myPlaneArrangement, s2e(sample.first));
+        ASSERT_EQ(cellIdx, cellHandle) << "Point: " << sample.first << endl
+                                       << "Cell center: " << cellIt->point() << endl;
+    }
+}
