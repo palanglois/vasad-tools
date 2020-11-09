@@ -371,7 +371,7 @@ void saveArrangement(const string &name, const vector<Kernel::Plane_3> &planes, 
     outFile << outputData;
 }
 
-PlaneArrangement::PlaneArrangement(const string& name) : isArrangementComputed(false)
+PlaneArrangement::PlaneArrangement(const string& name) : isArrangementComputed(false), computedSamplesPerCell(0)
 {
     cout << "Loading arrangement!" << endl;
     fstream inStream(name);
@@ -384,14 +384,11 @@ PlaneArrangement::PlaneArrangement(const string& name) : isArrangementComputed(f
 
     // Planes
     vector<Json> planes = data["planes"];
-//#ifndef NDEBUG
-//    _nbPlanes = min(data["nbPlanes"].get<int>(), 30);
-//#else
     _nbPlanes = data["nbPlanes"].get<int>();
-//#endif
-    //DEBUG
+
+
     int nbPlanesUsed = 0;
-    // END DEBUG
+
     for(int i = 0; i < _nbPlanes; i++)
     {
         Json &norm = planes[i]["normal"];
@@ -408,13 +405,9 @@ PlaneArrangement::PlaneArrangement(const string& name) : isArrangementComputed(f
                     faces[j][k] = planes[i]["faces"][j][k];
             _planes.push_back({inlier, normal, faces, cumulatedPercentage});
         }
-        //DEBUG
         nbPlanesUsed++;
-        //END DEBUG
     }
-    //DEBUG
-    cout << "Nb of planes used " << nbPlanesUsed << endl;
-    //END DEBUG
+    cout << "Nb of planes found " << nbPlanesUsed << endl;
 
     // Point cloud of the underlying mesh
     if (data.find("pointCloud") != data.end())
@@ -494,8 +487,18 @@ PlaneArrangement::PlaneArrangement(const string& name) : isArrangementComputed(f
     cout << "Arrangement loaded" << endl;
 }
 
-void PlaneArrangement::saveAsJson(const string& outPath) const
-{
+PlaneArrangement::PlaneArrangement(const vector<Plane> &inPlanes, const map<int, int> &cell2label,
+                                   const CGAL::Bbox_3 &inBbox) : isArrangementComputed(false),
+                                   computedSamplesPerCell(0), _nbPlanes(inPlanes.size()), _bbox(inBbox),
+                                   _cell2label(cell2label) {
+
+    // Planes
+    for(const auto &plane: inPlanes)
+        _planes.push_back(plane);
+}
+
+
+void PlaneArrangement::saveAsJson(const string &outPath) const {
     // Compiling data into json
     Json data;
     Json cell2labelJ;
@@ -536,7 +539,7 @@ void PlaneArrangement::setEdgeLabels(const EdgeFeatures& edgeFeatures)
 }
 
 PlaneArrangement::PlaneArrangement(const vector<Plane> &inPlanes, const vector<int>& validPlaneIdx,
-        const CGAL::Bbox_3 &inBbox) : isArrangementComputed(false) {
+        const CGAL::Bbox_3 &inBbox) : isArrangementComputed(false), computedSamplesPerCell(0) {
 
     // Planes
     _nbPlanes = validPlaneIdx.size();
@@ -673,3 +676,73 @@ vector<vector<double>> getCellsBbox(const map<int, int> &cell2label, const Arran
     return cellsPoints;
 }
 
+/*
+ * Hit and run algorithm
+ * */
+void PlaneArrangement::sampleInConvexCell(int cellHandle, int nbSamples)
+{
+    Epeck_to_Simple e2s;
+    const auto& cell = _arr.cell(cellHandle);
+    default_random_engine generator(time(nullptr));
+    normal_distribution<double> normalDist(0., 1.);
+
+    Point curPoint = e2s(cell.point());
+    for(int i=0; i < nbSamples - 1; i++)
+    {
+        // Add new point to the samples
+        _samples.emplace_back(curPoint, cellHandle);
+
+        // Shoot a ray in a random direction
+        Vector direction(normalDist(generator), normalDist(generator), normalDist(generator));
+        Ray rayP(curPoint, direction);
+        Ray rayN(curPoint, -direction);
+
+        double distP = DBL_MAX;
+        double distN = DBL_MAX;
+        for(auto facetIt = cell.subfaces_begin(); facetIt != cell.subfaces_end(); facetIt++)
+        {
+            const auto& facet = _arr.facet(*facetIt);
+            const auto& curPlane = e2s(_arr.plane(_arr.facet_plane(_arr.facet(*facetIt))));
+
+            // Intersection with the positive ray
+            auto intersectionP = CGAL::intersection(curPlane, rayP);
+            if(intersectionP) {
+                if (const Point *s = boost::get<Point>(&*intersectionP)) {
+                    double dist = (*s - curPoint).squared_length();
+                    if (dist < distP)
+                        distP = dist;
+                }
+            }
+
+            // Intersection with the negative ray
+            auto intersectionN = CGAL::intersection(curPlane, rayN);
+            if(intersectionN) {
+                if (const Point *s = boost::get<Point>(&*intersectionN)) {
+                    double dist = (*s - curPoint).squared_length();
+                    if (dist < distN)
+                        distN = dist;
+                }
+            }
+        }
+
+        // Make the new point
+        uniform_real_distribution<double> unifDist(-sqrt(distN), sqrt(distP));
+        double distToCurPoint = unifDist(generator);
+        curPoint = curPoint + distToCurPoint * direction / sqrt(direction.squared_length());
+    }
+}
+
+const vector<pair<Point, int>> &PlaneArrangement::getSamples(int nbSamplesPerCell)
+{
+    if(computedSamplesPerCell != nbSamplesPerCell)
+    {
+        computedSamplesPerCell = nbSamplesPerCell;
+        _samples = std::vector<std::pair<Point, int>>();
+
+        for(auto cellIt = _arr.cells_begin(); cellIt != _arr.cells_end(); cellIt++) {
+            if (!_arr.is_cell_bounded(*cellIt)) continue;
+            sampleInConvexCell(_arr.cell_handle(*cellIt), nbSamplesPerCell);
+        }
+    }
+    return _samples;
+}

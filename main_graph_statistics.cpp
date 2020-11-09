@@ -79,7 +79,7 @@ int main(int argc, char *argv[]) {
 //    for(auto prim: shapesAndClasses[shapesAndClasses.size() - 1].first->m_primitives)
 //        cout << prim.datum() << endl;
 //    cout << endl;
-    vector<int> gtLabels = assignLabel(arr, cell2label, bbox, shapesAndClasses, classesWithColor.size(), nbSamples, true);
+    vector<int> gtLabels = assignLabel(currentArrangement, shapesAndClasses, classesWithColor.size(), nbSamples, true);
 
     cout << "Saving reconstruction..." << endl;
     savePlyFromLabel("gt_reconstruction.ply", arr, cell2label, gtLabels, classesWithColor);

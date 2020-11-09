@@ -1,7 +1,6 @@
 #ifndef BIM_DATA_GRAPHSTATS_H
 #define BIM_DATA_GRAPHSTATS_H
 
-#include <random>
 #include <stack>
 
 #include <Eigen/Eigenvalues>
@@ -25,7 +24,7 @@ EdgeFeatures computeFeaturesFromLabeledPoints(const Arrangement &arr, const std:
                                               const int nbClasses,
                                               bool verbose=false);
 
-std::vector<int> assignLabel(const Arrangement &arr,const std::map<int, int> &cell2label, CGAL::Bbox_3 bbox,
+std::vector<int> assignLabel(PlaneArrangement& planeArr,
         std::vector<facesLabelName> &labeledTrees, int nbClasses, int nbSamplesPerCell=40, bool verbose=false);
 
 std::vector<int> computePlanesInBoundingBox(const std::vector<Plane> &planes, const std::vector<Point> &points, CGAL::Bbox_3 bbox, double ratioReconstructed=0.98);
@@ -38,7 +37,5 @@ std::vector<nlohmann::json> splitArrangementInBatch(const PlaneArrangement &plan
 std::pair<Matrix, PointRg> computeTransform(const Eigen::MatrixXd &rotPoints);
 void sampleBetweenPoints(const std::vector<Kernel2::Point_3>& points, std::vector<std::pair<Point, int>> &query,
                                                        int nbSamples=40, int faceHandle=-1);
-void sampleInConvexCell(const Arrangement &arr, int cellHandle, std::vector<std::pair<Point, int>> &samples,
-                        int nbSamples=40);
 
 #endif //BIM_DATA_GRAPHSTATS_H

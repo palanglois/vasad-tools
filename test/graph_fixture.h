@@ -8,11 +8,11 @@ class PlaneArrangementFixture: public ::testing::Test
 {
 public:
     PlaneArrangementFixture();
+    ~PlaneArrangementFixture() override;
     void SetUp() override;
     void TearDown() override;
-    ~PlaneArrangementFixture() override;
 protected:
-    Arrangement* myPlaneArrangement;
+    PlaneArrangement planeArrangement;
     std::map<int, int> label2cell;
     std::map<int, int> cell2label;
     std::map<int, int> label2facet;

@@ -7,7 +7,8 @@ using namespace std;
 using Json = nlohmann::json;
 
 
-PlaneArrangementFixture::PlaneArrangementFixture()
+PlaneArrangementFixture::PlaneArrangementFixture() :
+        planeArrangement(PlaneArrangement(vector<Plane>(), map<int, int>(), CGAL::Bbox_3()))
 {
 
 }
@@ -19,76 +20,84 @@ PlaneArrangementFixture::~PlaneArrangementFixture()
 
 void PlaneArrangementFixture::SetUp()
 {
-    myPlaneArrangement = new Arrangement();
+    Arrangement myPlaneArrangement;
 
     // Bounding box
     bbox = CGAL::Bbox_3(0., 0., 0., 1., 1., 1.);
-    myPlaneArrangement->set_bbox(bbox);
+    myPlaneArrangement.set_bbox(bbox);
 
     // Plane A
     Kernel2::Vector_3 normalA(0., 0., 1.);
     Kernel2::Point_3 inlierA(0., 0., 0.5);
-    Kernel2::Plane_3 planeA(inlierA, normalA);
-    myPlaneArrangement->insert(planeA);
+    Kernel2::Plane_3 planeACgal(inlierA, normalA);
+    Plane planeA = {inlierA, normalA, vector<vector<int>>(), 0.5};
+    myPlaneArrangement.insert(planeACgal);
 
     // Plane B
     Kernel2::Vector_3 normalB(1., 0., 0.);
     Kernel2::Point_3 inlierB(0.5, 0., 0.);
-    Kernel2::Plane_3 planeB(inlierB, normalB);
-    myPlaneArrangement->insert(planeB);
+    Kernel2::Plane_3 planeBCgal(inlierB, normalB);
+    Plane planeB = {inlierB, normalB, vector<vector<int>>(), 0.5};
+    myPlaneArrangement.insert(planeBCgal);
 
     // Mappings
-    for(auto cellIt = myPlaneArrangement->cells_begin(); cellIt != myPlaneArrangement->cells_end(); cellIt++)
+    for(auto cellIt = myPlaneArrangement.cells_begin(); cellIt != myPlaneArrangement.cells_end(); cellIt++)
     {
-        if(myPlaneArrangement->is_cell_bounded(*cellIt))
+        if(myPlaneArrangement.is_cell_bounded(*cellIt))
         {
             bool left = cellIt->point().x() < 0.5;
             bool bottom = cellIt->point().z() < 0.5;
             if(left && bottom)
-                label2cell[0] = myPlaneArrangement->cell_handle(*cellIt);
+                label2cell[0] = myPlaneArrangement.cell_handle(*cellIt);
             else if(!left && bottom)
-                label2cell[1] = myPlaneArrangement->cell_handle(*cellIt);
+                label2cell[1] = myPlaneArrangement.cell_handle(*cellIt);
             else if(!left && !bottom)
-                label2cell[2] = myPlaneArrangement->cell_handle(*cellIt);
+                label2cell[2] = myPlaneArrangement.cell_handle(*cellIt);
             else if(left && !bottom)
-                label2cell[3] = myPlaneArrangement->cell_handle(*cellIt);
+                label2cell[3] = myPlaneArrangement.cell_handle(*cellIt);
         }
     }
-    for(auto facetIt = myPlaneArrangement->facets_begin(); facetIt != myPlaneArrangement->facets_end(); facetIt++)
+    for(auto facetIt = myPlaneArrangement.facets_begin(); facetIt != myPlaneArrangement.facets_end(); facetIt++)
     {
-        if(!myPlaneArrangement->is_facet_bounded(*facetIt)) continue;
+        if(!myPlaneArrangement.is_facet_bounded(*facetIt)) continue;
         ASSERT_EQ(facetIt->number_of_superfaces(), 2);
         int cell1 = facetIt->superface(0);
         int cell2 = facetIt->superface(1);
         if (cell1 == label2cell[0] && cell2 == label2cell[1] ||
             cell2 == label2cell[0] && cell1 == label2cell[1])
-            label2facet[0] = myPlaneArrangement->facet_handle(*facetIt);
+            label2facet[0] = myPlaneArrangement.facet_handle(*facetIt);
         else if (cell1 == label2cell[1] && cell2 == label2cell[2] ||
                  cell2 == label2cell[2] && cell1 == label2cell[1])
-            label2facet[1] = myPlaneArrangement->facet_handle(*facetIt);
+            label2facet[1] = myPlaneArrangement.facet_handle(*facetIt);
         else if (cell1 == label2cell[2] && cell2 == label2cell[3] ||
                  cell2 == label2cell[3] && cell1 == label2cell[2])
-            label2facet[2] = myPlaneArrangement->facet_handle(*facetIt);
+            label2facet[2] = myPlaneArrangement.facet_handle(*facetIt);
         else if (cell1 == label2cell[0] && cell2 == label2cell[3] ||
                  cell2 == label2cell[3] && cell1 == label2cell[0])
-            label2facet[3] = myPlaneArrangement->facet_handle(*facetIt);
+            label2facet[3] = myPlaneArrangement.facet_handle(*facetIt);
     }
     for(auto mapIt: label2cell)
         cell2label[mapIt.second] = mapIt.first;
+    planeArrangement = PlaneArrangement({planeA, planeB}, cell2label, bbox);
 
 }
 
 void PlaneArrangementFixture::TearDown()
 {
-    delete myPlaneArrangement;
+
 }
 
 TEST_F(PlaneArrangementFixture, NodeFusion)
 {
+    cout.setstate(ios_base::failbit);
+    cerr.setstate(ios_base::failbit);
+    Arrangement& myPlaneArrangement = planeArrangement.arrangement();
+    cout.clear();
+    cerr.clear();
 
     // First test
     vector<bool> labels = {false, false, false, true};
-    pair<Nodes, Edges> nodesEdges = computeGraphStatistics(labels, cell2label, *myPlaneArrangement);
+    pair<Nodes, Edges> nodesEdges = computeGraphStatistics(labels, cell2label, myPlaneArrangement);
     ASSERT_EQ(nodesEdges.first.size(), 2);
     ASSERT_EQ(nodesEdges.second.size(), 1);
     vector<int> &bigNode = nodesEdges.first[0].size() == 3 ? nodesEdges.first[0] : nodesEdges.first[1];
@@ -103,7 +112,7 @@ TEST_F(PlaneArrangementFixture, NodeFusion)
 
     // Second test
     vector<bool> labels2 = {false, true, false, true};
-    pair<Nodes, Edges> nodesEdges2 = computeGraphStatistics(labels2, cell2label, *myPlaneArrangement);
+    pair<Nodes, Edges> nodesEdges2 = computeGraphStatistics(labels2, cell2label, myPlaneArrangement);
     ASSERT_EQ(nodesEdges2.first.size(), 4);
     ASSERT_EQ(nodesEdges2.second.size(), 4);
 }
@@ -140,7 +149,7 @@ TEST_F(PlaneArrangementFixture, NodeLabeling)
 
     cout.setstate(ios_base::failbit);
     cerr.setstate(ios_base::failbit);
-    vector<int> nodeLabels = assignLabel(*myPlaneArrangement, cell2label, bbox, labeledTrees, 1, true, false);
+    vector<int> nodeLabels = assignLabel(planeArrangement, labeledTrees, 1, 40, false);
     cout.clear();
     cerr.clear();
     ASSERT_EQ(nodeLabels[0], 0);
@@ -156,7 +165,7 @@ TEST_F(PlaneArrangementFixture, LabelingWithObjLoad)
     auto allTrees =  loadTreesFromObj(testObjPath, classesWithColor);
     cout.setstate(ios_base::failbit);
     cerr.setstate(ios_base::failbit);
-    vector<int> gtLabels = assignLabel(*myPlaneArrangement, cell2label, bbox, allTrees, classesWithColor.size(), true, false);
+    vector<int> gtLabels = assignLabel(planeArrangement, allTrees, classesWithColor.size(), true, false);
     cout.clear();
     cerr.clear();
     ASSERT_EQ(gtLabels[0], 5);
@@ -167,8 +176,13 @@ TEST_F(PlaneArrangementFixture, LabelingWithObjLoad)
 
 TEST_F(PlaneArrangementFixture, pointSampling)
 {
+    cout.setstate(ios_base::failbit);
+    cerr.setstate(ios_base::failbit);
+    Arrangement& myPlaneArrangement = planeArrangement.arrangement();
+    cout.clear();
+    cerr.clear();
     map<int, double> facetAreas;
-    pair<vector<Point>, map<Point, int>> samples = sampleFacets(*myPlaneArrangement, facetAreas);
+    pair<vector<Point>, map<Point, int>> samples = sampleFacets(myPlaneArrangement, facetAreas);
     ASSERT_EQ(samples.first.size(), 8);
 
     // Simulated points
@@ -190,14 +204,14 @@ TEST_F(PlaneArrangementFixture, pointSampling)
 
     cout.setstate(ios_base::failbit);
     cerr.setstate(ios_base::failbit);
-    EdgeFeatures features = computeFeaturesFromLabeledPoints(*myPlaneArrangement, cell2label, bbox,
+    EdgeFeatures features = computeFeaturesFromLabeledPoints(myPlaneArrangement, cell2label, bbox,
                                                              inPoints, inLabels, nbClasses);
     cout.clear();
     cerr.clear();
     ASSERT_EQ(features.size(), 4);
 
-    int cell1 = cell2label.at(myPlaneArrangement->facet(label2facet[0]).superface(0));
-    int cell2 = cell2label.at(myPlaneArrangement->facet(label2facet[0]).superface(1));
+    int cell1 = cell2label.at(myPlaneArrangement.facet(label2facet[0]).superface(0));
+    int cell2 = cell2label.at(myPlaneArrangement.facet(label2facet[0]).superface(1));
     pair<int, int> edgeZeroV1(cell1, cell2);
     pair<int, int> edgeZeroV2(cell2, cell1);
     ASSERT_TRUE((features.find(edgeZeroV1) != features.end()) ||
@@ -380,23 +394,20 @@ TEST(GraphStatistics, SampleBoundingBox)
 
 TEST_F(PlaneArrangementFixture, sampleInConvexCell)
 {
-    // Get a bounded cell
-    auto cellIt = myPlaneArrangement->cells_begin();
-    while(!myPlaneArrangement->is_cell_bounded(*cellIt))
-        cellIt++;
-    int cellHandle = myPlaneArrangement->cell_handle(*cellIt);
+    cout.setstate(ios_base::failbit);
+    cerr.setstate(ios_base::failbit);
+    Arrangement& myPlaneArrangement = planeArrangement.arrangement();
+    cout.clear();
+    cerr.clear();
 
     // Sample in it
     const int nbSamples = 40;
-    vector<pair<Point, int>> samples;
+    vector<pair<Point, int>> samples = planeArrangement.getSamples(nbSamples);
     Simple_to_Epeck s2e;
-    sampleInConvexCell(*myPlaneArrangement, cellHandle, samples, nbSamples);
 
     // Check that samples are well in the cell
-    for(const auto& sample: samples)
-    {
-        int cellIdx = find_containing_cell(*myPlaneArrangement, s2e(sample.first));
-        ASSERT_EQ(cellIdx, cellHandle) << "Point: " << sample.first << endl
-                                       << "Cell center: " << cellIt->point() << endl;
+    for(const auto& sample: samples) {
+        int cellIdx = find_containing_cell(myPlaneArrangement, s2e(sample.first));
+        ASSERT_EQ(cellIdx, sample.second) << "Point: " << sample.first << endl;
     }
 }

@@ -10,6 +10,7 @@
 #include <list>
 #include <tuple>
 #include <unordered_map>
+#include <random>
 
 // CGAL
 #include <CGAL/Simple_cartesian.h>
@@ -165,6 +166,7 @@ class PlaneArrangement
 public:
     explicit PlaneArrangement(const std::string& name);
     PlaneArrangement(const std::vector<Plane> &inPlanes, const std::vector<int>& validPlaneIdx, const CGAL::Bbox_3 &inBbox);
+    PlaneArrangement(const std::vector<Plane> &inPlanes, const std::map<int, int> &cell2label, const CGAL::Bbox_3 &inBbox);
 
     void saveAsJson(const std::string& outPath) const;
 
@@ -180,6 +182,10 @@ public:
     [[nodiscard]] const std::vector<Plane> &planes() const;
     [[nodiscard]] const std::vector<Point> &points() const;
     [[nodiscard]] const EdgeFeatures &edgeFeatures() const;
+    [[nodiscard]] const std::vector<std::pair<Point, int>> &getSamples(int nbSamplesPerCell=40);
+
+    // Hit and run sampling for the plane arrangement
+    void sampleInConvexCell(int cellHandle, int nbSamples=40);
 
 private:
     Arrangement _arr;
@@ -194,9 +200,11 @@ private:
     std::vector<std::vector<double>> _cellPoints;
     std::vector<CGAL::Bbox_3> _nodeBboxes;
     int _nbPlanes;
+    std::vector<std::pair<Point, int>> _samples;
 
 
     bool isArrangementComputed;
+    int computedSamplesPerCell;
 
 };
 
