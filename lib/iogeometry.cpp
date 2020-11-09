@@ -683,7 +683,7 @@ void PlaneArrangement::sampleInConvexCell(int cellHandle, int nbSamples)
 {
     Epeck_to_Simple e2s;
     const auto& cell = _arr.cell(cellHandle);
-    default_random_engine generator(time(nullptr));
+    default_random_engine generator(random_device{}());
     normal_distribution<double> normalDist(0., 1.);
 
     Point curPoint = e2s(cell.point());

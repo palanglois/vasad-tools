@@ -87,7 +87,8 @@ int main(int argc, char *argv[]) {
 
     cout << "Computing statistics" << endl;
     int nbClasses = classesWithColor.size();
-    pair<NodeFeatures, EdgeFeatures> nodesEdges = computeGraph(gtLabels, cell2label, arr, nbClasses, proba, geom, true);
+    NodeFeatures nodeFeats = computeNodeFeatures(currentArrangement, gtLabels, proba, geom, true);
+    EdgeFeatures edgeFeats = computeTrivialEdgeFeatures(currentArrangement, gtLabels, nbClasses, true);
     cout << "Statistics Computed" << endl;
 
     cout << "Save the arrangement with labels and features" << endl;
@@ -98,8 +99,8 @@ int main(int argc, char *argv[]) {
     for(auto idx: cell2label)
         cell2labelJ[to_string(idx.first)] = idx.second;
     data["map"] = cell2labelJ;
-    data["NodeFeatures"] = nodesEdges.first;
-    data["EdgeFeatures"] = nodesEdges.second;
+    data["NodeFeatures"] = nodeFeats;
+    data["EdgeFeatures"] = edgeFeats;
     data["gtLabels"] = gtLabels;
     data["NodePoints"] = getCellsPoints(cell2label, arr);
     data["NodeBbox"] = getCellsBbox(cell2label, arr);

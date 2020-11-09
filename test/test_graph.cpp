@@ -123,12 +123,12 @@ TEST_F(PlaneArrangementFixture, NodeLabeling)
     vector<Point> points;
     points.emplace_back(0., 0., 0.);
     points.emplace_back(0.5, 0., 0.);
-    points.emplace_back(0.5, 0., 0.6);
-    points.emplace_back(0., 0., 0.6);
+    points.emplace_back(0.5, 0., 0.55);
+    points.emplace_back(0., 0., 0.55);
     points.emplace_back(0., 1., 0.);
     points.emplace_back(0.5, 1., 0.);
-    points.emplace_back(0.5, 1., 0.6);
-    points.emplace_back(0., 1., 0.6);
+    points.emplace_back(0.5, 1., 0.55);
+    points.emplace_back(0., 1., 0.55);
 
     vector<Triangle> triangles;
     triangles.emplace_back(points[0], points[1], points[2]);
@@ -149,7 +149,7 @@ TEST_F(PlaneArrangementFixture, NodeLabeling)
 
     cout.setstate(ios_base::failbit);
     cerr.setstate(ios_base::failbit);
-    vector<int> nodeLabels = assignLabel(planeArrangement, labeledTrees, 1, 40, false);
+    vector<int> nodeLabels = assignLabel(planeArrangement, labeledTrees, 1, 50, true);
     cout.clear();
     cerr.clear();
     ASSERT_EQ(nodeLabels[0], 0);
@@ -400,7 +400,7 @@ TEST_F(PlaneArrangementFixture, sampleInConvexCell)
     cerr.clear();
 
     // Sample in it
-    const int nbSamples = 40;
+    const int nbSamples = 100;
     vector<pair<Point, int>> samples = planeArrangement.getSamples(nbSamples);
     Simple_to_Epeck s2e;
 
@@ -409,4 +409,69 @@ TEST_F(PlaneArrangementFixture, sampleInConvexCell)
         int cellIdx = find_containing_cell(myPlaneArrangement, s2e(sample.first));
         ASSERT_EQ(cellIdx, sample.second) << "Point: " << sample.first << endl;
     }
+
+//    // DEBUG
+//    map<int, vector<int>> colorMap;
+//    int iter = 0;
+//    double step = 255. / double(planeArrangement.cell2label().size() + 1);
+//    for(const auto& idx: planeArrangement.cell2label()) {
+//        colorMap[idx.first] = {int(step*iter), int(step*iter), int(step*iter)};
+//        iter++;
+//    }
+//    ofstream outFile((string) TEST_DIR + "testRot.obj");
+//    for(const auto& sample:samples) {
+//        cout << "Cur cell: " << sample.second << endl;
+//        const auto& color = colorMap[sample.second];
+//        outFile << "v " << sample.first.x() << " " << sample.first.y() << " "<< sample.first.z()
+//        << " " << color[0] <<" " << color[1] << " " << color[2] << endl;
+//    }
+//    outFile << "v 0 0 1 0 0 255" << endl;
+//    outFile << "v 0 1 0 0 0 255" << endl;
+//    outFile << "v 0 1 1 0 0 255" << endl;
+//    outFile << "v 1 0 0 0 0 255" << endl;
+//    outFile << "v 1 0 1 0 0 255" << endl;
+//    outFile << "v 1 1 0 0 0 255" << endl;
+//    outFile << "v 1 1 1 0 0 255" << endl;
+//    outFile << "v 0 0 0 0 0 255" << endl;
+//    outFile.close();
+}
+
+TEST_F(PlaneArrangementFixture, computeNodeFeatures)
+{
+    vector<int> labels = {1, -1, -1, -1};
+    double proba = 0.;
+    bool withGeom = true;
+    cout.setstate(ios_base::failbit);
+    cerr.setstate(ios_base::failbit);
+    NodeFeatures nodeFeats = computeNodeFeatures(planeArrangement, labels, proba, withGeom);
+    cout.clear();
+    cerr.clear();
+
+    for (const auto &feature: nodeFeats) {
+        ASSERT_EQ(feature.size(), 4);
+        ASSERT_EQ(feature[1], 0.5);
+        ASSERT_EQ(feature[2], 1.);
+        ASSERT_EQ(feature[3], 0.5);
+
+        //No emptiness should be specified
+        ASSERT_EQ(feature[0], 1);
+    }
+    proba = 1.;
+    cout.setstate(ios_base::failbit);
+    cerr.setstate(ios_base::failbit);
+    nodeFeats = computeNodeFeatures(planeArrangement, labels, proba, withGeom);
+    cout.clear();
+    cerr.clear();
+
+    for (const auto &feature: nodeFeats) {
+        ASSERT_EQ(feature.size(), 4);
+        ASSERT_EQ(feature[1], 0.5);
+        ASSERT_EQ(feature[2], 1.);
+        ASSERT_EQ(feature[3], 0.5);
+    }
+
+    //Emptiness should be specified on nodes 1, 2 and 3
+    ASSERT_EQ(nodeFeats[1][0], 0);
+    ASSERT_EQ(nodeFeats[2][0], 0);
+    ASSERT_EQ(nodeFeats[3][0], 0);
 }

@@ -391,9 +391,11 @@ vector<int> assignLabel(PlaneArrangement& planeArr,
     return labels;
 }
 
-pair<NodeFeatures, EdgeFeatures>
-computeGraph(const vector<int> &labels, const map<int, int> &cell2label, const Arrangement &arr,
-        const int nbClasses, const double proba, const bool withGeom, bool verbose) {
+NodeFeatures computeNodeFeatures(PlaneArrangement& planeArr, vector<int> &labels, const double proba,
+                                 const bool withGeom, bool verbose)
+{
+    const map<int, int> &cell2label = planeArr.cell2label();
+    const Arrangement &arr = planeArr.arrangement();
 
     // Graph nodes
     default_random_engine generator;
@@ -434,6 +436,14 @@ computeGraph(const vector<int> &labels, const map<int, int> &cell2label, const A
             nodeFeatures[labelIdx].push_back(curBbox[5] - curBbox[2]);
         }
     }
+    return nodeFeatures;
+}
+
+EdgeFeatures computeTrivialEdgeFeatures(PlaneArrangement& planeArr, vector<int> &labels, const int nbClasses,
+                                        bool verbose)
+{
+    const map<int, int> &cell2label = planeArr.cell2label();
+    const Arrangement &arr = planeArr.arrangement();
 
     // Graph edges
     EdgeFeatures edgeFeatures;
@@ -472,8 +482,7 @@ computeGraph(const vector<int> &labels, const map<int, int> &cell2label, const A
             }
         }
     }
-
-    return make_pair(nodeFeatures, edgeFeatures);
+    return edgeFeatures;
 }
 
 pair<vector<Point>, map<Point, int>> sampleFacets(const Arrangement &arr, map<int, double> &facetAreas)
@@ -857,8 +866,7 @@ splitArrangementInBatch(const PlaneArrangement &planeArr, vector<facesLabelName>
             // labelling, feature computing
             vector<int> gtLabels = assignLabel(fullArrangement,
                                     labeledShapes, nbClasses,  nbSamplesPerCell, verbose);
-            pair<NodeFeatures, EdgeFeatures> nodesEdges = computeGraph(gtLabels, fullArrangement.cell2label(),
-                    onlyArrangement, nbClasses, proba, geom, true);
+            NodeFeatures nodeFeats = computeNodeFeatures(fullArrangement, gtLabels, proba, geom, verbose);
 
             // Compiling into json
             Json data;
@@ -866,14 +874,13 @@ splitArrangementInBatch(const PlaneArrangement &planeArr, vector<facesLabelName>
             for(auto idx: fullArrangement.cell2label())
                 cell2labelJ[to_string(idx.first)] = idx.second;
             data["map"] = cell2labelJ;
-            data["NodeFeatures"] = nodesEdges.first;
+            data["NodeFeatures"] = nodeFeats;
             if(labeledPointCloud.first.empty())
-                data["EdgeFeatures"] = nodesEdges.second;
+                data["EdgeFeatures"] = computeTrivialEdgeFeatures(fullArrangement, gtLabels, nbClasses, verbose);
             else
-                data["EdgeFeatures"] = computeFeaturesFromLabeledPoints(fullArrangement,
-                                                                        labeledPointCloud.first,
-                                                                        labeledPointCloud.second,
-                                                                        nbClasses, nbSamplesPerCell, verbose);
+                data["EdgeFeatures"] = computeFeaturesFromLabeledPoints(fullArrangement, labeledPointCloud.first,
+                                                                        labeledPointCloud.second, nbClasses,
+                                                                        nbSamplesPerCell, verbose);
             data["gtLabels"] = gtLabels;
             data["NodePoints"] = getCellsPoints(fullArrangement.cell2label(), onlyArrangement);
             data["NodeBbox"] = getCellsBbox(fullArrangement.cell2label(), onlyArrangement);
