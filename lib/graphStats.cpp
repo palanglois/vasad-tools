@@ -228,10 +228,16 @@ vector<int> assignLabel(const Arrangement &arr, const map<int, int> &cell2label,
     tqLabeledShapes.set_prefix("Labeling each point: ");
     for (int j : tqLabeledShapes)
     {
+        if(bboxes[j].xmax() < bbox.xmin()) continue;
+        if(bboxes[j].xmin() > bbox.xmax()) continue;
+        if(bboxes[j].ymax() < bbox.ymin()) continue;
+        if(bboxes[j].ymin() > bbox.ymax()) continue;
+        if(bboxes[j].zmax() < bbox.zmin()) continue;
+        if(bboxes[j].zmin() > bbox.zmax()) continue;
         auto &labeledTree = labeledShapes[j];
         tree.rebuild(get<0>(labeledTree).begin(), get<0>(labeledTree).end());
         bool warningSent = false;
-#pragma omp parallel for schedule(static) num_threads(14)
+#pragma omp parallel for schedule(static)
 	for(int i=0; i < queryPoints.size(); i++)
         {
 
