@@ -67,13 +67,13 @@ void PlaneArrangementFixture::SetUp()
             cell2 == label2cell[0] && cell1 == label2cell[1])
             label2facet[0] = myPlaneArrangement.facet_handle(*facetIt);
         else if (cell1 == label2cell[1] && cell2 == label2cell[2] ||
-                 cell2 == label2cell[2] && cell1 == label2cell[1])
+                 cell2 == label2cell[1] && cell1 == label2cell[2])
             label2facet[1] = myPlaneArrangement.facet_handle(*facetIt);
-        else if (cell1 == label2cell[2] && cell2 == label2cell[3] ||
-                 cell2 == label2cell[3] && cell1 == label2cell[2])
+        else if ((cell1 == label2cell[2] && cell2 == label2cell[3]) ||
+                (cell2 == label2cell[2] && cell1 == label2cell[3]))
             label2facet[2] = myPlaneArrangement.facet_handle(*facetIt);
         else if (cell1 == label2cell[0] && cell2 == label2cell[3] ||
-                 cell2 == label2cell[3] && cell1 == label2cell[0])
+                 cell2 == label2cell[0] && cell1 == label2cell[3])
             label2facet[3] = myPlaneArrangement.facet_handle(*facetIt);
     }
     for(auto mapIt: label2cell)
@@ -149,7 +149,7 @@ TEST_F(PlaneArrangementFixture, NodeLabeling)
 
     cout.setstate(ios_base::failbit);
     cerr.setstate(ios_base::failbit);
-    vector<int> nodeLabels = assignLabel(planeArrangement, labeledTrees, 1, 50, true);
+    vector<int> nodeLabels = assignLabel(planeArrangement, labeledTrees, 1, 100, true);
     cout.clear();
     cerr.clear();
     ASSERT_EQ(nodeLabels[0], 0);
@@ -191,15 +191,15 @@ TEST_F(PlaneArrangementFixture, pointSampling)
     vector<int> inLabels;
 
     // Point A
-    inPoints.emplace_back(0.5, 0.5, 0.25);
+    inPoints.emplace_back(0.25, 0.5, 0.5);
     inLabels.push_back(0);
 
     // Point B
-    inPoints.emplace_back(0.5, 0.5, 0.26);
+    inPoints.emplace_back(0.26, 0.5, 0.5);
     inLabels.push_back(0);
 
     // Point C
-    inPoints.emplace_back(0.5, 0.51, 0.24);
+    inPoints.emplace_back(0.24, 0.51, 0.5);
     inLabels.push_back(1);
 
     cout.setstate(ios_base::failbit);
@@ -209,8 +209,8 @@ TEST_F(PlaneArrangementFixture, pointSampling)
     cerr.clear();
     ASSERT_EQ(features.size(), 4);
 
-    int cell1 = cell2label.at(myPlaneArrangement.facet(label2facet[0]).superface(0));
-    int cell2 = cell2label.at(myPlaneArrangement.facet(label2facet[0]).superface(1));
+    int cell1 = cell2label.at(myPlaneArrangement.facet(label2facet[3]).superface(0));
+    int cell2 = cell2label.at(myPlaneArrangement.facet(label2facet[3]).superface(1));
     pair<int, int> edgeZeroV1(cell1, cell2);
     pair<int, int> edgeZeroV2(cell2, cell1);
     ASSERT_TRUE((features.find(edgeZeroV1) != features.end()) ||
@@ -219,7 +219,7 @@ TEST_F(PlaneArrangementFixture, pointSampling)
                         sqrt((inPoints[1] - inPoints[0]).squared_length()) +
                         sqrt((inPoints[2] - inPoints[0]).squared_length()))/3.;
     double expectedNbOfPoints = 0.5 / (3.141592 * pow(nnDistance, 2));
-    vector<double> targetDistrib = {2./expectedNbOfPoints, 1./expectedNbOfPoints, 0.};
+    vector<double> targetDistrib = {2./expectedNbOfPoints, 1./expectedNbOfPoints, 0., 0., 1.};
     if(features.find(edgeZeroV1) != features.end())
     {
         stringstream outStream;
@@ -227,7 +227,7 @@ TEST_F(PlaneArrangementFixture, pointSampling)
         for(double i : features.at(edgeZeroV1))
             outStream << i << " ";
         outStream << endl;
-        for(int i=0; i < 3; i++)
+        for(int i=0; i < targetDistrib.size(); i++)
             ASSERT_EQ(features.at(edgeZeroV1)[i], targetDistrib[i]) << outStream.rdbuf();
     }
 }
@@ -474,4 +474,21 @@ TEST_F(PlaneArrangementFixture, computeNodeFeatures)
     ASSERT_EQ(nodeFeats[1][0], 0);
     ASSERT_EQ(nodeFeats[2][0], 0);
     ASSERT_EQ(nodeFeats[3][0], 0);
+}
+
+TEST_F(PlaneArrangementFixture, computeFacetOrientation)
+
+{
+    cout.setstate(ios_base::failbit);
+    cerr.setstate(ios_base::failbit);
+    double facetOrientation0 = computeFacetOrientation(planeArrangement.arrangement(), label2facet.at(0));
+    double facetOrientation1 = computeFacetOrientation(planeArrangement.arrangement(), label2facet.at(1));
+    double facetOrientation2 = computeFacetOrientation(planeArrangement.arrangement(), label2facet.at(2));
+    double facetOrientation3 = computeFacetOrientation(planeArrangement.arrangement(), label2facet.at(3));
+    cout.clear();
+    cerr.clear();
+    ASSERT_EQ(facetOrientation0, 0.);
+    ASSERT_EQ(facetOrientation1, 1.);
+    ASSERT_EQ(facetOrientation2, 0.);
+    ASSERT_EQ(facetOrientation3, 1.);
 }

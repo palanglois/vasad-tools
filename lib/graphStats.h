@@ -41,4 +41,13 @@ std::pair<Matrix, PointRg> computeTransform(const Eigen::MatrixXd &rotPoints);
 void sampleBetweenPoints(const std::vector<Kernel2::Point_3>& points, std::vector<std::pair<Point, int>> &query,
                                                        int nbSamples=40, int faceHandle=-1);
 
+
+
+inline double computeFacetOrientation(const Arrangement &arr, int facetHandle)
+{
+    const auto& facetPlane = arr.plane(arr.facet_plane(facetHandle));
+    const auto& planeNormal = facetPlane.orthogonal_direction().vector();
+    return abs(CGAL::to_double(planeNormal.z())) / sqrt(CGAL::to_double(planeNormal.squared_length()));
+}
+
 #endif //BIM_DATA_GRAPHSTATS_H

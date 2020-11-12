@@ -596,7 +596,6 @@ EdgeFeatures computeFeaturesFromLabeledPoints(PlaneArrangement &planeArr, const 
     auto s2e = Simple_to_Epeck();
 
     // Get samples
-    map<pair<int, int>, double> facetAreasMapping;
     const vector<pair<Point, int>> &samples = planeArr.getSamples(nbSamplesPerCell);
     if(verbose)
         cout << "Sampled " << samples.size() << " points." << endl;
@@ -615,6 +614,8 @@ EdgeFeatures computeFeaturesFromLabeledPoints(PlaneArrangement &planeArr, const 
 
     // Initializing edge features
     EdgeFeatures features;
+    map<pair<int, int>, double> facetAreasMapping;
+    map<pair<int, int>, double> facetOrientationMapping;
     for(auto facetIt = arr.facets_begin(); facetIt != arr.facets_end(); facetIt++)
     {
         if(!arr.is_facet_bounded(*facetIt)) continue;
@@ -623,9 +624,12 @@ EdgeFeatures computeFeaturesFromLabeledPoints(PlaneArrangement &planeArr, const 
         int cell2 = facetIt->superface(1);
         if(!arr.is_cell_bounded(cell2)) continue;
         pair<int, int> facetId(cell2label.at(cell1), cell2label.at(cell2));
-        features[facetId] = vector<double>(nbClasses + 1, 0);
+        features[facetId] = vector<double>(nbClasses + 2, 0);
         features[facetId][nbClasses] = 1.;
+        double facetOrientation = computeFacetOrientation(arr, arr.facet_handle(*facetIt));
+        features[facetId][nbClasses + 1] = facetOrientation;
         facetAreasMapping[facetId] = computeFacetArea(arr, arr.facet_handle(*facetIt));
+        facetOrientationMapping[facetId] = facetOrientation;
     }
 
     // Find closest facet by nearest neighbour search
@@ -694,17 +698,18 @@ EdgeFeatures computeFeaturesFromLabeledPoints(PlaneArrangement &planeArr, const 
     averageNNDistance /= validPoints.size();
 
     // Normalize features
-    vector<double> emptyVec( nbClasses + 1, 0.);
+    vector<double> emptyVec( nbClasses + 2, 0.);
     emptyVec[nbClasses] = 1.;
     for(auto& edgeFeat: features)
     {
-        double sum_of_elems = accumulate(edgeFeat.second.begin(), edgeFeat.second.end(), 0.);
         double expectedNbOfPoints = facetAreasMapping[edgeFeat.first] / (3.141592 * pow(averageNNDistance, 2));
-        if (expectedNbOfPoints >= 1. && edgeFeat.second[edgeFeat.second.size() - 1] != 1.) {
-            for (auto &elem: edgeFeat.second)
-                elem /= expectedNbOfPoints;
-        } else
+        if (expectedNbOfPoints >= 1. && edgeFeat.second[nbClasses] != 1.) {
+            for (int i = 0; i < nbClasses + 1; i++)
+                edgeFeat.second[i] /= expectedNbOfPoints;
+        } else {
             edgeFeat.second = emptyVec;
+            edgeFeat.second[nbClasses + 1] = facetOrientationMapping[edgeFeat.first];
+        }
 	// Renormalization
     for (auto &elem: edgeFeat.second)
         elem = min(elem, 1.);
