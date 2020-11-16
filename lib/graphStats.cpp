@@ -1044,7 +1044,7 @@ vector<Point> findPtViewInBbox(const CGAL::Bbox_3 &bbox, vector<facesLabelName> 
         }
 
         // Attribute scores to the candidates
-        vector<int> allScores;
+        vector<int> allScores(candidates.size(), 0);
 #pragma omp parallel for
         for(int i=0; i < candidates.size(); i++)
         {
@@ -1055,7 +1055,7 @@ vector<Point> findPtViewInBbox(const CGAL::Bbox_3 &bbox, vector<facesLabelName> 
                 curScore += (int) tree.do_intersect(query);
             }
 #pragma omp critical
-            allScores.push_back(curScore);
+            allScores[i] = curScore;
         }
 
         // We keep the best candidate
