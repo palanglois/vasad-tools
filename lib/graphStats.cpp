@@ -978,9 +978,36 @@ void refinePoint(Point &point, std::vector<Triangle> &mesh, int nbShoot)
     }
 }
 
+inline bool isInShape(const Point& candidate, const CGAL::Bbox_3 &bbox, vector<Triangle>& mesh)
+{
+    if (candidate.x() < bbox.xmin()) return false;
+    if (candidate.x() > bbox.xmax()) return false;
+    if (candidate.y() < bbox.ymin()) return false;
+    if (candidate.y() > bbox.ymax()) return false;
+    if (candidate.z() < bbox.zmin()) return false;
+    if (candidate.z() > bbox.zmax()) return false;
+    Tree tree(mesh.begin(), mesh.end());
+    //Make random queries ray and intersect it against the current shape
+    vector<Ray> queries = {Ray(candidate, Vector(1., 0., 0.)),
+                           Ray(candidate, Vector(0., 1., 0.)),
+                           Ray(candidate, Vector(0., 0., 1.))};
+    vector<list<Ray_intersection>> intersections(3, list<Ray_intersection>(0));
+    for (int k = 0; k < queries.size(); k++)
+        tree.all_intersections(queries[k], back_inserter(intersections[k]));
+    // We use the parity of the number of intersections to know whether candidate is inside/outside the shape
+    unsigned int even = 0;
+    for (const auto &inter: intersections)
+        even += int(inter.size() % 2 == 0);
+    if (even != queries.size()) {
+        // The point is inside a shape
+        return false;
+    }
+    return true;
+}
+
 
 vector<Point> findPtViewInBbox(const CGAL::Bbox_3 &bbox, vector<facesLabelName> &shapesAndClasses,
-                               vector<Triangle> &mesh, int nbShoot)
+                               vector<Triangle> &mesh, int nbShoot, int nbCandidates, bool verbose)
 {
     vector<Point> ptViews;
     default_random_engine generator(random_device{}());
@@ -996,42 +1023,44 @@ vector<Point> findPtViewInBbox(const CGAL::Bbox_3 &bbox, vector<facesLabelName> 
         bboxes.push_back(curBbox);
     }
 
-    Tree tree;
+    Tree tree(mesh.begin(), mesh.end());
     while(ptViews.size() != nbShoot) {
-        Point candidate(xDist(generator), yDist(generator), zDist(generator));
-        bool outside = true;
-        for (int j = 0; j < shapesAndClasses.size(); j++) {
-            if (candidate.x() < bboxes[j].xmin()) continue;
-            if (candidate.x() > bboxes[j].xmax()) continue;
-            if (candidate.y() < bboxes[j].ymin()) continue;
-            if (candidate.y() > bboxes[j].ymax()) continue;
-            if (candidate.z() < bboxes[j].zmin()) continue;
-            if (candidate.z() > bboxes[j].zmax()) continue;
-            tree.rebuild(get<0>(shapesAndClasses[j]).begin(), get<0>(shapesAndClasses[j]).end());
-            //Make random queries ray and intersect it against the current shape
-            vector<Ray> queries = {Ray(candidate, Vector(1., 0., 0.)),
-                                   Ray(candidate, Vector(0., 1., 0.)),
-                                   Ray(candidate, Vector(0., 0., 1.))};
-            vector<list<Ray_intersection>> intersections(3, list<Ray_intersection>(0));
-            for (int k = 0; k < queries.size(); k++)
-                tree.all_intersections(queries[k], back_inserter(intersections[k]));
-            // We use the parity of the number of intersections to know whether candidate is inside/outside the shape
-            unsigned int even = 0;
-            for (const auto &inter: intersections)
-                even += int(inter.size() % 2 == 0);
-            if (even != queries.size()) {
-                // The point is inside a shape
-                outside = false;
-                break;
+        if(verbose)
+            cout << "Got " << ptViews.size() << " point of views out of " << nbShoot << endl;
+        // Gather candidates
+        vector<Point> candidates;
+        while(candidates.size() != nbCandidates) {
+            Point candidate(xDist(generator), yDist(generator), zDist(generator));
+            bool outside = true;
+            for (int j = 0; j < shapesAndClasses.size(); j++) {
+                if (isInShape(candidate, bboxes[j], get<0>(shapesAndClasses[j]))) {
+                    outside = false;
+                    break;
+                }
             }
+            if (!outside) continue;
+            candidates.push_back(candidate);
         }
-        if(!outside) continue;
 
-        refinePoint(candidate, mesh, 2);
-        ptViews.push_back(candidate);
+        // Attribute scores to the candidates
+        vector<int> allScores;
+        for(const auto& candidate: candidates)
+        {
+            int curScore = 0;
+            for(const auto ptView: ptViews) {
+                Segment query(candidate, ptView);
+                list<Segment_intersection> intersections;
+                tree.all_intersections(query, back_inserter(intersections));
+                curScore += intersections.size();
+            }
+            allScores.push_back(curScore);
+        }
+
+        Point bestCandidate = candidates[arg_max(allScores)];
+
+        refinePoint(bestCandidate, mesh, 2);
+        ptViews.push_back(bestCandidate);
     }
-
-
     return ptViews;
 
 }

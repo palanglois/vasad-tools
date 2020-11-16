@@ -14,6 +14,8 @@ int main(int argc, char *argv[]) {
     opt.add_option("-i", "--input", "Path to the input obj mesh", "");
     opt.add_option("-o", "--output", "Path to the output directory", ".");
     opt.add_option("-n", "--number", "Number of point of views to shoot", "200");
+    opt.add_option("-c", "--num_candidates", "Number of candidates", "100");
+    opt.add_option("-v", "--verbose", "Verbosity trigger");
 
     //Parsing options
     bool correctParsing = opt.parse_options(argc, argv);
@@ -34,6 +36,9 @@ int main(int argc, char *argv[]) {
     const string outPath = opt["-o"][opt["-o"].size()-1] == '/' ? opt["-o"] : opt["-o"] + "/";
 
     int nbShoot = op::str2int(opt["-n"]);
+    int nbCandidates = op::str2int(opt["-c"]);
+
+    const bool verbose = op::str2bool(opt["-v"]);
 
     // Load semantic_classes
     vector<classKeywordsColor> classesWithColor = loadSemanticClasses((string) TEST_DIR + "semantic_classes.json");
@@ -53,7 +58,7 @@ int main(int argc, char *argv[]) {
     triangles.insert(triangles.end(), bboxMesh.begin(), bboxMesh.end());
 
     // Shoot the point of views
-    vector<Point> ptViews = findPtViewInBbox(bbox, shapesAndClasses, triangles, nbShoot);
+    vector<Point> ptViews = findPtViewInBbox(bbox, shapesAndClasses, triangles, nbShoot, nbCandidates, verbose);
 
     // Output computed point of views
     Json outData;

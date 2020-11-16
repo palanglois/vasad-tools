@@ -52,7 +52,7 @@ inline double computeFacetOrientation(const Arrangement &arr, int facetHandle)
 
 void refinePoint(Point &point, std::vector<Triangle> &mesh, int nbShoot=100);
 std::vector<Point> findPtViewInBbox(const CGAL::Bbox_3 &bbox, std::vector<facesLabelName> &shapesAndClasses,
-                                    std::vector<Triangle> &mesh, int nbShoot);
+                                    std::vector<Triangle> &mesh, int nbShoot, int nbCandidates=100, bool verbose=false);
 
 inline std::vector<Triangle> meshBbox(const CGAL::Bbox_3 &bbox)
 {

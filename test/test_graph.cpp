@@ -541,7 +541,8 @@ TEST(PointOfViews, SamplePtViewOnObject)
     triangles.insert(triangles.end(), bboxMesh.begin(), bboxMesh.end());
 
     int nbShoot = 100;
-    vector<Point> ptViews = findPtViewInBbox(bbox, shapesAndClasses, triangles, nbShoot);
+    int nbCandidates = 100;
+    vector<Point> ptViews = findPtViewInBbox(bbox, shapesAndClasses, triangles, nbShoot, nbCandidates);
 
     ASSERT_EQ(ptViews.size(), nbShoot);
 }
