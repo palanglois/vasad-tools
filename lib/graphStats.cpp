@@ -1025,7 +1025,8 @@ vector<Point> findPtViewInBbox(const CGAL::Bbox_3 &bbox, vector<facesLabelName> 
 
     vector<Point> candidates;
     Tree tree(mesh.begin(), mesh.end());
-    while(ptViews.size() != nbShoot) {
+    bool hasUnseenSpots = true;
+    while(ptViews.size() < nbShoot || hasUnseenSpots) {
         if(verbose)
             cout << "Got " << ptViews.size() << " point of views out of " << nbShoot << endl;
         // Gather candidates
@@ -1065,6 +1066,10 @@ vector<Point> findPtViewInBbox(const CGAL::Bbox_3 &bbox, vector<facesLabelName> 
             if(i != bestIdx && allScores[i] == ptViews.size() - 1)
                 nextCandidates.push_back(candidates[i]);
         }
+
+        // Check if there are still unseen spots
+        hasUnseenSpots = !nextCandidates.empty();
+
         if(verbose) {
             cout << "Best theoretical score: " << ptViews.size() - 1 << endl;
             cout << "Actual best score: " << allScores[bestIdx] << endl;
