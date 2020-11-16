@@ -1039,6 +1039,7 @@ vector<Point> findPtViewInBbox(const CGAL::Bbox_3 &bbox, vector<facesLabelName> 
                 }
             }
             if (!outside) continue;
+            refinePoint(candidate, mesh, 2);
             candidates.push_back(candidate);
         }
 
@@ -1058,7 +1059,6 @@ vector<Point> findPtViewInBbox(const CGAL::Bbox_3 &bbox, vector<facesLabelName> 
 
         Point bestCandidate = candidates[arg_max(allScores)];
 
-        refinePoint(bestCandidate, mesh, 2);
         ptViews.push_back(bestCandidate);
     }
     return ptViews;
