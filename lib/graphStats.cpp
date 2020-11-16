@@ -1000,9 +1000,9 @@ inline bool isInShape(const Point& candidate, const CGAL::Bbox_3 &bbox, vector<T
         even += int(inter.size() % 2 == 0);
     if (even != queries.size()) {
         // The point is inside a shape
-        return false;
+        return true;
     }
-    return true;
+    return false;
 }
 
 
@@ -1023,12 +1023,12 @@ vector<Point> findPtViewInBbox(const CGAL::Bbox_3 &bbox, vector<facesLabelName> 
         bboxes.push_back(curBbox);
     }
 
+    vector<Point> candidates;
     Tree tree(mesh.begin(), mesh.end());
     while(ptViews.size() != nbShoot) {
         if(verbose)
             cout << "Got " << ptViews.size() << " point of views out of " << nbShoot << endl;
         // Gather candidates
-        vector<Point> candidates;
         while(candidates.size() != nbCandidates) {
             Point candidate(xDist(generator), yDist(generator), zDist(generator));
             bool outside = true;
@@ -1055,7 +1055,19 @@ vector<Point> findPtViewInBbox(const CGAL::Bbox_3 &bbox, vector<facesLabelName> 
         }
 
         // We keep the best candidate
-        ptViews.push_back(candidates[arg_max(allScores)]);
+        int bestIdx = arg_max(allScores);
+        ptViews.push_back(candidates[bestIdx]);
+
+        // Among the remaining candidates, we keep the good ones
+        vector<Point> nextCandidates;
+        for(int i = 0; i < allScores.size(); i++)
+        {
+            if(i != bestIdx && allScores[i] == ptViews.size() - 1)
+                nextCandidates.push_back(candidates[i]);
+        }
+        if(verbose)
+            cout << "Next cand size: " << nextCandidates.size() << " out of " << candidates.size() << endl;
+        candidates = nextCandidates;
     }
     return ptViews;
 
