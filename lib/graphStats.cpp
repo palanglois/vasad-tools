@@ -1050,16 +1050,13 @@ vector<Point> findPtViewInBbox(const CGAL::Bbox_3 &bbox, vector<facesLabelName> 
             int curScore = 0;
             for(const auto ptView: ptViews) {
                 Segment query(candidate, ptView);
-                list<Segment_intersection> intersections;
-                tree.all_intersections(query, back_inserter(intersections));
-                curScore += intersections.size();
+                curScore += (int) tree.do_intersect(query);
             }
             allScores.push_back(curScore);
         }
 
-        Point bestCandidate = candidates[arg_max(allScores)];
-
-        ptViews.push_back(bestCandidate);
+        // We keep the best candidate
+        ptViews.push_back(candidates[arg_max(allScores)]);
     }
     return ptViews;
 
