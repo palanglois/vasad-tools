@@ -1065,8 +1065,11 @@ vector<Point> findPtViewInBbox(const CGAL::Bbox_3 &bbox, vector<facesLabelName> 
             if(i != bestIdx && allScores[i] == ptViews.size() - 1)
                 nextCandidates.push_back(candidates[i]);
         }
-        if(verbose)
+        if(verbose) {
+            cout << "Best theoretical score: " << ptViews.size() - 1 << endl;
+            cout << "Actual best score: " << allScores[bestIdx] << endl;
             cout << "Next cand size: " << nextCandidates.size() << " out of " << candidates.size() << endl;
+        }
         candidates = nextCandidates;
     }
     return ptViews;
