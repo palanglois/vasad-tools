@@ -1045,13 +1045,16 @@ vector<Point> findPtViewInBbox(const CGAL::Bbox_3 &bbox, vector<facesLabelName> 
 
         // Attribute scores to the candidates
         vector<int> allScores;
-        for(const auto& candidate: candidates)
+#pragma omp parallel for
+        for(int i=0; i < candidates.size(); i++)
         {
+            const auto &candidate = candidates[i];
             int curScore = 0;
             for(const auto ptView: ptViews) {
                 Segment query(candidate, ptView);
                 curScore += (int) tree.do_intersect(query);
             }
+#pragma omp critical
             allScores.push_back(curScore);
         }
 
