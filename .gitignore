@@ -7,5 +7,6 @@ build
 data/coloredGtPlanes*
 data/debugEdgeFeatures*
 data/testRot*
+data/ptView*
 data/debug_triangles.obj
 .clion.source.upload.marker

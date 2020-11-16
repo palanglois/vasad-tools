@@ -732,30 +732,7 @@ vector<int> computePlanesInBoundingBox(const vector<Plane> &planes, const vector
         double ratioReconstructed)
 {
     vector<int> planeIdx;
-    vector<Point> bboxPoints = {
-            Point(bbox.xmin(), bbox.ymin(), bbox.zmin()),
-            Point(bbox.xmin(), bbox.ymin(), bbox.zmax()),
-            Point(bbox.xmin(), bbox.ymax(), bbox.zmin()),
-            Point(bbox.xmin(), bbox.ymax(), bbox.zmax()),
-            Point(bbox.xmax(), bbox.ymin(), bbox.zmin()),
-            Point(bbox.xmax(), bbox.ymin(), bbox.zmax()),
-            Point(bbox.xmax(), bbox.ymax(), bbox.zmin()),
-            Point(bbox.xmax(), bbox.ymax(), bbox.zmax()),
-    };
-    vector<Triangle> bboxTriangles = {
-            Triangle(bboxPoints[0], bboxPoints[1], bboxPoints[5]),
-            Triangle(bboxPoints[0], bboxPoints[5], bboxPoints[4]),
-            Triangle(bboxPoints[4], bboxPoints[5], bboxPoints[6]),
-            Triangle(bboxPoints[6], bboxPoints[5], bboxPoints[7]),
-            Triangle(bboxPoints[1], bboxPoints[3], bboxPoints[5]),
-            Triangle(bboxPoints[5], bboxPoints[3], bboxPoints[7]),
-            Triangle(bboxPoints[0], bboxPoints[4], bboxPoints[2]),
-            Triangle(bboxPoints[2], bboxPoints[4], bboxPoints[6]),
-            Triangle(bboxPoints[0], bboxPoints[2], bboxPoints[1]),
-            Triangle(bboxPoints[1], bboxPoints[2], bboxPoints[3]),
-            Triangle(bboxPoints[2], bboxPoints[7], bboxPoints[3]),
-            Triangle(bboxPoints[2], bboxPoints[6], bboxPoints[7]),
-    };
+    vector<Triangle> bboxTriangles = meshBbox(bbox);
     Tree tree(bboxTriangles.begin(), bboxTriangles.end());
     for(int i=0; i < planes.size(); i++)
     {
@@ -961,4 +938,100 @@ void sampleBetweenPoints(const vector<Kernel2::Point_3>& points, vector<pair<Poi
     for(int i=0; i< nbSamples; i++)
         query.emplace_back(Point(finalPoints(0, i), finalPoints(1, i),
                                             finalPoints(2, i)), faceHandle);
+}
+
+void refinePoint(Point &point, std::vector<Triangle> &mesh, int nbShoot)
+{
+//    ofstream fileOut((string) TEST_DIR + "ptView.obj");
+    Tree tree(mesh.begin(), mesh.end());
+    default_random_engine generator(random_device{}());
+    normal_distribution<double> normalDist(0., 1.);
+    for(int i=0; i < nbShoot; i++)
+    {
+        int level = int(double(i) / double(nbShoot) * 255.);
+//        fileOut << "v " << point.x() << " " << point.y() << " " << point.z() << " 0 " << level << " " << level << endl;
+        Vector direction1(normalDist(generator), normalDist(generator), normalDist(generator));
+        Vector direction2(0., -direction1.z(), direction1.y());
+        Vector direction3 = CGAL::cross_product(direction1, direction2);
+        vector<Vector> allDirections = {direction1, direction2, direction3};
+        vector<Point> allMidPoints;
+        for (const auto &direction: allDirections) {
+            // 1st intersection
+            Ray curRayOne(point, direction);
+            Ray_intersection intersection = tree.first_intersection(curRayOne);
+            if (!intersection) continue;
+            if (!boost::get<Point>(&(intersection->first))) continue;
+            const Point *interOne = boost::get<Point>(&(intersection->first));
+
+            // Other intersection
+            Ray curRayTwo(point, -direction);
+            Ray_intersection intersectionTwo = tree.first_intersection(curRayTwo);
+            if (!intersectionTwo) continue;
+            if (!boost::get<Point>(&(intersectionTwo->first))) continue;
+            const Point *interTwo = boost::get<Point>(&(intersectionTwo->first));
+            allMidPoints.push_back(*interOne + 0.5 * (*interTwo - *interOne));
+        }
+
+        // Update
+        point = CGAL::ORIGIN + 0.333 * ((allMidPoints[0] - CGAL::ORIGIN) + (allMidPoints[1] - CGAL::ORIGIN)
+                + (allMidPoints[2] - CGAL::ORIGIN));
+    }
+}
+
+
+vector<Point> findPtViewInBbox(const CGAL::Bbox_3 &bbox, vector<facesLabelName> &shapesAndClasses,
+                               vector<Triangle> &mesh, int nbShoot)
+{
+    vector<Point> ptViews;
+    default_random_engine generator(random_device{}());
+    uniform_real_distribution<double> xDist(bbox.xmin(), bbox.xmax());
+    uniform_real_distribution<double> yDist(bbox.ymin(), bbox.ymax());
+    uniform_real_distribution<double> zDist(bbox.zmin(), bbox.zmax());
+
+    vector<CGAL::Bbox_3> bboxes;
+    for(const auto& shape: shapesAndClasses) {
+        CGAL::Bbox_3 curBbox;
+        for (const auto &triangle: get<0>(shape))
+            curBbox += triangle.bbox();
+        bboxes.push_back(curBbox);
+    }
+
+    Tree tree;
+    while(ptViews.size() != nbShoot) {
+        Point candidate(xDist(generator), yDist(generator), zDist(generator));
+        bool outside = true;
+        for (int j = 0; j < shapesAndClasses.size(); j++) {
+            if (candidate.x() < bboxes[j].xmin()) continue;
+            if (candidate.x() > bboxes[j].xmax()) continue;
+            if (candidate.y() < bboxes[j].ymin()) continue;
+            if (candidate.y() > bboxes[j].ymax()) continue;
+            if (candidate.z() < bboxes[j].zmin()) continue;
+            if (candidate.z() > bboxes[j].zmax()) continue;
+            tree.rebuild(get<0>(shapesAndClasses[j]).begin(), get<0>(shapesAndClasses[j]).end());
+            //Make random queries ray and intersect it against the current shape
+            vector<Ray> queries = {Ray(candidate, Vector(1., 0., 0.)),
+                                   Ray(candidate, Vector(0., 1., 0.)),
+                                   Ray(candidate, Vector(0., 0., 1.))};
+            vector<list<Ray_intersection>> intersections(3, list<Ray_intersection>(0));
+            for (int k = 0; k < queries.size(); k++)
+                tree.all_intersections(queries[k], back_inserter(intersections[k]));
+            // We use the parity of the number of intersections to know whether candidate is inside/outside the shape
+            unsigned int even = 0;
+            for (const auto &inter: intersections)
+                even += int(inter.size() % 2 == 0);
+            if (even != queries.size()) {
+                // The point is inside a shape
+                outside = false;
+                break;
+            }
+        }
+        if(!outside) continue;
+
+        refinePoint(candidate, mesh, 2);
+        ptViews.push_back(candidate);
+    }
+
+
+    return ptViews;
+
 }

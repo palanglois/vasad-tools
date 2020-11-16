@@ -492,3 +492,56 @@ TEST_F(PlaneArrangementFixture, computeFacetOrientation)
     ASSERT_EQ(facetOrientation2, 0.);
     ASSERT_EQ(facetOrientation3, 1.);
 }
+
+TEST(PointOfViews, cubePointOfView)
+{
+    // Load semantic_classes
+    vector<classKeywordsColor> classesWithColor = loadSemanticClasses((string) TEST_DIR + "semantic_classes.json");
+
+    // Load 3D model
+    vector<Triangle> triangles;
+    const string inputPath = (string) TEST_DIR + "weirdCube.obj";
+    auto trianglesAndClasses = loadTrianglesFromObj(inputPath, classesWithColor);
+    triangles = trianglesAndClasses.first;
+
+    // BBox Triangles
+    CGAL::Bbox_3 bbox(-1., -1., -1., 1., 1., 1.);
+    vector<Triangle> bboxMesh = meshBbox(bbox);
+
+    // Concatenate all triangles
+    triangles.insert(triangles.end(), bboxMesh.begin(), bboxMesh.end());
+
+    // Perform point refinement
+    Point initPoint(0.75, -0.75, -0.1);
+    refinePoint(initPoint, triangles, 100);
+
+    ASSERT_NEAR(initPoint.x(), 0., 0.3) << "Point: " << initPoint;
+}
+
+
+TEST(PointOfViews, SamplePtViewOnObject)
+{
+    // Load semantic_classes
+    vector<classKeywordsColor> classesWithColor = loadSemanticClasses((string) TEST_DIR + "semantic_classes.json");
+
+    // Load 3D model
+    vector<Triangle> triangles;
+    const string inputPath = (string) TEST_DIR + "weirdCube.obj";
+    auto trianglesAndClasses = loadTrianglesFromObj(inputPath, classesWithColor);
+    triangles = trianglesAndClasses.first;
+    vector<facesLabelName> shapesAndClasses = loadTreesFromObj(inputPath, classesWithColor);
+
+    // BBox Triangles
+    CGAL::Bbox_3 bbox;
+    for(const auto& triangle: triangles)
+        bbox += triangle.bbox();
+    vector<Triangle> bboxMesh = meshBbox(bbox);
+
+    // Concatenate all triangles
+    triangles.insert(triangles.end(), bboxMesh.begin(), bboxMesh.end());
+
+    int nbShoot = 100;
+    vector<Point> ptViews = findPtViewInBbox(bbox, shapesAndClasses, triangles, nbShoot);
+
+    ASSERT_EQ(ptViews.size(), nbShoot);
+}

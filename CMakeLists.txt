@@ -98,6 +98,9 @@ target_link_libraries(datasetPointEdgeFeatures "-lstdc++fs")
 add_executable(labeledPc2Obj main_labeled_pc_to_obj.cpp
         lib/iogeometry.cpp)
 
+add_executable(ptViewShooter main_pt_view_shooter.cpp
+        lib/iogeometry.cpp lib/graphStats.cpp)
+
 
 target_link_libraries(bim_data ${CGAL_LIBRARIES})
 target_link_libraries(closeness_checker ${CGAL_LIBRARIES} Qt5::Widgets Qt5::Xml Qt5::OpenGL)
@@ -107,6 +110,7 @@ target_link_libraries(splitGraph ${CGAL_LIBRARIES})
 target_link_libraries(trivialScanSimulator ${CGAL_LIBRARIES})
 target_link_libraries(makePointEdgeFeatures ${CGAL_LIBRARIES})
 target_link_libraries(datasetPointEdgeFeatures ${CGAL_LIBRARIES})
+target_link_libraries(ptViewShooter ${CGAL_LIBRARIES})
 target_link_libraries(labeledPc2Obj ${CGAL_LIBRARIES})
 if(MKL_FOUND)
     target_link_libraries(mesh2plane ${MKL_LIBRARIES})
