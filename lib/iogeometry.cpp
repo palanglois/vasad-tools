@@ -297,7 +297,8 @@ void savePointsAsObjWithColors(vector<Point> points, vector<colorTuple> colors, 
     realFileOut.close();
 }
 
-void saveTrianglesAsObj(const vector<Triangle>& triangles, const string &outPath, TriangleClassMap triangleClasses, const vector<classKeywordsColor> &classes) {
+void saveTrianglesAsObj(const vector<Triangle>& triangles, const string &outPath, TriangleClassMap triangleClasses,
+                        const vector<classKeywordsColor> &classes) {
     stringstream fileOut;
     for (auto triangle : triangles) {
         colorTuple color = get<2>(classes[triangleClasses[triangle]]);
@@ -312,7 +313,8 @@ void saveTrianglesAsObj(const vector<Triangle>& triangles, const string &outPath
     realFileOut.close();
 }
 
-void saveSeparatedObj(vector<Triangle> triangles, const string &outPath, TriangleClassMap triangleClasses, const vector<classKeywordsColor> &classes) {
+void saveSeparatedObj(vector<Triangle> triangles, const string &outPath, TriangleClassMap triangleClasses,
+                      const vector<classKeywordsColor> &classes) {
     ofstream fileOut(outPath + to_string(0) + ".obj");
     int fileIdx(1);
     colorTuple curColor = get<2>(classes[triangleClasses[triangles[0]]]);

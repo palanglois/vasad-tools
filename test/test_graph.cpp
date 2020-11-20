@@ -540,7 +540,7 @@ TEST(PointOfViews, SamplePtViewOnObject)
     // Concatenate all triangles
     triangles.insert(triangles.end(), bboxMesh.begin(), bboxMesh.end());
 
-    int nbShoot = 100;
+    int nbShoot = 10;
     int nbCandidates = 100;
     vector<Point> ptViews = findPtViewInBbox(bbox, shapesAndClasses, triangles, nbShoot, nbCandidates);
 

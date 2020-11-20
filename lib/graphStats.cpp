@@ -978,33 +978,6 @@ void refinePoint(Point &point, std::vector<Triangle> &mesh, int nbShoot)
     }
 }
 
-inline bool isInShape(const Point& candidate, const CGAL::Bbox_3 &bbox, vector<Triangle>& mesh)
-{
-    if (candidate.x() < bbox.xmin()) return false;
-    if (candidate.x() > bbox.xmax()) return false;
-    if (candidate.y() < bbox.ymin()) return false;
-    if (candidate.y() > bbox.ymax()) return false;
-    if (candidate.z() < bbox.zmin()) return false;
-    if (candidate.z() > bbox.zmax()) return false;
-    Tree tree(mesh.begin(), mesh.end());
-    //Make random queries ray and intersect it against the current shape
-    vector<Ray> queries = {Ray(candidate, Vector(1., 0., 0.)),
-                           Ray(candidate, Vector(0., 1., 0.)),
-                           Ray(candidate, Vector(0., 0., 1.))};
-    vector<list<Ray_intersection>> intersections(3, list<Ray_intersection>(0));
-    for (int k = 0; k < queries.size(); k++)
-        tree.all_intersections(queries[k], back_inserter(intersections[k]));
-    // We use the parity of the number of intersections to know whether candidate is inside/outside the shape
-    unsigned int even = 0;
-    for (const auto &inter: intersections)
-        even += int(inter.size() % 2 == 0);
-    if (even != queries.size()) {
-        // The point is inside a shape
-        return true;
-    }
-    return false;
-}
-
 
 vector<Point> findPtViewInBbox(const CGAL::Bbox_3 &bbox, vector<facesLabelName> &shapesAndClasses,
                                vector<Triangle> &mesh, int nbShoot, int nbCandidates, bool verbose)
