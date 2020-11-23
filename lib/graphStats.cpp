@@ -1056,3 +1056,98 @@ vector<Point> findPtViewInBbox(const CGAL::Bbox_3 &bbox, vector<facesLabelName> 
     return ptViews;
 
 }
+
+
+vector<Point> findPtViewInBboxWithRefine(const CGAL::Bbox_3 &bbox, vector<facesLabelName> &shapesAndClasses,
+                               vector<Triangle> &mesh, int nbShoot, int nbCandidates, bool verbose)
+{
+    vector<Point> ptViews;
+    default_random_engine generator(random_device{}());
+    uniform_real_distribution<double> xDist(bbox.xmin(), bbox.xmax());
+    uniform_real_distribution<double> yDist(bbox.ymin(), bbox.ymax());
+    uniform_real_distribution<double> zDist(bbox.zmin(), bbox.zmax());
+
+    vector<CGAL::Bbox_3> bboxes;
+    for(const auto& shape: shapesAndClasses) {
+        CGAL::Bbox_3 curBbox;
+        for (const auto &triangle: get<0>(shape))
+            curBbox += triangle.bbox();
+        bboxes.push_back(curBbox);
+    }
+
+//    vector<Point> candidates;
+    multiset<pair<Point, double>, SetComparison> candidates;
+    Tree tree(mesh.begin(), mesh.end());
+    tree.accelerate_distance_queries();
+    bool hasUnseenSpots = true;
+    while(ptViews.size() < nbShoot || hasUnseenSpots) {
+        if(verbose)
+            cout << "Got " << ptViews.size() << " point of views out of " << nbShoot << endl;
+        // Gather candidates
+        while(candidates.size() != nbCandidates) {
+            Point candidate(xDist(generator), yDist(generator), zDist(generator));
+            bool outside = true;
+            double bestDist = DBL_MAX;
+            for (int j = 0; j < shapesAndClasses.size(); j++) {
+                if (isInShape(candidate, bboxes[j], get<0>(shapesAndClasses[j]))) {
+                    outside = false;
+                    break;
+                }
+                double curDist = sqrt(CGAL::to_double((tree.closest_point(candidate) - candidate).squared_length()));
+                if(curDist < bestDist) bestDist = curDist;
+            }
+            if (!outside) continue;
+//            candidates.push_back(candidate);
+            candidates.insert(make_pair(candidate, bestDist));
+        }
+
+        // Attribute scores to the candidates
+        vector<int> allScores(candidates.size(), 0);
+        vector<pair<Point, double>> candidatesArray;
+        cout << "Candidates: " << endl;
+        for(const auto& cand: candidates) {
+            cout << cand.first << " " << cand.second << endl;
+            candidatesArray.push_back(cand);
+        }
+
+#pragma omp parallel for
+        for(int i=0; i < candidates.size(); i++)
+        {
+            const auto &candidate = candidatesArray[i].first;
+            int curScore = 0;
+            for(const auto ptView: ptViews) {
+                Segment query(candidate, ptView);
+                curScore += (int) tree.do_intersect(query);
+            }
+#pragma omp critical
+            allScores[i] = curScore;
+        }
+
+        // We keep the best candidate
+        int bestIdx = arg_max(allScores);
+        ptViews.push_back(candidatesArray[bestIdx].first);
+
+        // Among the remaining candidates, we keep the good ones
+        multiset<pair<Point, double>, SetComparison> nextCandidates;
+        for(int i = 0; i < allScores.size(); i++)
+        {
+            if(i != bestIdx && allScores[i] == ptViews.size() - 1) {
+//                Segment query(candidates[i], candidates[bestIdx]);
+//                if(tree.do_intersect(query))
+                    nextCandidates.insert(candidatesArray[i]);
+            }
+        }
+
+        // Check if there are still unseen spots
+        hasUnseenSpots = !nextCandidates.empty();
+
+        if(verbose) {
+            cout << "Best theoretical score: " << ptViews.size() - 1 << endl;
+            cout << "Actual best score: " << allScores[bestIdx] << endl;
+            cout << "Next cand size: " << nextCandidates.size() << " out of " << candidates.size() << endl;
+        }
+        candidates = nextCandidates;
+    }
+    return ptViews;
+
+}

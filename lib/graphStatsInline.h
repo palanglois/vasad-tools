@@ -4,6 +4,12 @@
 #include "iogeometry.h"
 
 
+struct SetComparison {
+  bool operator() (const std::pair<Point, double>& a, const std::pair<Point, double>& b) const {
+    return (a.second > b.second);
+  };
+};
+
 inline double computeFacetOrientation(const Arrangement &arr, int facetHandle) {
     const auto &facetPlane = arr.plane(arr.facet_plane(facetHandle));
     const auto &planeNormal = facetPlane.orthogonal_direction().vector();
@@ -48,8 +54,8 @@ inline bool isInShape(const Point &candidate, const CGAL::Bbox_3 &bbox, std::vec
     Tree tree(mesh.begin(), mesh.end());
     //Make random queries ray and intersect it against the current shape
     std::vector <Ray> queries = {Ray(candidate, Vector(1., 0., 0.)),
-                            Ray(candidate, Vector(0., 1., 0.)),
-                            Ray(candidate, Vector(0., 0., 1.))};
+                                 Ray(candidate, Vector(0., 1., 0.)),
+                                 Ray(candidate, Vector(0., 0., 1.))};
     std::vector <std::list<Ray_intersection>> intersections(3, std::list<Ray_intersection>(0));
     for (int k = 0; k < queries.size(); k++)
         tree.all_intersections(queries[k], back_inserter(intersections[k]));
