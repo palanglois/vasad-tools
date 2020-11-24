@@ -266,10 +266,12 @@ vector<facesLabelName> loadTreesFromObj(const string &inFile, const vector<class
 }
 
 void savePointsAsObj(const vector<Point>& points, const string &outPath) {
-    ofstream fileOut(outPath);
+    stringstream fileOut(outPath);
     for (const auto point: points)
         fileOut << "v " << point.x() << " " << point.y() << " " << point.z() << endl;
-    fileOut.close();
+    ofstream realFileOut(outPath.c_str());
+    realFileOut << fileOut.rdbuf();
+    realFileOut.close();
 }
 
 void savePointsAsObjWithLabel(const pair<vector<Point>, map<Point, int>> &pointsWithLabel, const string &outPath) {
