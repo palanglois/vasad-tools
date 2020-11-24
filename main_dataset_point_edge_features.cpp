@@ -71,7 +71,7 @@ int main(int argc, char *argv[]) {
                         string povPath = fs::path(rawPath);
                         string appendicePov = modelName + "/processed/" + modelName + "/pov.obj";
                         povPath += appendicePov;
-                        cout << "Loading scan located at " << povPath << endl;
+                        cout << "Loading point of views located at " << povPath << endl;
                         pointOfViews[modelName] = loadPointCloudObj(povPath);
                     }
                     else

@@ -591,17 +591,44 @@ void computeVisibility(PlaneArrangement &planeArr, const vector<Point> &points, 
                        const vector<Arrangement::Face_handle> &guessedPovCells)
 {
     Simple_to_Epeck s2e;
-    for(int i=0; i < points.size(); i ++) {
+    auto tqPoints = tq::trange(points.size());
+    tqPoints.set_prefix("Computing visibility: ");
+    for (int i : tqPoints)
+    {
         // Intersect point_of_view <-> detected point segments with the plane arrangement
         Arrangement::Face_handle begin_cell;
         Arrangement::Face_handle end_cell;
         vector<pair<Arrangement::Face_handle, int>> intersected_facets;
         if(guessedPovCells.empty())
-            segment_search(planeArr.arrangement(), s2e(points[i]), s2e(pointOfViews[i]),
+            segment_search(planeArr.arrangement(), s2e(pointOfViews[i]), s2e(points[i]),
                            begin_cell, back_inserter(intersected_facets), end_cell);
-        else
-            segment_search(planeArr.arrangement(), s2e(points[i]), s2e(pointOfViews[i]),
+        else {
+            segment_search(planeArr.arrangement(), s2e(pointOfViews[i]), s2e(points[i]),
                            begin_cell, back_inserter(intersected_facets), end_cell, guessedPovCells[i]);
+//            // BEGIN DEBUG
+//            if(CGAL::do_overlap(points[i].bbox(), planeArr.bbox()) && CGAL::do_overlap(pointOfViews[i].bbox(), planeArr.bbox())) {
+//                cout << planeArr.bbox() << endl;
+//                cout << guessedPovCells[i] << " " << begin_cell << endl;
+//                cout << planeArr.arrangement().cell(guessedPovCells[i]).point() << endl;
+//                cout << planeArr.arrangement().cell(begin_cell).point() << endl;
+//                cout << endl;
+//            }
+//            bool fail=true;
+//            for(const auto& pair: intersected_facets) {
+//                // For every intersected facet, we increment the visibility bin
+//                if (!planeArr.arrangement().is_facet_bounded(pair.first)) continue;
+//                auto &facet = planeArr.arrangement().facet(pair.first);
+//                if (!planeArr.arrangement().is_cell_bounded(facet.superface(0))) continue;
+//                if (!planeArr.arrangement().is_cell_bounded(facet.superface(1))) continue;
+//                fail=false;
+//                break;
+//            }
+//            if(fail)
+//                cout << "Fail" << endl;
+//            else
+//                cout << "Good" << endl;
+//            // END DEBUG
+        }
         for(const auto& pair: intersected_facets)
         {
             // For every intersected facet, we increment the visibility bin
@@ -737,19 +764,24 @@ EdgeFeatures computeFeaturesFromLabeledPoints(PlaneArrangement &planeArr, const 
     if(withVisibility)
     {
         // Initial guess for the point of views cells
-        vector<Arrangement::Face_handle> guessedCells(pointOfViews.size(), Arrangement::Face_handle(0));
+        vector<Arrangement::Face_handle> guessedCells(0, Arrangement::Face_handle(0));
         vector<Point> beginPoints;
         vector<Point> endPoints;
+        vector<Triangle> bboxMesh = meshBbox(bbox);
+        Tree bboxTree(bboxMesh.begin(), bboxMesh.end());
         for(int i=0; i < pointOfViews.size(); i++) {
-            if(!CGAL::do_overlap(Segment(pointOfViews[i], points[i]).bbox(), bbox)) continue;
+            Segment visSegment(pointOfViews[i], points[i]);
+            if(!CGAL::do_overlap(visSegment.bbox(), bbox)) continue;
+            if(!CGAL::do_overlap(pointOfViews[i].bbox(), bbox) && !CGAL::do_overlap(points[i].bbox(), bbox)
+            && !bboxTree.do_intersect(visSegment)) continue;
             beginPoints.push_back(pointOfViews[i]);
             endPoints.push_back(points[i]);
             // We keep only the visibility rays that cross our bounding box
             Neighbor_search search(tree, pointOfViews[i], 1);
-            guessedCells[i] = pointToCellHandle.at(search.begin()->first);
+            guessedCells.emplace_back(pointToCellHandle.at(search.begin()->first));
         }
         // Processing visibility segments
-        computeVisibility(planeArr, points, pointOfViews, features, nbClasses, guessedCells);
+        computeVisibility(planeArr, endPoints, beginPoints, features, nbClasses, guessedCells);
     }
 
     // Normalize features
