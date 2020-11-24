@@ -174,6 +174,40 @@ TEST_F(PlaneArrangementFixture, LabelingWithObjLoad)
     ASSERT_EQ(gtLabels[3], 3);
 }
 
+TEST_F(PlaneArrangementFixture, visibilityRays)
+{
+    cout.setstate(ios_base::failbit);
+    cerr.setstate(ios_base::failbit);
+    Arrangement& myPlaneArrangement = planeArrangement.arrangement();
+    cout.clear();
+    cerr.clear();
+
+    vector<Point> inPoints;
+    vector<Point> pointOfViews;
+    inPoints.emplace_back(0.25, 0.5, 0.25);
+    pointOfViews.emplace_back(1.75, 0.5, 0.25);
+    inPoints.emplace_back(0.25, 0.5, 0.25);
+    pointOfViews.emplace_back(0.75, 0.4, 0.35);
+    EdgeFeatures edgeFeatures;
+    int nbClasses = 1;
+    vector<double> defaultFeature(nbClasses + 2, 0.);
+    for(auto facetIt = myPlaneArrangement.facets_begin(); facetIt != myPlaneArrangement.facets_end(); facetIt++)
+    {
+        if(!myPlaneArrangement.is_facet_bounded(*facetIt)) continue;
+        if(!myPlaneArrangement.is_cell_bounded(facetIt->superface(0))) continue;
+        if(!myPlaneArrangement.is_cell_bounded(facetIt->superface(1))) continue;
+        int cell0 = planeArrangement.cell2label().at(facetIt->superface(0));
+        int cell1 = planeArrangement.cell2label().at(facetIt->superface(1));
+        edgeFeatures[make_pair(cell0, cell1)] = defaultFeature;
+    }
+
+    computeVisibility(planeArrangement, inPoints, pointOfViews, edgeFeatures, nbClasses);
+    auto goodKey = edgeFeatures.find(make_pair(0, 1)) != edgeFeatures.end() ? make_pair(0, 1) : make_pair(1, 0);
+
+    ASSERT_EQ(edgeFeatures[goodKey][nbClasses], 2);
+
+}
+
 TEST_F(PlaneArrangementFixture, pointSampling)
 {
     cout.setstate(ios_base::failbit);

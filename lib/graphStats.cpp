@@ -586,6 +586,40 @@ inline double computeFacetArea(const Arrangement &arr, int facetHandle)
     return facetArea;
 }
 
+void computeVisibility(PlaneArrangement &planeArr, const vector<Point> &points, const vector<Point> &pointOfViews,
+                       EdgeFeatures &edgeFeatures, int nbClasses,
+                       const vector<Arrangement::Face_handle> &guessedPovCells)
+{
+    Simple_to_Epeck s2e;
+    for(int i=0; i < points.size(); i ++) {
+        // Intersect point_of_view <-> detected point segments with the plane arrangement
+        Arrangement::Face_handle begin_cell;
+        Arrangement::Face_handle end_cell;
+        vector<pair<Arrangement::Face_handle, int>> intersected_facets;
+        if(guessedPovCells.empty())
+            segment_search(planeArr.arrangement(), s2e(points[i]), s2e(pointOfViews[i]),
+                           begin_cell, back_inserter(intersected_facets), end_cell);
+        else
+            segment_search(planeArr.arrangement(), s2e(points[i]), s2e(pointOfViews[i]),
+                           begin_cell, back_inserter(intersected_facets), end_cell, guessedPovCells[i]);
+        for(const auto& pair: intersected_facets)
+        {
+            // For every intersected facet, we increment the visibility bin
+            if(!planeArr.arrangement().is_facet_bounded(pair.first)) continue;
+            auto& facet = planeArr.arrangement().facet(pair.first);
+            if(!planeArr.arrangement().is_cell_bounded(facet.superface(0))) continue;
+            if(!planeArr.arrangement().is_cell_bounded(facet.superface(1))) continue;
+            int cell0 = planeArr.cell2label().at(facet.superface(0));
+            int cell1 = planeArr.cell2label().at(facet.superface(1));
+            std::pair<int, int> keyOne = make_pair(cell0, cell1);
+            std::pair<int, int> keyTwo = make_pair(cell1, cell0);
+            std::pair<int, int> goodKey = edgeFeatures.find(keyTwo) != edgeFeatures.end() ? keyTwo : keyOne;
+            assert(edgeFeatures.find(goodKey) != edgeFeatures.end());
+            edgeFeatures[goodKey][nbClasses]++;
+        }
+    }
+}
+
 EdgeFeatures computeFeaturesFromLabeledPoints(PlaneArrangement &planeArr, const vector<Point> &points,
                                               const vector<int> &labels, const int nbClasses, int nbSamplesPerCell,
                                               bool verbose)
