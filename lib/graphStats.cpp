@@ -622,8 +622,9 @@ void computeVisibility(PlaneArrangement &planeArr, const vector<Point> &points, 
 
 EdgeFeatures computeFeaturesFromLabeledPoints(PlaneArrangement &planeArr, const vector<Point> &points,
                                               const vector<int> &labels, const int nbClasses, int nbSamplesPerCell,
-                                              bool verbose)
+                                              const vector<Point> &pointOfViews, bool verbose)
 {
+    bool withVisibility = !pointOfViews.empty();
     Arrangement &arr = planeArr.arrangement();
     const map<int, int> &cell2label = planeArr.cell2label();
     const CGAL::Bbox_3& bbox = planeArr.bbox();
@@ -659,7 +660,8 @@ EdgeFeatures computeFeaturesFromLabeledPoints(PlaneArrangement &planeArr, const 
         if(!arr.is_cell_bounded(cell2)) continue;
         pair<int, int> facetId(cell2label.at(cell1), cell2label.at(cell2));
         features[facetId] = vector<double>(nbClasses + 2, 0);
-        features[facetId][nbClasses] = 1.;
+        if(!withVisibility)
+            features[facetId][nbClasses] = 1.;
         double facetOrientation = computeFacetOrientation(arr, arr.facet_handle(*facetIt));
         features[facetId][nbClasses + 1] = facetOrientation;
         facetAreasMapping[facetId] = computeFacetArea(arr, arr.facet_handle(*facetIt));
@@ -731,9 +733,29 @@ EdgeFeatures computeFeaturesFromLabeledPoints(PlaneArrangement &planeArr, const 
     }
     averageNNDistance /= validPoints.size();
 
+    // Visibility
+    if(withVisibility)
+    {
+        // Initial guess for the point of views cells
+        vector<Arrangement::Face_handle> guessedCells(pointOfViews.size(), Arrangement::Face_handle(0));
+        vector<Point> beginPoints;
+        vector<Point> endPoints;
+        for(int i=0; i < pointOfViews.size(); i++) {
+            if(!CGAL::do_overlap(Segment(pointOfViews[i], points[i]).bbox(), bbox)) continue;
+            beginPoints.push_back(pointOfViews[i]);
+            endPoints.push_back(points[i]);
+            // We keep only the visibility rays that cross our bounding box
+            Neighbor_search search(tree, pointOfViews[i], 1);
+            guessedCells[i] = pointToCellHandle.at(search.begin()->first);
+        }
+        // Processing visibility segments
+        computeVisibility(planeArr, points, pointOfViews, features, nbClasses, guessedCells);
+    }
+
     // Normalize features
     vector<double> emptyVec( nbClasses + 2, 0.);
-    emptyVec[nbClasses] = 1.;
+    if(!withVisibility)
+        emptyVec[nbClasses] = 1.;
     for(auto& edgeFeat: features)
     {
         double expectedNbOfPoints = facetAreasMapping[edgeFeat.first] / (3.141592 * pow(averageNNDistance, 2));
@@ -896,7 +918,7 @@ splitArrangementInBatch(const PlaneArrangement &planeArr, vector<facesLabelName>
             else
                 data["EdgeFeatures"] = computeFeaturesFromLabeledPoints(fullArrangement, labeledPointCloud.first,
                                                                         labeledPointCloud.second, nbClasses,
-                                                                        nbSamplesPerCell, verbose);
+                                                                        nbSamplesPerCell, vector<Point>(0), verbose);
             data["gtLabels"] = gtLabels;
             data["NodePoints"] = getCellsPoints(fullArrangement.cell2label(), onlyArrangement);
             data["NodeBbox"] = getCellsBbox(fullArrangement.cell2label(), onlyArrangement);

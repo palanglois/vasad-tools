@@ -79,6 +79,7 @@ int main(int argc, char *argv[]) {
     opt.add_option("-h", "--help", "show option help");
     opt.add_option("-i", "--input", "Path to the input json arrangement", "");
     opt.add_option("-s", "--scan", "Path to the input obj scan (points with label)", "");
+    opt.add_option("-p", "--pov", "Path to the input obj point of views", "");
 
     //Parsing options
     bool correctParsing = opt.parse_options(argc, argv);
@@ -104,6 +105,7 @@ int main(int argc, char *argv[]) {
 
     const string inputPath = opt["-i"];
     const string scanPath = opt["-s"];
+    const string povPath = opt["-p"];
 
     // Load semantic_classes
     vector<classKeywordsColor> classesWithColor = loadSemanticClasses((string) TEST_DIR + "semantic_classes.json");
@@ -114,10 +116,14 @@ int main(int argc, char *argv[]) {
     // Loading points with label
     pair<vector<Point>, vector<int>> pointsWithLabel = loadPointsWithLabel(scanPath);
 
+    // Loading point of views
+    auto pointOfViews = povPath.empty() ? vector<Point>(0) : loadPointOfViews(povPath);
+
     // Compute the new features
     EdgeFeatures edgeFeatures = computeFeaturesFromLabeledPoints(currentArrangement,
                                                                  pointsWithLabel.first, pointsWithLabel.second,
-                                                                 classesWithColor.size(), 40, true);
+                                                                 classesWithColor.size(), 40,
+                                                                 pointOfViews, true);
 
     // DEBUG
     const EdgeFeatures& oldFeatures = currentArrangement.edgeFeatures();

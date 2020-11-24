@@ -14,6 +14,7 @@ int main(int argc, char *argv[]) {
     opt.add_option("-h", "--help", "show option help");
     opt.add_option("-i", "--input", "Path to the dataset to update", "");
     opt.add_option("-r", "--raw", "Path to the raw dataset", "");
+    opt.add_option("-p", "--pov", "Use point of views");
 
     //Parsing options
     bool correctParsing = opt.parse_options(argc, argv);
@@ -39,12 +40,14 @@ int main(int argc, char *argv[]) {
 
     const string inputPath = opt["-i"][opt["-i"].size() - 1] == '/' ? opt["-i"] : opt["-i"] + '/';
     const string rawPath = opt["-r"][opt["-r"].size() - 1] == '/' ? opt["-r"] : opt["-r"] + '/';
+    const bool withPov = op::str2bool(opt["-p"]);
 
     // Load semantic_classes
     vector<classKeywordsColor> classesWithColor = loadSemanticClasses((string) TEST_DIR + "semantic_classes.json");
 
     const fs::path pathToShow(inputPath);
     map<string, pair<vector<Point>, vector<int>>> scans;
+    map<string, vector<Point>> pointOfViews;
 
     for (const auto& valTrain : fs::directory_iterator(pathToShow)) {
         const auto valTrainStr = valTrain.path().filename().string();
@@ -64,6 +67,15 @@ int main(int argc, char *argv[]) {
                     scanPath += appendice;
                     cout << "Loading scan located at " << scanPath << endl;
                     scans[modelName] = loadPointsWithLabel(scanPath);
+                    if(withPov) {
+                        string povPath = fs::path(rawPath);
+                        string appendicePov = modelName + "/processed/" + modelName + "/pov.obj";
+                        povPath += appendicePov;
+                        cout << "Loading scan located at " << povPath << endl;
+                        pointOfViews[modelName] = loadPointOfViews(povPath);
+                    }
+                    else
+                        pointOfViews[modelName] = vector<Point>(0);
                 }
                 pair<vector<Point>, vector<int>> curScan = scans[modelName];
 
@@ -74,7 +86,8 @@ int main(int argc, char *argv[]) {
                 // Compute the new features
                 EdgeFeatures edgeFeatures = computeFeaturesFromLabeledPoints(currentArrangement,
                                                                              curScan.first, curScan.second,
-                                                                             classesWithColor.size(), true);
+                                                                             classesWithColor.size(), 40,
+                                                                             pointOfViews[modelName], true);
 
                 // Replacing features and output the results
                 currentArrangement.setEdgeLabels(edgeFeatures);

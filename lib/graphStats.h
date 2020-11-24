@@ -28,7 +28,9 @@ void computeVisibility(PlaneArrangement &planeArr, const std::vector<Point> &poi
 
 EdgeFeatures computeFeaturesFromLabeledPoints(PlaneArrangement &planeArr, const std::vector<Point> &points,
                                               const std::vector<int> &labels, const int nbClasses,
-                                              int nbSamplesPerCell, bool verbose=false);
+                                              int nbSamplesPerCell,
+                                              const std::vector<Point> &pointOfViews = std::vector<Point>(0),
+                                              bool verbose = false);
 
 std::vector<int> assignLabel(PlaneArrangement& planeArr,
         std::vector<facesLabelName> &labeledTrees, int nbClasses, int nbSamplesPerCell=40, bool verbose=false);

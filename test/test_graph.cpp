@@ -222,23 +222,27 @@ TEST_F(PlaneArrangementFixture, pointSampling)
     // Simulated points
     const int nbClasses = 3;
     vector<Point> inPoints;
+    vector<Point> pointOfViews;
     vector<int> inLabels;
 
     // Point A
-    inPoints.emplace_back(0.25, 0.5, 0.5);
+    inPoints.emplace_back(0.25, 0.5, 0.501);
+    pointOfViews.emplace_back(0.25, 0.5, 0.1);
     inLabels.push_back(0);
 
     // Point B
-    inPoints.emplace_back(0.26, 0.5, 0.5);
+    inPoints.emplace_back(0.26, 0.5, 0.501);
+    pointOfViews.emplace_back(0.25, 0.5, 0.1);
     inLabels.push_back(0);
 
     // Point C
     inPoints.emplace_back(0.24, 0.51, 0.5);
+    pointOfViews.emplace_back(0.25, 0.5, 0.1);
     inLabels.push_back(1);
 
     cout.setstate(ios_base::failbit);
     cerr.setstate(ios_base::failbit);
-    EdgeFeatures features = computeFeaturesFromLabeledPoints(planeArrangement, inPoints, inLabels, nbClasses, 40);
+    EdgeFeatures features = computeFeaturesFromLabeledPoints(planeArrangement, inPoints, inLabels, nbClasses, 40, pointOfViews);
     cout.clear();
     cerr.clear();
     ASSERT_EQ(features.size(), 4);
@@ -253,7 +257,7 @@ TEST_F(PlaneArrangementFixture, pointSampling)
                         sqrt((inPoints[1] - inPoints[0]).squared_length()) +
                         sqrt((inPoints[2] - inPoints[0]).squared_length()))/3.;
     double expectedNbOfPoints = 0.5 / (3.141592 * pow(nnDistance, 2));
-    vector<double> targetDistrib = {2./expectedNbOfPoints, 1./expectedNbOfPoints, 0., 0., 1.};
+    vector<double> targetDistrib = {2./expectedNbOfPoints, 1./expectedNbOfPoints, 0., min(1., 2. / expectedNbOfPoints), 1.};
     if(features.find(edgeZeroV1) != features.end())
     {
         stringstream outStream;

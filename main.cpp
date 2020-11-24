@@ -77,6 +77,7 @@ int main(int argc, char *argv[]) {
     vector<Point> sampledPoints;
     vector<Point> pointOfViews2;
     vector<colorTuple> pointColors;
+    map<Point, int> pointClasses;
     pointColors.reserve(nbShoot*pointOfViews.size());
     sampledPoints.reserve(nbShoot*pointOfViews.size());
     pointOfViews.reserve(nbShoot*pointOfViews.size());
@@ -106,6 +107,7 @@ int main(int argc, char *argv[]) {
                         pointColors.push_back(get<2>(classesWithColor[classIdx]));
                         const Point *p = boost::get<Point>(&(intersection->first));
                         sampledPoints.push_back(*p);
+                        pointClasses[*p] = classIdx;
                         if(op::str2bool(opt["-pov"]))
                             pointOfViews2.push_back(pov);
                     }
@@ -114,6 +116,7 @@ int main(int argc, char *argv[]) {
         }
     }
     savePointsAsObjWithColors(sampledPoints, pointColors, outPath + "out.obj");
+    savePointsAsObjWithLabel(make_pair(sampledPoints, pointClasses), outPath + "samplesWithLabel.obj");
     if(op::str2bool(opt["-pov"]))
         savePointsAsObj(pointOfViews2, outPath + "pov.obj");
     return 0;
