@@ -588,7 +588,7 @@ inline double computeFacetArea(const Arrangement &arr, int facetHandle)
 
 void computeVisibility(PlaneArrangement &planeArr, const vector<Point> &points, const vector<Point> &pointOfViews,
                        EdgeFeatures &edgeFeatures, int nbClasses,
-                       const vector<Arrangement::Face_handle> &guessedPovCells)
+                       const vector<Arrangement::Face_handle> &exactPovCells)
 {
     Simple_to_Epeck s2e;
     auto tqPoints = tq::trange(points.size());
@@ -599,17 +599,17 @@ void computeVisibility(PlaneArrangement &planeArr, const vector<Point> &points, 
         Arrangement::Face_handle begin_cell;
         Arrangement::Face_handle end_cell;
         vector<pair<Arrangement::Face_handle, int>> intersected_facets;
-        if(guessedPovCells.empty())
+        if(exactPovCells.empty())
             segment_search(planeArr.arrangement(), s2e(pointOfViews[i]), s2e(points[i]),
                            begin_cell, back_inserter(intersected_facets), end_cell);
         else {
             segment_search(planeArr.arrangement(), s2e(pointOfViews[i]), s2e(points[i]),
-                           begin_cell, back_inserter(intersected_facets), end_cell, guessedPovCells[i]);
+                           begin_cell, back_inserter(intersected_facets), end_cell, exactPovCells[i], true);
 //            // BEGIN DEBUG
 //            if(CGAL::do_overlap(points[i].bbox(), planeArr.bbox()) && CGAL::do_overlap(pointOfViews[i].bbox(), planeArr.bbox())) {
 //                cout << planeArr.bbox() << endl;
-//                cout << guessedPovCells[i] << " " << begin_cell << endl;
-//                cout << planeArr.arrangement().cell(guessedPovCells[i]).point() << endl;
+//                cout << exactPovCells[i] << " " << begin_cell << endl;
+//                cout << planeArr.arrangement().cell(exactPovCells[i]).point() << endl;
 //                cout << planeArr.arrangement().cell(begin_cell).point() << endl;
 //                cout << endl;
 //            }
@@ -769,16 +769,25 @@ EdgeFeatures computeFeaturesFromLabeledPoints(PlaneArrangement &planeArr, const 
         vector<Point> endPoints;
         vector<Triangle> bboxMesh = meshBbox(bbox);
         Tree bboxTree(bboxMesh.begin(), bboxMesh.end());
+        map<Point, int> pov2cell;
         for(int i=0; i < pointOfViews.size(); i++) {
+            // We keep only the visibility segments that cross our bounding box
             Segment visSegment(pointOfViews[i], points[i]);
             if(!CGAL::do_overlap(visSegment.bbox(), bbox)) continue;
             if(!CGAL::do_overlap(pointOfViews[i].bbox(), bbox) && !CGAL::do_overlap(points[i].bbox(), bbox)
             && !bboxTree.do_intersect(visSegment)) continue;
             beginPoints.push_back(pointOfViews[i]);
             endPoints.push_back(points[i]);
-            // We keep only the visibility rays that cross our bounding box
-            Neighbor_search search(tree, pointOfViews[i], 1);
-            guessedCells.emplace_back(pointToCellHandle.at(search.begin()->first));
+            // We efficiently compute the cell where the point of view is located
+            if(pov2cell.find(pointOfViews[i]) != pov2cell.end())
+                guessedCells.emplace_back(pov2cell.at(pointOfViews[i]));
+            else
+            {
+                Neighbor_search search(tree, pointOfViews[i], 1);
+                int curPovCellIdx = find_containing_cell(arr, s2e(pointOfViews[i]), pointToCellHandle.at(search.begin()->first));
+                pov2cell[pointOfViews[i]] = curPovCellIdx;
+                guessedCells.emplace_back(curPovCellIdx);
+            }
         }
         // Processing visibility segments
         computeVisibility(planeArr, endPoints, beginPoints, features, nbClasses, guessedCells);

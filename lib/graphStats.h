@@ -24,7 +24,7 @@ std::pair<std::vector<Point>, std::map<Point, int>> sampleFacets(const Arrangeme
 
 void computeVisibility(PlaneArrangement &planeArr, const std::vector<Point> &points,
                        const std::vector<Point> &pointOfViews, EdgeFeatures &edgeFeatures, int nbClasses,
-                       const std::vector<Arrangement::Face_handle> &guessedPovCells = std::vector<Arrangement::Face_handle>(0));
+                       const std::vector<Arrangement::Face_handle> &exactPovCells = std::vector<Arrangement::Face_handle>(0));
 
 EdgeFeatures computeFeaturesFromLabeledPoints(PlaneArrangement &planeArr, const std::vector<Point> &points,
                                               const std::vector<int> &labels, const int nbClasses,
