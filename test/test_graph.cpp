@@ -201,7 +201,11 @@ TEST_F(PlaneArrangementFixture, visibilityRays)
         edgeFeatures[make_pair(cell0, cell1)] = defaultFeature;
     }
 
+    cout.setstate(ios_base::failbit);
+    cerr.setstate(ios_base::failbit);
     computeVisibility(planeArrangement, inPoints, pointOfViews, edgeFeatures, nbClasses);
+    cout.clear();
+    cerr.clear();
     auto goodKey = edgeFeatures.find(make_pair(0, 1)) != edgeFeatures.end() ? make_pair(0, 1) : make_pair(1, 0);
 
     ASSERT_EQ(edgeFeatures[goodKey][nbClasses], 2);
