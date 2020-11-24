@@ -72,7 +72,7 @@ int main(int argc, char *argv[]) {
                         string appendicePov = modelName + "/processed/" + modelName + "/pov.obj";
                         povPath += appendicePov;
                         cout << "Loading scan located at " << povPath << endl;
-                        pointOfViews[modelName] = loadPointOfViews(povPath);
+                        pointOfViews[modelName] = loadPointCloudObj(povPath);
                     }
                     else
                         pointOfViews[modelName] = vector<Point>(0);
