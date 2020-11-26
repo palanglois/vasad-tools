@@ -225,6 +225,8 @@ void saveTrianglesAsObj(const std::vector<Triangle>& triangles, const std::strin
 void saveSeparatedObj(std::vector<Triangle> triangles, const std::string &outPath, TriangleClassMap triangleClasses, const std::vector<classKeywordsColor> &classes);
 void saveArrangement(const std::string &name, const std::vector<Kernel::Plane_3> &planes, int maxNumberOfPlanes,
         const CGAL::Bbox_3 &bbox, const std::map<int, int> &cell2label, const std::vector<bool> &labels);
+void savePlyFromEdgeFeatures(const std::string &filename, Arrangement &arr, const std::map<int, int> &cell2label,
+                             const EdgeFeatures &edgeFeatures, const std::vector<classKeywordsColor> &classesWithColor);
 
 template <class T>
 void savePlyFromLabel(const std::string &filename, Arrangement &arr, const std::map<int, int> &fh_to_node,

@@ -80,6 +80,8 @@ add_executable(splitGraph main_split_graph.cpp)
 
 add_executable(trivialScanSimulator main_trivial_scan_simulator.cpp)
 
+add_executable(edgeFeatures2ply main_edge_feature_to_ply.cpp)
+
 add_executable(makePointEdgeFeatures main_make_point_edge_features.cpp)
 
 add_executable(datasetPointEdgeFeatures main_dataset_point_edge_features.cpp)
@@ -99,6 +101,7 @@ target_link_libraries(graph2ply io_geometry)
 target_link_libraries(graphStatistics ${CGAL_LIBRARIES} io_geometry graph_statistics)
 target_link_libraries(splitGraph ${CGAL_LIBRARIES} io_geometry graph_statistics)
 target_link_libraries(trivialScanSimulator ${CGAL_LIBRARIES} io_geometry)
+target_link_libraries(edgeFeatures2ply ${CGAL_LIBRARIES} io_geometry graph_statistics)
 target_link_libraries(makePointEdgeFeatures ${CGAL_LIBRARIES} io_geometry graph_statistics)
 target_link_libraries(datasetPointEdgeFeatures ${CGAL_LIBRARIES} io_geometry graph_statistics)
 target_link_libraries(ptViewShooter ${CGAL_LIBRARIES} io_geometry graph_statistics)

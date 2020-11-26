@@ -340,6 +340,69 @@ void saveSeparatedObj(vector<Triangle> triangles, const string &outPath, Triangl
     }
 }
 
+void savePlyFromEdgeFeatures(const std::string &filename, Arrangement &arr, const std::map<int, int> &cell2label,
+                             const EdgeFeatures &edgeFeatures, const std::vector<classKeywordsColor> &classesWithColor)
+{
+    // Making colormap
+    std::map<int, Colormap::Color> map;
+    for(int i = 0; i < classesWithColor.size(); i++)
+    {
+        const auto& classColor = get<2>(classesWithColor[i]);
+        map[i] = Colormap::Color(static_cast<unsigned char>(get<0>(classColor)),
+                                 static_cast<unsigned char>(get<1>(classColor)),
+                                 static_cast<unsigned char>(get<2>(classColor)));
+    }
+    Colormap colormap(map);
+
+    for(auto itf = arr.facets_begin(); itf != arr.facets_end(); itf++){
+        // We don't draw the unbounded / bbox facets
+        Arrangement::Face& f = *itf;
+        f._info = -1;
+        itf->to_draw = false;
+        if(!arr.is_facet_bounded(f)){continue;}
+        Arrangement::Face_handle ch0 = f.superface(0), ch1 = f.superface(1);
+        if(!arr.is_cell_bounded(ch0) || !arr.is_cell_bounded(ch1)) continue;
+        pair<int, int> key1(cell2label.at(ch0), cell2label.at(ch1));
+        pair<int, int> key2(cell2label.at(ch1), cell2label.at(ch0));
+        pair<int, int> goodKey(-1, -1);
+        if(edgeFeatures.find(key1) != edgeFeatures.end())
+            goodKey = key1;
+        else if(edgeFeatures.find(key2) != edgeFeatures.end())
+            goodKey = key2;
+        assert(goodKey.first != -1);
+        f.to_draw = true;
+
+        // We find the dominating label of the edge feature
+        int goodLabel = -1;
+        double bestScore = -1;
+        for(int i=0; i < classesWithColor.size() + 1; i++)
+            if(edgeFeatures.at(goodKey)[i] > bestScore)
+            {
+                bestScore = edgeFeatures.at(goodKey)[i];
+                goodLabel = i;
+            }
+        if(goodLabel != -1)
+            f._info = goodLabel;
+
+        // We don't draw edges whose dominating label is the void label and edges with null edge vectors
+        if(goodLabel == classesWithColor.size() || bestScore == 0.)
+            f.to_draw = false;
+    }
+
+    typedef Polyhedral_complex_3::Mesh_3<> Mesh;
+    typedef Polyhedral_complex_3::Mesh_extractor_3<Arrangement,Mesh> Extractor;
+    Mesh meshGC;
+    Extractor extractorGC(arr);
+    extractorGC.extract(meshGC,false);
+    {
+        std::ofstream stream(filename.c_str());
+        if (!stream.is_open())
+            return ;
+        Polyhedral_complex_3::print_mesh_with_facet_color_PLY(stream, meshGC, colormap);
+        stream.close();
+    }
+}
+
 void saveArrangement(const string &name, const vector<Kernel::Plane_3> &planes, int maxNumberOfPlanes,
         const CGAL::Bbox_3 &bbox, const map<int, int> &cell2label, const vector<bool> &labels)
 {

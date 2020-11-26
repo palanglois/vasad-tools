@@ -15,65 +15,6 @@
 using namespace std;
 
 
-void savePlyFromLabel(const std::string &filename, Arrangement &arr, const std::map<int, int> &cell2label,
-                      const EdgeFeatures &edgeFeatures, const std::vector<classKeywordsColor> &classesWithColor)
-{
-    // Making colormap
-    std::map<int, Colormap::Color> map;
-    for(int i = 0; i < classesWithColor.size(); i++)
-    {
-        const auto& classColor = get<2>(classesWithColor[i]);
-        map[i] = Colormap::Color(static_cast<unsigned char>(get<0>(classColor)),
-                                 static_cast<unsigned char>(get<1>(classColor)),
-                                 static_cast<unsigned char>(get<2>(classColor)));
-    }
-    Colormap colormap(map);
-
-    for(auto itf = arr.facets_begin(); itf != arr.facets_end(); itf++){
-        Arrangement::Face& f = *itf;
-        f._info = -1;
-        itf->to_draw = false;
-        if(!arr.is_facet_bounded(f)){continue;}
-        Arrangement::Face_handle ch0 = f.superface(0), ch1 = f.superface(1);
-        if(!arr.is_cell_bounded(ch0) || !arr.is_cell_bounded(ch1)) continue;
-        pair<int, int> key1(cell2label.at(ch0), cell2label.at(ch1));
-        pair<int, int> key2(cell2label.at(ch1), cell2label.at(ch0));
-        pair<int, int> goodKey(-1, -1);
-        if(edgeFeatures.find(key1) != edgeFeatures.end())
-            goodKey = key1;
-        else if(edgeFeatures.find(key2) != edgeFeatures.end())
-            goodKey = key2;
-        if(goodKey.first == -1) continue;
-        f.to_draw = true;
-
-        int goodLabel = -1;
-        double bestScore = -1;
-        for(int i=0; i < edgeFeatures.at(goodKey).size(); i++)
-            if(edgeFeatures.at(goodKey)[i] > bestScore)
-            {
-                bestScore = edgeFeatures.at(goodKey)[i];
-                goodLabel = i;
-            }
-        if(goodLabel != -1)
-            f._info = goodLabel;
-        if(goodLabel == classesWithColor.size())
-            f.to_draw = false;
-    }
-
-    typedef Polyhedral_complex_3::Mesh_3<> Mesh;
-    typedef Polyhedral_complex_3::Mesh_extractor_3<Arrangement,Mesh> Extractor;
-    Mesh meshGC;
-    Extractor extractorGC(arr);
-    extractorGC.extract(meshGC,false);
-    {
-        std::ofstream stream(filename.c_str());
-        if (!stream.is_open())
-            return ;
-        Polyhedral_complex_3::print_mesh_with_facet_color_PLY(stream, meshGC, colormap);
-        stream.close();
-    }
-}
-
 int main(int argc, char *argv[]) {
     op::OptionParser opt;
     opt.add_option("-h", "--help", "show option help");
@@ -127,9 +68,9 @@ int main(int argc, char *argv[]) {
 
     // DEBUG
     const EdgeFeatures& oldFeatures = currentArrangement.edgeFeatures();
-    savePlyFromLabel((string) TEST_DIR + "debugEdgeFeatures.ply", currentArrangement.arrangement(),
+    savePlyFromEdgeFeatures((string) TEST_DIR + "debugEdgeFeatures.ply", currentArrangement.arrangement(),
                      currentArrangement.cell2label(), edgeFeatures, classesWithColor);
-    savePlyFromLabel((string) TEST_DIR + "debugEdgeFeaturesOld.ply", currentArrangement.arrangement(),
+    savePlyFromEdgeFeatures((string) TEST_DIR + "debugEdgeFeaturesOld.ply", currentArrangement.arrangement(),
                      currentArrangement.cell2label(), oldFeatures, classesWithColor);
 
     int diff = 0;
