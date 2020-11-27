@@ -889,8 +889,9 @@ void subdivideBboxLongestAxis(queue<CGAL::Bbox_3> &bboxes, CGAL::Bbox_3 curBbox)
 
 vector<Json>
 splitArrangementInBatch(const PlaneArrangement &planeArr, vector<facesLabelName> &labeledShapes, int nbClasses,
-        double step, int maxNodes, const pair<vector<Point>, vector<int>> &labeledPointCloud, int maxNbPlanes,
-        int nbSamplesPerCell, double proba, bool geom, double ratioReconstructed, bool verbose) {
+        double step, int maxNodes, const pair<vector<Point>, vector<int>> &labeledPointCloud,
+        const vector<Point> &pointOfViews, int maxNbPlanes, int nbSamplesPerCell, double proba, bool geom,
+        double ratioReconstructed, bool verbose) {
 
     vector<Json> computedArrangements;
 
@@ -959,7 +960,7 @@ splitArrangementInBatch(const PlaneArrangement &planeArr, vector<facesLabelName>
             else
                 data["EdgeFeatures"] = computeFeaturesFromLabeledPoints(fullArrangement, labeledPointCloud.first,
                                                                         labeledPointCloud.second, nbClasses,
-                                                                        nbSamplesPerCell, vector<Point>(0), verbose);
+                                                                        nbSamplesPerCell, pointOfViews, verbose);
             data["gtLabels"] = gtLabels;
             data["NodePoints"] = getCellsPoints(fullArrangement.cell2label(), onlyArrangement);
             data["NodeBbox"] = getCellsBbox(fullArrangement.cell2label(), onlyArrangement);

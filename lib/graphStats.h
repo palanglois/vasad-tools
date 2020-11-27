@@ -41,7 +41,9 @@ std::vector<int> computePlanesInBoundingBox(const std::vector<Plane> &planes, co
 std::vector<nlohmann::json> splitArrangementInBatch(const PlaneArrangement &planeArr,
         std::vector<facesLabelName> &labeledShapes, int nbClasses, double step, int maxNodes,
         const std::pair<std::vector<Point>, std::vector<int>> &labeledPointCloud,
-        int maxNbPlanes=250, int nbSamplesPerCell=40, double proba=1, bool geom=false, double ratioReconstructed=0.98, bool verbose=false);
+        const std::vector<Point> &pointOfViews=std::vector<Point>(0),
+        int maxNbPlanes=250, int nbSamplesPerCell=40, double proba=1, bool geom=false,
+        double ratioReconstructed=0.98, bool verbose=false);
 
 std::pair<Matrix, PointRg> computeTransform(const Eigen::MatrixXd &rotPoints);
 void sampleBetweenPoints(const std::vector<Kernel2::Point_3>& points, std::vector<std::pair<Point, int>> &query,

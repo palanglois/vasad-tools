@@ -201,6 +201,7 @@ vector<facesLabelName> loadTreesFromObj(const string &inFile, const vector<class
                         break;
                     }
                 }
+                if (classFound) break;
             }
             if(!classFound){
                 cout << "Could not assign a class to: " << obj_name << endl;

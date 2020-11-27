@@ -21,6 +21,7 @@ int main(int argc, char *argv[]) {
     opt.add_option("-o", "--output", "Path to the output folder", "");
     opt.add_option("-pr", "--prefix", "Prefix to the output files", "");
     opt.add_option("-m", "--mesh", "Path to the input obj ground truth", "");
+    opt.add_option("-pv", "--pov", "[Optional] Path to the point of views (if visibility)", "");
     opt.add_option("-p", "--proba", "Proba of giving the empty occupancy information for each empty cell", "1.");
     opt.add_option("-g", "--geom", "Adds the bounding box dimensions of each cell as a node feature");
     opt.add_option("-pt", "--pointCloud", "Path to the input point cloud. If set, edge features are computed thanks to it.", "");
@@ -69,6 +70,8 @@ int main(int argc, char *argv[]) {
     const int maxNodes = op::str2int(opt["-mn"]);
     const int maxNbPlanes = op::str2int(opt["-mp"]);
     const double ratioReconstructed = op::str2double(opt["-r"]);
+    const string pointOfViewPath = opt["-pv"];
+    const bool withPov = !opt["-pv"].empty();
     bool verbose = op::str2bool(opt["-v"]);
 
     // Load semantic_classes
@@ -93,10 +96,15 @@ int main(int argc, char *argv[]) {
     if(!pointCloudPath.empty())
         pointsWithLabel = loadPointsWithLabel(pointCloudPath);
 
+    // Point of views
+    vector<Point> pointOfViews(0);
+    if(withPov)
+        pointOfViews = loadPointCloudObj(pointOfViewPath);
+
     // Make splits
     vector<Json> allSplits = splitArrangementInBatch(currentArrangement, shapesAndClasses, classesWithColor.size(),
-                                                     step, maxNodes, pointsWithLabel, maxNbPlanes, nbSamplesPerCell,
-                                                     proba, geom, ratioReconstructed, verbose);
+                                                     step, maxNodes, pointsWithLabel, pointOfViews, maxNbPlanes,
+                                                     nbSamplesPerCell, proba, geom, ratioReconstructed, verbose);
     for (int i = 0; i < allSplits.size(); i++) {
         ofstream outStream(outputPath + prefix + padTo(to_string(i), 4) + ".json");
         outStream << allSplits[i];

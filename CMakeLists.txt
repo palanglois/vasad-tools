@@ -91,6 +91,8 @@ add_executable(labeledPc2Obj main_labeled_pc_to_obj.cpp)
 
 add_executable(ptViewShooter main_pt_view_shooter.cpp)
 
+add_executable(assignLabelSingleChunk main_assign_label.cpp)
+
 
 target_link_libraries(bim_data ${CGAL_LIBRARIES} io_geometry)
 target_link_libraries(color_classes io_geometry)
@@ -106,6 +108,7 @@ target_link_libraries(makePointEdgeFeatures ${CGAL_LIBRARIES} io_geometry graph_
 target_link_libraries(datasetPointEdgeFeatures ${CGAL_LIBRARIES} io_geometry graph_statistics)
 target_link_libraries(ptViewShooter ${CGAL_LIBRARIES} io_geometry graph_statistics)
 target_link_libraries(labeledPc2Obj ${CGAL_LIBRARIES} io_geometry)
+target_link_libraries(assignLabelSingleChunk ${CGAL_LIBRARIES} io_geometry graph_statistics)
 if(MKL_FOUND)
     target_link_libraries(mesh2plane ${MKL_LIBRARIES})
 endif()

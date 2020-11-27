@@ -374,7 +374,7 @@ TEST(GraphStatistics, SplitingModel)
     auto allTrees = loadTreesFromObj(testObjPath, classesWithColor);
     pair<vector<Point>, vector<int>> pointsWithLabel;
     vector<Json> allSplits = splitArrangementInBatch(myArrangement, allTrees, classesWithColor.size(),
-            step, maxNodes, pointsWithLabel, maxNbPlanes, nbSamplesPerCell, proba, geom, 0.95, false);
+            step, maxNodes, pointsWithLabel, vector<Point>(0), maxNbPlanes, nbSamplesPerCell, proba, geom, 0.95, false);
     cout.clear();
     cerr.clear();
     ASSERT_GE(allSplits.size(), 1);
