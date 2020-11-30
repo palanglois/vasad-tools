@@ -15,6 +15,7 @@ int main(int argc, char *argv[]) {
     opt.add_option("-i", "--input", "Path to the dataset to update", "");
     opt.add_option("-r", "--raw", "Path to the raw dataset", "");
     opt.add_option("-p", "--pov", "Use point of views");
+    opt.add_option("-u", "--update", "Do a simple update, don't recompute edge features");
 
     //Parsing options
     bool correctParsing = opt.parse_options(argc, argv);
@@ -41,6 +42,7 @@ int main(int argc, char *argv[]) {
     const string inputPath = opt["-i"][opt["-i"].size() - 1] == '/' ? opt["-i"] : opt["-i"] + '/';
     const string rawPath = opt["-r"][opt["-r"].size() - 1] == '/' ? opt["-r"] : opt["-r"] + '/';
     const bool withPov = op::str2bool(opt["-p"]);
+    const bool simpleUpdate = op::str2bool(opt["-u"]);
 
     // Load semantic_classes
     vector<classKeywordsColor> classesWithColor = loadSemanticClasses((string) TEST_DIR + "semantic_classes.json");
@@ -60,7 +62,7 @@ int main(int argc, char *argv[]) {
                 const auto jsonFileStr = jsonFile.path().filename().string();
                 string modelName = jsonFileStr.substr(0, jsonFileStr.size() - 10);
                 string inModelPath = jsonFile.path().string();
-                if(scans.find(modelName) == scans.end())
+                if(scans.find(modelName) == scans.end() && !simpleUpdate)
                 {
                     string scanPath = fs::path(rawPath);
                     string appendice = modelName + "/processed/" + modelName + "/samplesWithLabel.obj";
@@ -77,20 +79,24 @@ int main(int argc, char *argv[]) {
                     else
                         pointOfViews[modelName] = vector<Point>(0);
                 }
-                pair<vector<Point>, vector<int>> curScan = scans[modelName];
+                pair<vector<Point>, vector<int>> curScan;
+                if(!simpleUpdate)
+                    curScan = scans[modelName];
 
                 // Loading plane arrangement
                 cout << endl << "Processing file: " << inModelPath << endl;
                 PlaneArrangement currentArrangement(inModelPath);
 
                 // Compute the new features
-                EdgeFeatures edgeFeatures = computeFeaturesFromLabeledPoints(currentArrangement,
-                                                                             curScan.first, curScan.second,
-                                                                             classesWithColor.size(), 40,
-                                                                             pointOfViews[modelName], true);
+                if(!simpleUpdate) {
+                    EdgeFeatures edgeFeatures = computeFeaturesFromLabeledPoints(currentArrangement,
+                                                                                 curScan.first, curScan.second,
+                                                                                 classesWithColor.size(), 40,
+                                                                                 pointOfViews[modelName], true);
 
-                // Replacing features and output the results
-                currentArrangement.setEdgeLabels(edgeFeatures);
+                    // Replacing features and output the results
+                    currentArrangement.setEdgeLabels(edgeFeatures);
+                }
                 currentArrangement.saveAsJson(inModelPath);
 
             }

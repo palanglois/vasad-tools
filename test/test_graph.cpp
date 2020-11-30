@@ -588,3 +588,24 @@ TEST(PointOfViews, SamplePtViewOnObject)
 
     ASSERT_EQ(ptViews.size(), nbShoot);
 }
+
+TEST_F(PlaneArrangementFixture, computeNodeVolume)
+{
+    cout.setstate(ios_base::failbit);
+    cerr.setstate(ios_base::failbit);
+    auto& arr = planeArrangement.arrangement();
+    cout.clear();
+    cerr.clear();
+    double volume0 = planeArrangement.computeNodeVolume(label2cell.at(0));
+    ASSERT_DOUBLE_EQ(volume0, 0.5 * 1. * 0.5);
+    double volume1 = planeArrangement.computeNodeVolume(label2cell.at(1));
+    ASSERT_DOUBLE_EQ(volume1, 0.5 * 1. * 0.5);
+    double volume2 = planeArrangement.computeNodeVolume(label2cell.at(2));
+    ASSERT_DOUBLE_EQ(volume2, 0.5 * 1. * 0.5);
+    double volume3 = planeArrangement.computeNodeVolume(label2cell.at(3));
+    ASSERT_DOUBLE_EQ(volume3, 0.5 * 1. * 0.5);
+
+    vector<double> cellVolumes = planeArrangement.computeAllNodesVolumes();
+    for(double cellVolume : cellVolumes)
+        ASSERT_DOUBLE_EQ(cellVolume, 0.5 * 1. * 0.5);
+}

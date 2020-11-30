@@ -964,6 +964,7 @@ splitArrangementInBatch(const PlaneArrangement &planeArr, vector<facesLabelName>
             data["gtLabels"] = gtLabels;
             data["NodePoints"] = getCellsPoints(fullArrangement.cell2label(), onlyArrangement);
             data["NodeBbox"] = getCellsBbox(fullArrangement.cell2label(), onlyArrangement);
+            data["NodeVolumes"] = fullArrangement.computeAllNodesVolumes();
             vector<Plane> currentPlanes;
             for(int validIdx: validPlaneIdx)
                 currentPlanes.push_back(planeArr.planes()[validIdx]);

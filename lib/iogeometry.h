@@ -26,6 +26,7 @@
 #include <CGAL/AABB_triangle_primitive.h>
 #include <CGAL/Orthogonal_k_neighbor_search.h>
 #include <CGAL/Search_traits_3.h>
+#include <CGAL/Triangulation_3.h>
 
 // Boost
 #include <boost/functional/hash.hpp>
@@ -61,10 +62,17 @@ typedef typename Kernel::Ray_3 Ray;
 /* Typedefs for polyhedron meshes */
 typedef CGAL::Polyhedron_3<Kernel, CGAL::Polyhedron_items_with_id_3> Polyhedron;
 //typedef CGAL::Surface_mesh<Point> Polyhedron;
-typedef CGAL::Nef_polyhedron_3<Kernel> Nef_Polyhedron;
-typedef Polyhedron::Halfedge_handle    Halfedge_handle;
-typedef Polyhedron::Facet_handle       Facet_handle;
-typedef Polyhedron::Vertex_handle      Vertex_handle;
+//typedef CGAL::Nef_polyhedron_3<Kernel> Nef_Polyhedron;
+//typedef Polyhedron::Halfedge_handle    Halfedge_handle;
+//typedef Polyhedron::Facet_handle       Facet_handle;
+//typedef Polyhedron::Vertex_handle      Vertex_handle;
+
+/* Typedef for delaunay triangulations */
+typedef CGAL::Triangulation_3<Kernel> Triangulation;
+typedef Triangulation::Cell_handle    Cell_handle;
+typedef Triangulation::Vertex_handle  Vertex_handle;
+typedef Triangulation::Locate_type    Locate_type;
+typedef Triangulation::Point          Point;
 
 /* Typedef for AABBTree */
 typedef std::vector<Triangle>::iterator Iterator;
@@ -187,6 +195,10 @@ public:
     // Hit and run sampling for the plane arrangement
     void sampleInConvexCell(int cellHandle, int nbSamples=40);
 
+    // Cell volumes
+    std::vector<double> computeAllNodesVolumes() const;
+    double computeNodeVolume(const Arrangement::Face_handle &cellHandle) const;
+
 private:
     Arrangement _arr;
     std::map<int, int> _cell2label;
@@ -199,6 +211,7 @@ private:
     EdgeFeatures _edgeFeatures;
     std::vector<std::vector<double>> _cellPoints;
     std::vector<CGAL::Bbox_3> _nodeBboxes;
+    std::vector<double> _nodeVolumes;
     int _nbPlanes;
     std::vector<std::pair<Point, int>> _samples;
 
