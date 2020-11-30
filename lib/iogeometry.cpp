@@ -555,6 +555,8 @@ PlaneArrangement::PlaneArrangement(const string& name) : isArrangementComputed(f
     // Node Volumes
     if (data.find("NodeVolumes") != data.end()) {
         _nodeVolumes = data["NodeVolumes"].get<vector<double>>();
+    else
+        _nodeVolummes = vector<double>(0);
     }
 
     cout << "Arrangement loaded" << endl;
