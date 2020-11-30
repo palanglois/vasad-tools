@@ -68,11 +68,7 @@ typedef CGAL::Polyhedron_3<Kernel, CGAL::Polyhedron_items_with_id_3> Polyhedron;
 //typedef Polyhedron::Vertex_handle      Vertex_handle;
 
 /* Typedef for delaunay triangulations */
-typedef CGAL::Triangulation_3<Kernel> Triangulation;
-typedef Triangulation::Cell_handle    Cell_handle;
-typedef Triangulation::Vertex_handle  Vertex_handle;
-typedef Triangulation::Locate_type    Locate_type;
-typedef Triangulation::Point          Point;
+typedef CGAL::Triangulation_3<Kernel2> Triangulation;
 
 /* Typedef for AABBTree */
 typedef std::vector<Triangle>::iterator Iterator;

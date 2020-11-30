@@ -828,10 +828,9 @@ const vector<pair<Point, int>> &PlaneArrangement::getSamples(int nbSamplesPerCel
 double PlaneArrangement::computeNodeVolume(const Arrangement::Face_handle &cellHandle) const
 {
     // Gathering the vertex of the current cell
-    Epeck_to_Simple e2s;
     double volume = 0.;
     auto cell = _arr.cell(cellHandle);
-    set<Point> pointSet;
+    set<Kernel2::Point_3> pointSet;
     for(auto facetIt = cell.subfaces_begin(); facetIt != cell.subfaces_end(); facetIt++)
     {
         const auto &facet = _arr.facet(*facetIt);
@@ -839,15 +838,15 @@ double PlaneArrangement::computeNodeVolume(const Arrangement::Face_handle &cellH
         {
             const auto &edge = _arr.edge(*edgeIt);
             for(auto vertexIt = edge.subfaces_begin(); vertexIt != edge.subfaces_end(); vertexIt++)
-                pointSet.insert(e2s(_arr.vertex(*vertexIt).point()));
+                pointSet.insert(_arr.vertex(*vertexIt).point());
         }
     }
 
     // Triangulating and adding the volumes of the tetrahedrons
     Triangulation tri(pointSet.begin(), pointSet.end());
-    for(const auto& cell: tri.finite_cell_handles())
-        volume += CGAL::volume((cell->vertex(0))->point(), (cell->vertex(1))->point(),
-                               (cell->vertex(2))->point(), (cell->vertex(3))->point());
+    for(const auto& tetra: tri.finite_cell_handles())
+        volume += CGAL::to_double(CGAL::volume((tetra->vertex(0))->point(), (tetra->vertex(1))->point(),
+                                               (tetra->vertex(2))->point(), (tetra->vertex(3))->point()));
 
     return volume;
 }
