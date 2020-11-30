@@ -571,7 +571,7 @@ PlaneArrangement::PlaneArrangement(const vector<Plane> &inPlanes, const map<int,
 }
 
 
-void PlaneArrangement::saveAsJson(const string &outPath) const {
+void PlaneArrangement::saveAsJson(const string &outPath) {
     // Compiling data into json
     Json data;
     Json cell2labelJ;
@@ -851,8 +851,10 @@ double PlaneArrangement::computeNodeVolume(const Arrangement::Face_handle &cellH
     return volume;
 }
 
-vector<double> PlaneArrangement::computeAllNodesVolumes() const
+vector<double> PlaneArrangement::computeAllNodesVolumes()
 {
+    if(!isArrangementComputed)
+        static_cast<void>(arrangement());
     vector<double> nodeVolumes(cell2label().size());
     for(auto cellIt = _arr.cells_begin(); cellIt != _arr.cells_end(); cellIt++)
     {

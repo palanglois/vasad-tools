@@ -176,7 +176,7 @@ public:
     PlaneArrangement(const std::vector<Plane> &inPlanes, const std::vector<int>& validPlaneIdx, const CGAL::Bbox_3 &inBbox);
     PlaneArrangement(const std::vector<Plane> &inPlanes, const std::map<int, int> &cell2label, const CGAL::Bbox_3 &inBbox);
 
-    void saveAsJson(const std::string& outPath) const;
+    void saveAsJson(const std::string& outPath);
 
     // Setters
     void setEdgeLabels(const EdgeFeatures& edgeFeatures);
@@ -196,7 +196,7 @@ public:
     void sampleInConvexCell(int cellHandle, int nbSamples=40);
 
     // Cell volumes
-    std::vector<double> computeAllNodesVolumes() const;
+    std::vector<double> computeAllNodesVolumes();
     double computeNodeVolume(const Arrangement::Face_handle &cellHandle) const;
 
 private:
