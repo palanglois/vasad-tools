@@ -48,9 +48,11 @@
 typedef CGAL::Simple_cartesian<double> Kernel;
 //typedef CGAL::Exact_predicates_inexact_constructions_kernel Kernel;
 typedef CGAL::Exact_predicates_exact_constructions_kernel Kernel2;
+typedef CGAL::Exact_predicates_inexact_constructions_kernel Kernel3;
 //typedef CGAL::Homogeneous<CGAL::Exact_integer>  Kernel;
 typedef CGAL::Cartesian_converter<Kernel,Kernel2>         Simple_to_Epeck;
 typedef CGAL::Cartesian_converter<Kernel2,Kernel>         Epeck_to_Simple;
+typedef CGAL::Cartesian_converter<Kernel2,Kernel3>         Epeck_to_Epick;
 
 /* Typedefs for the geometrical primitives */
 typedef typename Kernel::Point_3 Point;
@@ -68,7 +70,7 @@ typedef CGAL::Polyhedron_3<Kernel, CGAL::Polyhedron_items_with_id_3> Polyhedron;
 //typedef Polyhedron::Vertex_handle      Vertex_handle;
 
 /* Typedef for delaunay triangulations */
-typedef CGAL::Triangulation_3<Kernel2> Triangulation;
+typedef CGAL::Triangulation_3<Kernel3> Triangulation;
 
 /* Typedef for AABBTree */
 typedef std::vector<Triangle>::iterator Iterator;

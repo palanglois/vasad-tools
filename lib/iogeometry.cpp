@@ -828,9 +828,10 @@ const vector<pair<Point, int>> &PlaneArrangement::getSamples(int nbSamplesPerCel
 double PlaneArrangement::computeNodeVolume(const Arrangement::Face_handle &cellHandle) const
 {
     // Gathering the vertex of the current cell
+    Epeck_to_Epick e2i;
     double volume = 0.;
     auto cell = _arr.cell(cellHandle);
-    set<Kernel2::Point_3> pointSet;
+    set<Kernel3::Point_3> pointSet;
     for(auto facetIt = cell.subfaces_begin(); facetIt != cell.subfaces_end(); facetIt++)
     {
         const auto &facet = _arr.facet(*facetIt);
@@ -838,7 +839,7 @@ double PlaneArrangement::computeNodeVolume(const Arrangement::Face_handle &cellH
         {
             const auto &edge = _arr.edge(*edgeIt);
             for(auto vertexIt = edge.subfaces_begin(); vertexIt != edge.subfaces_end(); vertexIt++)
-                pointSet.insert(_arr.vertex(*vertexIt).point());
+                pointSet.insert(e2i(_arr.vertex(*vertexIt).point()));
         }
     }
 
