@@ -613,7 +613,7 @@ TEST_F(PlaneArrangementFixture, computeNodeVolume)
 TEST_F(PlaneArrangementFixture, euclidianAdjacency) {
     cout.setstate(ios_base::failbit);
     cerr.setstate(ios_base::failbit);
-    auto cellPoints = planeArrangement.cellPoints();
+    auto cellPoints = planeArrangement.nodePoints();
     cout.clear();
     cerr.clear();
     ASSERT_EQ(cellPoints.size(), 4);

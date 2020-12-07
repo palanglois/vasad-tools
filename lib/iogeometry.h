@@ -197,7 +197,7 @@ public:
     [[nodiscard]] const std::vector<Plane> &planes() const;
     [[nodiscard]] const std::vector<Point> &points() const;
     [[nodiscard]] const EdgeFeatures &edgeFeatures() const;
-    [[nodiscard]] const std::vector<Point> &cellPoints();
+    [[nodiscard]] const std::vector<Point> &nodePoints();
     [[nodiscard]] const std::vector<std::pair<Point, int>> &getSamples(int nbSamplesPerCell=40);
 
     // Hit and run sampling for the plane arrangement
@@ -217,7 +217,7 @@ private:
     std::vector<Plane> _planes;
     NodeFeatures _nodeFeatures;
     EdgeFeatures _edgeFeatures;
-    std::vector<Point> _cellPoints;
+    std::vector<Point> _nodePoints;
     std::vector<CGAL::Bbox_3> _nodeBboxes;
     std::vector<double> _nodeVolumes;
     int _nbPlanes;

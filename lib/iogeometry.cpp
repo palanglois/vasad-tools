@@ -543,7 +543,7 @@ PlaneArrangement::PlaneArrangement(const string& name) : isArrangementComputed(f
     // Node features
     if (data.find("NodePoints") != data.end()) {
         for(auto point: data["NodePoints"])
-            _cellPoints.push_back(point.get<Point>());
+            _nodePoints.push_back(point.get<Point>());
     }
 
     // Node Bboxes
@@ -583,10 +583,10 @@ void PlaneArrangement::saveAsJson(const string &outPath) {
     data["EdgeFeatures"] = _edgeFeatures;
     data["labels"] = _labels;
     data["gtLabels"] = _gtLabels;
-    if(_cellPoints.empty())
+    if(_nodePoints.empty())
         data["NodePoints"] = getCellsPoints(_cell2label, _arr);
     else
-        data["NodePoints"] = _cellPoints;
+        data["NodePoints"] = _nodePoints;
     if(_nodeBboxes.empty())
         data["NodeBbox"] = getCellsBbox(_cell2label, _arr);
     else
@@ -679,12 +679,12 @@ const EdgeFeatures &PlaneArrangement::edgeFeatures() const {
     return _edgeFeatures;
 }
 
-const std::vector<Point> &PlaneArrangement::cellPoints() {
-    if(_cellPoints.empty()) {
+const std::vector<Point> &PlaneArrangement::nodePoints() {
+    if(_nodePoints.empty()) {
         static_cast<void>(arrangement());
-        _cellPoints = getCellsPoints(_cell2label, _arr);
+        _nodePoints = getCellsPoints(_cell2label, _arr);
     }
-    return _cellPoints;
+    return _nodePoints;
 }
 
 vector<classKeywordsColor> loadSemanticClasses(const string& path)
