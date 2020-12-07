@@ -734,12 +734,13 @@ vector<Point> getCellsPoints(const map<int, int> &cell2label, const Arrangement 
 }
 
 vector<vector<double>> getCellsBbox(const map<int, int> &cell2label, const Arrangement &arr) {
-    vector<vector<double>> cellsPoints(cell2label.size(), {0., 0., 0.});
+    vector<double> initialBbox = {DBL_MAX, DBL_MAX, DBL_MAX, -DBL_MAX, -DBL_MAX, -DBL_MAX};
+    vector<vector<double>> cellsPoints(cell2label.size(), initialBbox);
     Epeck_to_Simple e2s;
 
     for(auto cellIt = arr.cells_begin(); cellIt != arr.cells_end(); cellIt++) {
         if(!arr.is_cell_bounded(*cellIt)) continue;
-        cellsPoints[cell2label.at(arr.cell_handle(*cellIt))] = {DBL_MAX, DBL_MAX, DBL_MAX, -DBL_MAX, -DBL_MAX, -DBL_MAX};
+        vector<double> &curBbox = cellsPoints[cell2label.at(arr.cell_handle(*cellIt))];
         for(auto facetIt = cellIt->subfaces_begin(); facetIt != cellIt->subfaces_end(); facetIt++)
         {
             auto facet = arr.facet(*facetIt);
@@ -747,12 +748,13 @@ vector<vector<double>> getCellsBbox(const map<int, int> &cell2label, const Arran
                 auto edge = arr.edge(*edgeIt);
                 for(auto pointIt = edge.subfaces_begin(); pointIt != edge.subfaces_end(); pointIt++)
                 {
-                    cellsPoints[cell2label.at(arr.cell_handle(*cellIt))][0] = min(cellsPoints[cell2label.at(arr.cell_handle(*cellIt))][0], CGAL::to_double(arr.point(*pointIt).x()));
-                    cellsPoints[cell2label.at(arr.cell_handle(*cellIt))][1] = min(cellsPoints[cell2label.at(arr.cell_handle(*cellIt))][1], CGAL::to_double(arr.point(*pointIt).y()));
-                    cellsPoints[cell2label.at(arr.cell_handle(*cellIt))][2] = min(cellsPoints[cell2label.at(arr.cell_handle(*cellIt))][2], CGAL::to_double(arr.point(*pointIt).z()));
-                    cellsPoints[cell2label.at(arr.cell_handle(*cellIt))][3] = max(cellsPoints[cell2label.at(arr.cell_handle(*cellIt))][3], CGAL::to_double(arr.point(*pointIt).x()));
-                    cellsPoints[cell2label.at(arr.cell_handle(*cellIt))][4] = max(cellsPoints[cell2label.at(arr.cell_handle(*cellIt))][4], CGAL::to_double(arr.point(*pointIt).y()));
-                    cellsPoints[cell2label.at(arr.cell_handle(*cellIt))][5] = max(cellsPoints[cell2label.at(arr.cell_handle(*cellIt))][5], CGAL::to_double(arr.point(*pointIt).z()));
+                    Point curPoint = e2s(arr.point(*pointIt));
+                    curBbox[0] = min(curBbox[0], curPoint.x());
+                    curBbox[1] = min(curBbox[1], curPoint.y());
+                    curBbox[2] = min(curBbox[2], curPoint.z());
+                    curBbox[3] = max(curBbox[3], curPoint.x());
+                    curBbox[4] = max(curBbox[4], curPoint.y());
+                    curBbox[5] = max(curBbox[5], curPoint.z());
                 }
             }
         }

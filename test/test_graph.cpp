@@ -610,6 +610,21 @@ TEST_F(PlaneArrangementFixture, computeNodeVolume)
         ASSERT_DOUBLE_EQ(cellVolume, 0.5 * 1. * 0.5);
 }
 
+TEST_F(PlaneArrangementFixture, getCellsBbox) {
+    cout.setstate(ios_base::failbit);
+    cerr.setstate(ios_base::failbit);
+    auto cellBbox = getCellsBbox(planeArrangement.cell2label(), planeArrangement.arrangement());
+    cout.clear();
+    cerr.clear();
+    vector<vector<double>> bboxes = {{0., 0., 0., 0.5, 1., 0.5},
+                                     {0.5, 0., 0., 1., 1., 0.5},
+                                     {0.5, 0., 0.5, 1., 1., 1.},
+                                     {0., 0., 0.5, 0.5, 1., 1.}};
+    for(int i=0; i < bboxes.size(); i++)
+        for(int j=0; j < bboxes[i].size(); j++)
+            ASSERT_DOUBLE_EQ(cellBbox[i][j], bboxes[i][j]);
+}
+
 TEST_F(PlaneArrangementFixture, euclidianAdjacency) {
     cout.setstate(ios_base::failbit);
     cerr.setstate(ios_base::failbit);
