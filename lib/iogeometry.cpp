@@ -543,7 +543,7 @@ PlaneArrangement::PlaneArrangement(const string& name) : isArrangementComputed(f
     // Node features
     if (data.find("NodePoints") != data.end()) {
         for(auto point: data["NodePoints"])
-            _cellPoints.push_back(point.get<vector<double>>());
+            _cellPoints.push_back(point.get<Point>());
     }
 
     // Node Bboxes
@@ -679,6 +679,14 @@ const EdgeFeatures &PlaneArrangement::edgeFeatures() const {
     return _edgeFeatures;
 }
 
+const std::vector<Point> &PlaneArrangement::cellPoints() {
+    if(_cellPoints.empty()) {
+        static_cast<void>(arrangement());
+        _cellPoints = getCellsPoints(_cell2label, _arr);
+    }
+    return _cellPoints;
+}
+
 vector<classKeywordsColor> loadSemanticClasses(const string& path)
 {
     vector<classKeywordsColor> semanticClasses;
@@ -712,15 +720,14 @@ vector<classKeywordsColor> loadSemanticClasses(const string& path)
 }
 
 
-vector<vector<double>> getCellsPoints(const map<int, int> &cell2label, const Arrangement &arr) {
-    vector<vector<double>> cellsPoints(cell2label.size(), {0., 0., 0.});
+vector<Point> getCellsPoints(const map<int, int> &cell2label, const Arrangement &arr) {
+    vector<Point> cellsPoints(cell2label.size(), Point(0., 0., 0.));
     Epeck_to_Simple e2s;
 
     for(auto cellIt = arr.cells_begin(); cellIt != arr.cells_end(); cellIt++) {
         if(!arr.is_cell_bounded(*cellIt)) continue;
 
-        auto pt = e2s(cellIt->point());
-        cellsPoints[cell2label.at(arr.cell_handle(*cellIt))] = {pt.x(), pt.y(), pt.z()};
+        cellsPoints[cell2label.at(arr.cell_handle(*cellIt))] = e2s(cellIt->point());
     }
 
     return cellsPoints;

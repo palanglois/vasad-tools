@@ -154,8 +154,8 @@ inline void from_json(const nlohmann::json& j, Plane& p) {
     p.faces = j.at("faces").get<std::vector<std::vector<int>>>();
 }
 
-// Input/Output json for the CGAL::Bbox_3 type
 namespace CGAL {
+    // Input/Output json for the CGAL::Bbox_3 type
     inline void to_json(nlohmann::json &j, const CGAL::Bbox_3 &b) {
         j = {b.xmin(), b.ymin(), b.zmin(), b.xmax(), b.ymax(), b.zmax()};
     }
@@ -163,6 +163,15 @@ namespace CGAL {
     inline void from_json(const nlohmann::json &j, CGAL::Bbox_3 &b) {
         b = CGAL::Bbox_3(j[0].get<double>(), j[1].get<double>(), j[2].get<double>(),
                          j[3].get<double>(), j[4].get<double>(), j[5].get<double>());
+    }
+
+    // Input/Output json for the Point type
+    inline void to_json(nlohmann::json &j, const Point &b) {
+        j = {b.x(), b.y(), b.z()};
+    }
+
+    inline void from_json(const nlohmann::json &j, Point &b) {
+        b = Point(j[0].get<double>(), j[1].get<double>(), j[2].get<double>());
     }
 }
 
@@ -188,6 +197,7 @@ public:
     [[nodiscard]] const std::vector<Plane> &planes() const;
     [[nodiscard]] const std::vector<Point> &points() const;
     [[nodiscard]] const EdgeFeatures &edgeFeatures() const;
+    [[nodiscard]] const std::vector<Point> &cellPoints();
     [[nodiscard]] const std::vector<std::pair<Point, int>> &getSamples(int nbSamplesPerCell=40);
 
     // Hit and run sampling for the plane arrangement
@@ -195,7 +205,7 @@ public:
 
     // Cell volumes
     std::vector<double> computeAllNodesVolumes();
-    double computeNodeVolume(const Arrangement::Face_handle &cellHandle) const;
+    [[nodiscard]] double computeNodeVolume(const Arrangement::Face_handle &cellHandle) const;
 
 private:
     Arrangement _arr;
@@ -207,7 +217,7 @@ private:
     std::vector<Plane> _planes;
     NodeFeatures _nodeFeatures;
     EdgeFeatures _edgeFeatures;
-    std::vector<std::vector<double>> _cellPoints;
+    std::vector<Point> _cellPoints;
     std::vector<CGAL::Bbox_3> _nodeBboxes;
     std::vector<double> _nodeVolumes;
     int _nbPlanes;
@@ -292,7 +302,7 @@ std::vector<classKeywordsColor> loadSemanticClasses(const std::string& path);
 
 // Utilities
 
-std::vector<std::vector<double>> getCellsPoints(const std::map<int, int> &cell2label, const Arrangement &arr);
+std::vector<Point> getCellsPoints(const std::map<int, int> &cell2label, const Arrangement &arr);
 std::vector<std::vector<double>> getCellsBbox(const std::map<int, int> &cell2label, const Arrangement &arr);
 
 #endif
