@@ -631,5 +631,18 @@ TEST_F(PlaneArrangementFixture, euclidianAdjacency) {
     auto cellPoints = planeArrangement.nodePoints();
     cout.clear();
     cerr.clear();
+    vector<Point> realCellPoints;
+    realCellPoints.emplace_back(0.25, 0.5, 0.25);
+    realCellPoints.emplace_back(0.75, 0.5, 0.25);
+    realCellPoints.emplace_back(0.75, 0.5, 0.75);
+    realCellPoints.emplace_back(0.25, 0.5, 0.75);
+    for(int i=0; i < cellPoints.size(); i++)
+        ASSERT_EQ(cellPoints[i], realCellPoints[i]);
     ASSERT_EQ(cellPoints.size(), 4);
+
+    vector<double> distances = {0.6, 1.};
+    auto neighbourhoods = planeArrangement.euclidianNeighbourhoods(distances);
+    ASSERT_EQ(neighbourhoods.size(), 2);
+    ASSERT_EQ(neighbourhoods[0].size(), 4);
+    ASSERT_EQ(neighbourhoods[1].size(), 2);
 }

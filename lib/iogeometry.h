@@ -25,6 +25,7 @@
 #include <CGAL/AABB_traits.h>
 #include <CGAL/AABB_triangle_primitive.h>
 #include <CGAL/Orthogonal_k_neighbor_search.h>
+#include <CGAL/Orthogonal_incremental_neighbor_search.h>
 #include <CGAL/Search_traits_3.h>
 #include <CGAL/Triangulation_3.h>
 
@@ -87,10 +88,13 @@ typedef Polyhedral_complex_3::Arrangement_3<Kernel2> Arrangement;
 typedef CGAL::Search_traits_3<Kernel> TreeTraits;
 typedef CGAL::Orthogonal_k_neighbor_search<TreeTraits> Neighbor_search;
 typedef Neighbor_search::Tree kdTree;
+typedef CGAL::Orthogonal_incremental_neighbor_search<TreeTraits> NN_incremental_search;
+typedef NN_incremental_search::Tree incrementalKdTree;
 
 /* Typedefs for the graph representation */
 typedef std::vector<std::vector<int>> Nodes;
 typedef std::vector<std::pair<int, int>> Edges;
+typedef std::set<std::pair<int, int>> UniqueEdges;
 typedef std::vector<std::vector<double>> NodeFeatures;
 typedef std::map<std::pair<int, int>, std::vector<double>> EdgeFeatures;
 
@@ -206,6 +210,9 @@ public:
     // Cell volumes
     std::vector<double> computeAllNodesVolumes();
     [[nodiscard]] double computeNodeVolume(const Arrangement::Face_handle &cellHandle) const;
+
+    // Compute neighbourhoods
+    std::vector<UniqueEdges> euclidianNeighbourhoods(const std::vector<double> maxDistances);
 
 private:
     Arrangement _arr;

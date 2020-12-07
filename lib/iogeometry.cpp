@@ -874,3 +874,39 @@ vector<double> PlaneArrangement::computeAllNodesVolumes()
     }
     return nodeVolumes;
 }
+
+vector<UniqueEdges> PlaneArrangement::euclidianNeighbourhoods(const vector<double> maxDistances)
+{
+    vector<UniqueEdges> neighbourhoods(maxDistances.size());
+    // We transform the distances to avoid using square roots
+    vector<double> squareDistances;
+    transform(maxDistances.begin(), maxDistances.end(), back_inserter(squareDistances), [](double v) {return v*v;});
+
+    // idx2point and point2idx
+    const vector<Point> &nodesPts = nodePoints();
+    map<Point, int> point2idx;
+    for(int i=0; i < nodesPts.size(); i++)
+        point2idx[nodesPts[i]] = i;
+
+    // We build the neighbourhoods using an incremental kd tree
+    incrementalKdTree tree(nodesPts.begin(), nodesPts.end());
+    for(int i=0; i < nodesPts.size(); i++)
+    {
+        const auto& point = nodesPts[i];
+        NN_incremental_search NN(tree, point);
+        auto incrementalIt = NN.begin();
+        incrementalIt++; // We ignore the current point
+        size_t distanceIdx = 0;
+        while(incrementalIt != NN.end())
+        {
+            auto curElem = incrementalIt++;
+            if(curElem->second >= squareDistances[distanceIdx])
+                distanceIdx++;
+            if(distanceIdx >= maxDistances.size()) break;
+            int j = point2idx[curElem->first];
+            neighbourhoods[distanceIdx].insert(pair<int, int>(min(i, j), max(i, j)));
+        }
+    }
+
+    return neighbourhoods;
+}
