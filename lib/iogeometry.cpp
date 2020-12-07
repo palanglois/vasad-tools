@@ -889,9 +889,10 @@ vector<UniqueEdges> PlaneArrangement::euclidianNeighbourhoods(const vector<doubl
         point2idx[nodesPts[i]] = i;
 
     // We build the neighbourhoods using an incremental kd tree
-    incrementalKdTree tree(nodesPts.begin(), nodesPts.end());
+#pragma omp parallel for
     for(int i=0; i < nodesPts.size(); i++)
     {
+        incrementalKdTree tree(nodesPts.begin(), nodesPts.end());
         const auto& point = nodesPts[i];
         NN_incremental_search NN(tree, point);
         auto incrementalIt = NN.begin();
@@ -904,6 +905,7 @@ vector<UniqueEdges> PlaneArrangement::euclidianNeighbourhoods(const vector<doubl
                 distanceIdx++;
             if(distanceIdx >= maxDistances.size()) break;
             int j = point2idx[curElem->first];
+#pragma omp critical
             neighbourhoods[distanceIdx].insert(pair<int, int>(min(i, j), max(i, j)));
         }
     }
