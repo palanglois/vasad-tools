@@ -95,6 +95,8 @@ add_executable(assignLabelSingleChunk main_assign_label.cpp)
 
 add_executable(neighbourhoodStats main_neighbourhood_stats.cpp)
 
+add_executable(visibilityLines main_visibility_lines.cpp)
+
 
 target_link_libraries(bim_data ${CGAL_LIBRARIES} io_geometry)
 target_link_libraries(color_classes io_geometry)
@@ -112,6 +114,7 @@ target_link_libraries(ptViewShooter ${CGAL_LIBRARIES} io_geometry graph_statisti
 target_link_libraries(labeledPc2Obj ${CGAL_LIBRARIES} io_geometry)
 target_link_libraries(assignLabelSingleChunk ${CGAL_LIBRARIES} io_geometry graph_statistics)
 target_link_libraries(neighbourhoodStats ${CGAL_LIBRARIES} io_geometry)
+target_link_libraries(visibilityLines ${CGAL_LIBRARIES} io_geometry graph_statistics)
 if(MKL_FOUND)
     target_link_libraries(mesh2plane ${MKL_LIBRARIES})
 endif()

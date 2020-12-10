@@ -61,9 +61,10 @@ int main(int argc, char *argv[]) {
     auto pointOfViews = povPath.empty() ? vector<Point>(0) : loadPointOfViews(povPath);
 
     // Compute the new features
+    vector<double> nodeVisibility;
     EdgeFeatures edgeFeatures = computeFeaturesFromLabeledPoints(currentArrangement,
                                                                  pointsWithLabel.first, pointsWithLabel.second,
-                                                                 classesWithColor.size(), 40,
+                                                                 classesWithColor.size(), 40, nodeVisibility,
                                                                  pointOfViews, true);
 
     // DEBUG

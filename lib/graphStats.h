@@ -22,13 +22,14 @@ inline double computeFacetArea(const Arrangement &arr, int facetHandle);
 std::pair<std::vector<Point>, std::map<Point, int>> sampleFacets(const Arrangement &arr,
                                                                  std::map<int, double> &facetAreas);
 
-void computeVisibility(PlaneArrangement &planeArr, const std::vector<Point> &points,
-                       const std::vector<Point> &pointOfViews, EdgeFeatures &edgeFeatures, int nbClasses,
-                       const std::vector<Arrangement::Face_handle> &exactPovCells = std::vector<Arrangement::Face_handle>(0));
+std::vector<double> computeVisibility(PlaneArrangement &planeArr, const std::vector<Point> &points,
+                                      const std::vector<Point> &pointOfViews, EdgeFeatures &edgeFeatures, int nbClasses,
+                                      const std::vector<Arrangement::Face_handle> &exactPovCells = std::vector<Arrangement::Face_handle>(0));
 
 EdgeFeatures computeFeaturesFromLabeledPoints(PlaneArrangement &planeArr, const std::vector<Point> &points,
                                               const std::vector<int> &labels, const int nbClasses,
                                               int nbSamplesPerCell,
+                                              std::vector<double> &nodeVisibility,
                                               const std::vector<Point> &pointOfViews = std::vector<Point>(0),
                                               bool verbose = false);
 

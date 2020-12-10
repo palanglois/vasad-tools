@@ -586,10 +586,11 @@ inline double computeFacetArea(const Arrangement &arr, int facetHandle)
     return facetArea;
 }
 
-void computeVisibility(PlaneArrangement &planeArr, const vector<Point> &points, const vector<Point> &pointOfViews,
-                       EdgeFeatures &edgeFeatures, int nbClasses,
-                       const vector<Arrangement::Face_handle> &exactPovCells)
+vector<double> computeVisibility(PlaneArrangement &planeArr, const vector<Point> &points,
+                                 const vector<Point> &pointOfViews, EdgeFeatures &edgeFeatures, int nbClasses,
+                                 const vector<Arrangement::Face_handle> &exactPovCells)
 {
+    vector<double> nodeVisibility(planeArr.cell2label().size(), 0.);
     Simple_to_Epeck s2e;
     auto tqPoints = tq::trange(points.size());
     tqPoints.set_prefix("Computing visibility: ");
@@ -598,13 +599,16 @@ void computeVisibility(PlaneArrangement &planeArr, const vector<Point> &points, 
         // Intersect point_of_view <-> detected point segments with the plane arrangement
         Arrangement::Face_handle begin_cell;
         Arrangement::Face_handle end_cell;
-        vector<pair<Arrangement::Face_handle, int>> intersected_facets;
+        vector<pair<Arrangement::Face_handle, int>> intersectedFacets;
+        vector<pair<Arrangement::Face_handle, double>> intersectedCellsAndDists;
         if(exactPovCells.empty())
-            segment_search(planeArr.arrangement(), s2e(pointOfViews[i]), s2e(points[i]),
-                           begin_cell, back_inserter(intersected_facets), end_cell);
+            segment_search_advanced(planeArr.arrangement(), s2e(pointOfViews[i]), s2e(points[i]),
+                           begin_cell, back_inserter(intersectedFacets),
+                           back_inserter(intersectedCellsAndDists), end_cell);
         else {
-            segment_search(planeArr.arrangement(), s2e(pointOfViews[i]), s2e(points[i]),
-                           begin_cell, back_inserter(intersected_facets), end_cell, exactPovCells[i], true);
+            segment_search_advanced(planeArr.arrangement(), s2e(pointOfViews[i]), s2e(points[i]),
+                           begin_cell, back_inserter(intersectedFacets),
+                           back_inserter(intersectedCellsAndDists), end_cell, exactPovCells[i], true);
 //            // BEGIN DEBUG
 //            if(CGAL::do_overlap(points[i].bbox(), planeArr.bbox()) && CGAL::do_overlap(pointOfViews[i].bbox(), planeArr.bbox())) {
 //                cout << planeArr.bbox() << endl;
@@ -614,7 +618,7 @@ void computeVisibility(PlaneArrangement &planeArr, const vector<Point> &points, 
 //                cout << endl;
 //            }
 //            bool fail=true;
-//            for(const auto& pair: intersected_facets) {
+//            for(const auto& pair: intersectedFacets) {
 //                // For every intersected facet, we increment the visibility bin
 //                if (!planeArr.arrangement().is_facet_bounded(pair.first)) continue;
 //                auto &facet = planeArr.arrangement().facet(pair.first);
@@ -629,7 +633,13 @@ void computeVisibility(PlaneArrangement &planeArr, const vector<Point> &points, 
 //                cout << "Good" << endl;
 //            // END DEBUG
         }
-        for(const auto& pair: intersected_facets)
+        // Node visibility
+        for(const auto& cellAndDist: intersectedCellsAndDists){
+            if(!planeArr.arrangement().is_cell_bounded(cellAndDist.first)) continue;
+            nodeVisibility[planeArr.cell2label().at(cellAndDist.first)] += cellAndDist.second;
+        }
+
+        for(const auto& pair: intersectedFacets)
         {
             // For every intersected facet, we increment the visibility bin
             if(!planeArr.arrangement().is_facet_bounded(pair.first)) continue;
@@ -645,11 +655,12 @@ void computeVisibility(PlaneArrangement &planeArr, const vector<Point> &points, 
             edgeFeatures[goodKey][nbClasses]++;
         }
     }
+    return nodeVisibility;
 }
 
 EdgeFeatures computeFeaturesFromLabeledPoints(PlaneArrangement &planeArr, const vector<Point> &points,
                                               const vector<int> &labels, const int nbClasses, int nbSamplesPerCell,
-                                              const vector<Point> &pointOfViews, bool verbose)
+                                              vector<double> &nodeVisibility, const vector<Point> &pointOfViews, bool verbose)
 {
     bool withVisibility = !pointOfViews.empty();
     Arrangement &arr = planeArr.arrangement();
@@ -764,33 +775,27 @@ EdgeFeatures computeFeaturesFromLabeledPoints(PlaneArrangement &planeArr, const 
     if(withVisibility)
     {
         // Initial guess for the point of views cells
-        vector<Arrangement::Face_handle> guessedCells(0, Arrangement::Face_handle(0));
         vector<Point> beginPoints;
         vector<Point> endPoints;
-        vector<Triangle> bboxMesh = meshBbox(bbox);
-        Tree bboxTree(bboxMesh.begin(), bboxMesh.end());
+        addSegmentIfInBbox(pointOfViews, points, back_inserter(beginPoints), back_inserter(endPoints), bbox);
+
+        // We efficiently compute the cell where the point of view is located
+        vector<Arrangement::Face_handle> guessedCells(0, Arrangement::Face_handle(0));
         map<Point, int> pov2cell;
-        for(int i=0; i < pointOfViews.size(); i++) {
-            // We keep only the visibility segments that cross our bounding box
-            Segment visSegment(pointOfViews[i], points[i]);
-            if(!CGAL::do_overlap(visSegment.bbox(), bbox)) continue;
-            if(!CGAL::do_overlap(pointOfViews[i].bbox(), bbox) && !CGAL::do_overlap(points[i].bbox(), bbox)
-            && !bboxTree.do_intersect(visSegment)) continue;
-            beginPoints.push_back(pointOfViews[i]);
-            endPoints.push_back(points[i]);
-            // We efficiently compute the cell where the point of view is located
-            if(pov2cell.find(pointOfViews[i]) != pov2cell.end())
-                guessedCells.emplace_back(pov2cell.at(pointOfViews[i]));
+        for(auto & beginPoint : beginPoints) {
+            if(pov2cell.find(beginPoint) != pov2cell.end())
+                guessedCells.emplace_back(pov2cell.at(beginPoint));
             else
             {
-                Neighbor_search search(tree, pointOfViews[i], 1);
-                int curPovCellIdx = find_containing_cell(arr, s2e(pointOfViews[i]), pointToCellHandle.at(search.begin()->first));
-                pov2cell[pointOfViews[i]] = curPovCellIdx;
+                Neighbor_search search(tree, beginPoint, 1);
+                int curPovCellIdx = find_containing_cell(arr, s2e(beginPoint),
+                                                         pointToCellHandle.at(search.begin()->first));
+                pov2cell[beginPoint] = curPovCellIdx;
                 guessedCells.emplace_back(curPovCellIdx);
             }
         }
         // Processing visibility segments
-        computeVisibility(planeArr, endPoints, beginPoints, features, nbClasses, guessedCells);
+        nodeVisibility = computeVisibility(planeArr, endPoints, beginPoints, features, nbClasses, guessedCells);
     }
 
     // Normalize features
@@ -957,10 +962,14 @@ splitArrangementInBatch(const PlaneArrangement &planeArr, vector<facesLabelName>
             data["NodeFeatures"] = nodeFeats;
             if(labeledPointCloud.first.empty())
                 data["EdgeFeatures"] = computeTrivialEdgeFeatures(fullArrangement, gtLabels, nbClasses, verbose);
-            else
+            else {
+                vector<double> nodeVisibility;
                 data["EdgeFeatures"] = computeFeaturesFromLabeledPoints(fullArrangement, labeledPointCloud.first,
                                                                         labeledPointCloud.second, nbClasses,
-                                                                        nbSamplesPerCell, pointOfViews, verbose);
+                                                                        nbSamplesPerCell, nodeVisibility,
+                                                                        pointOfViews, verbose);
+                data["NodeVisibility"] = nodeVisibility;
+            }
             data["gtLabels"] = gtLabels;
             data["NodePoints"] = getCellsPoints(fullArrangement.cell2label(), onlyArrangement);
             data["NodeBbox"] = getCellsBbox(fullArrangement.cell2label(), onlyArrangement);

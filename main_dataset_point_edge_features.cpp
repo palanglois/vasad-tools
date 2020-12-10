@@ -89,9 +89,11 @@ int main(int argc, char *argv[]) {
 
                 // Compute the new features
                 if(!simpleUpdate) {
+                    vector<double> nodeVisibility;
                     EdgeFeatures edgeFeatures = computeFeaturesFromLabeledPoints(currentArrangement,
                                                                                  curScan.first, curScan.second,
                                                                                  classesWithColor.size(), 40,
+                                                                                 nodeVisibility,
                                                                                  pointOfViews[modelName], true);
 
                     // Replacing features and output the results

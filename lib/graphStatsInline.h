@@ -70,4 +70,24 @@ inline bool isInShape(const Point &candidate, const CGAL::Bbox_3 &bbox, std::vec
     return false;
 }
 
+template<class OutputIterator>
+inline void addSegmentIfInBbox(const std::vector<Point> &pointOfViews, const std::vector<Point> &points,
+                               OutputIterator beginPointIt, OutputIterator endPointIt,
+                               const CGAL::Bbox_3 &bbox)
+{
+    std::vector<Triangle> bboxMesh = meshBbox(bbox);
+    Tree bboxTree(bboxMesh.begin(), bboxMesh.end());
+    for(int i=0; i < pointOfViews.size(); i++) {
+        // We keep only the visibility segments that cross our bounding box
+        Segment visSegment(pointOfViews[i], points[i]);
+        if (!CGAL::do_overlap(visSegment.bbox(), bbox))
+            continue;
+        if (!CGAL::do_overlap(pointOfViews[i].bbox(), bbox) && !CGAL::do_overlap(points[i].bbox(), bbox)
+            && !bboxTree.do_intersect(visSegment))
+            continue;
+        *beginPointIt++ = pointOfViews[i];
+        *endPointIt++ = pointOfViews[i] + 1. * (points[i] - pointOfViews[i]);
+    }
+}
+
 #endif //BIM_DATA_GRAPHSTATSINLINE_H

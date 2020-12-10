@@ -246,7 +246,9 @@ TEST_F(PlaneArrangementFixture, pointSampling)
 
     cout.setstate(ios_base::failbit);
     cerr.setstate(ios_base::failbit);
-    EdgeFeatures features = computeFeaturesFromLabeledPoints(planeArrangement, inPoints, inLabels, nbClasses, 40, pointOfViews);
+    vector<double> nodeVisibility;
+    EdgeFeatures features = computeFeaturesFromLabeledPoints(planeArrangement, inPoints, inLabels, nbClasses,
+                                                             40, nodeVisibility, pointOfViews);
     cout.clear();
     cerr.clear();
     ASSERT_EQ(features.size(), 4);
@@ -645,4 +647,30 @@ TEST_F(PlaneArrangementFixture, euclidianAdjacency) {
     ASSERT_EQ(neighbourhoods.size(), 2);
     ASSERT_EQ(neighbourhoods[0].size(), 4);
     ASSERT_EQ(neighbourhoods[1].size(), 2);
+}
+
+
+TEST_F(PlaneArrangementFixture, segment_search_advanced) {
+    Simple_to_Epeck s2e;
+    cout.setstate(ios_base::failbit);
+    cerr.setstate(ios_base::failbit);
+    auto& arr = planeArrangement.arrangement();
+    cout.clear();
+    cerr.clear();
+
+    Point p(0.25, 0.5, 0.25);
+    Point q(0.7, 0.5, 0.25);
+
+    Arrangement::Face_handle p_ch, q_ch;
+    vector<pair<Arrangement::Face_handle, int>> intersectedFacets;
+    vector<pair<Arrangement::Face_handle, double>> intersectedCellsAndDists;
+
+    segment_search_advanced(arr, s2e(p), s2e(q), p_ch, back_inserter(intersectedFacets),
+                            back_inserter(intersectedCellsAndDists), q_ch);
+
+    ASSERT_EQ(intersectedCellsAndDists.size(), 2);
+    ASSERT_EQ((int) planeArrangement.cell2label().at(intersectedCellsAndDists[0].first), 0);
+    ASSERT_EQ((int) planeArrangement.cell2label().at(intersectedCellsAndDists[1].first), 1);
+    ASSERT_DOUBLE_EQ(intersectedCellsAndDists[0].second, 0.25);
+    ASSERT_DOUBLE_EQ(intersectedCellsAndDists[1].second, 0.2);
 }

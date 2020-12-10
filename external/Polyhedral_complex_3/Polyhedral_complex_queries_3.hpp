@@ -632,6 +632,123 @@ void segment_search(const Comp& comp,
 
 
 /*!
+ *  Finds all the facets intersected by the given segment and also the cells
+ *  where the ending points are located.
+ *  \param[in] comp a polyhedral complex
+ *  \param[in] p the starting point
+ *  \param[in] q the ending point
+ *  \param[out] p_ch a handle to a cell containing p
+ *  \param[out] it an iterator to a sequence of handles of intersected faces
+ *  \param[out] itCell an iterator to a sequence
+ *  of pairs <handles of intersected cell, length of segment in intersected cell>
+ *  \param[out] q_ch a handle to a cell containing q
+ *  \return a face handle to a cell containing the point
+ */
+template<class Comp,
+class OutputIterator,
+class OutputIteratorCell>
+void segment_search_advanced(const Comp& comp,
+                             const typename Comp::Point &p,
+                             const typename Comp::Point &q,
+                             typename Comp::Face_handle &p_ch,
+                             OutputIterator it,
+                             OutputIteratorCell itCell,
+                             typename Comp::Face_handle &q_ch,
+                             typename Comp::Face_handle p_ch0 =
+                             typename Comp::Face_handle(),
+                             bool p_c0_is_p_c = false,
+                             bool stop = false)
+{
+    typedef typename Comp::Plane_handle Plane_handle;
+    typedef typename Comp::Face Face;
+    typedef typename Comp::Face_handle Face_handle;
+    typedef typename Comp::Subfaces_const_iterator Subfaces_const_iterator;
+    typedef typename Comp::Point Point;
+    typedef typename Comp::Segment Segment;
+    typedef typename Comp::Plane Plane;
+
+    p_ch = p_c0_is_p_c ? p_ch0 : find_containing_cell(comp, p, p_ch0);
+
+    Face_handle ch = p_ch;
+    const Face* c = &comp.cell(ch);
+    Point c_point = c->point();
+
+	bool inside = false;
+
+    Face_handle out_fh = Face_handle();
+
+    Point curPoint = p;
+
+    do {
+        inside = true;
+        double dist = -1.;
+        Point newPoint;
+
+        for (Subfaces_const_iterator fit = c->subfaces_begin(); fit != c->subfaces_end(); ++fit)
+		{
+            const Face_handle fh = *fit;
+
+			/* We are on the other side of f so keep inside true */
+            if (fh == out_fh) continue;
+
+            const Plane_handle plh = comp.facet_plane(fh);
+            const Plane& pl = comp.plane(plh);
+
+            const int q_side = pl.oriented_side(q);
+            const int c_side = pl.oriented_side(c_point);
+
+            assert(c_side != 0);
+
+            if (q_side != c_side && q_side != 0) {
+                inside = false;
+
+                if (do_intersect_facet_cl(comp, p, q, comp.facet(fh)))
+				{
+                    auto facetPlane = comp.plane(comp.facet_plane(comp.facet(fh)));
+                    auto intersection = CGAL::intersection(facetPlane, Segment(p, q));
+                    assert(intersection);
+                    if (const Point *s = boost::get<Point>(&*intersection)) {
+                        dist = sqrt(CGAL::to_double((*s - curPoint).squared_length()));
+                        newPoint = *s;
+                    }
+
+                    out_fh = fh;
+                    break;
+                }
+            }
+        }
+
+        /* Update the cell handle, the pointer and the ref. point */
+        if (!inside) {
+            assert(out_fh != Face_handle());
+
+            const Face& f = comp.facet(out_fh);
+
+            const Face_handle ch1 = f.superface(0);
+            const Face_handle ch2 = f.superface(1);
+
+            *itCell++ = std::make_pair(ch, dist);
+
+            if (ch == ch1) {
+                *it++ = std::make_pair(out_fh, 0);
+                ch = ch2;
+            } else { /* ch == ch2 */
+                *it++ = std::make_pair(out_fh, 1);
+                ch = ch1;
+            }
+            curPoint = newPoint;
+            c = &comp.cell(ch);
+            c_point = c->point();
+        }
+    } while (!inside && !stop);
+
+    *itCell++ = std::make_pair(ch, sqrt(CGAL::to_double((q - curPoint).squared_length())));
+
+    q_ch = ch;
+}
+
+
+/*!
  *  Find all the adjacent facets to a facet whithin one cell
  *  \param[in] comp a polyhedral complex
  *  \param[in] fh the facet of the cell
