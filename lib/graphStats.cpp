@@ -1338,7 +1338,7 @@ EdgeFeatures mergeEdgeFeatures(const EdgeFeatures &edgeFeatures, const vector<in
         assert(pair2feature.second.size() == 1);
         int newCell0 = cell2Merged[pair2feature.first.first];
         int newCell1 = cell2Merged[pair2feature.first.second];
-        // If newCell0, newCell1, it means that the current edge has been collapsed;
+        // If newCell0 == newCell1, it means that the current edge has been collapsed;
         if(newCell0 == newCell1)
             continue;
         pair<int, int> newKey(min(newCell0, newCell1), max(newCell0, newCell1));
