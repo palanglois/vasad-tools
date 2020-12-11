@@ -83,7 +83,7 @@ int main(int argc, char *argv[]) {
     int fullInNew = 0;
     for(auto edgeFeat: edgeFeatures)
     {
-        const vector<double>& newFeat = edgeFeat.second;
+        const vector<vector<double>>& newFeat = edgeFeat.second;
         pair<int, int> firstKey = edgeFeat.first;
         pair<int, int> secondKey(firstKey.second, firstKey.first);
         pair<int, int> goodKey(0, 0);
@@ -97,33 +97,33 @@ int main(int argc, char *argv[]) {
             cout << "Could not find key !!" << endl;
             continue;
         }
-        const vector<double>& oldFeat = currentArrangement.edgeFeatures().at(goodKey);
+        const vector<vector<double>>& oldFeat = currentArrangement.edgeFeatures().at(goodKey);
         bool same = true;
-        for(int i=0; i < newFeat.size(); i++)
+        for(int i=0; i < newFeat[0].size(); i++)
         {
-            same = newFeat[i] == oldFeat[i];
+            same = newFeat[0][i] == oldFeat[0][i];
             if(!same) break;
         }
-        sameFull += same && newFeat[newFeat.size() - 1] != 1;
-        fullToEmpty += (!same) && newFeat[newFeat.size() - 1] == 1;
-        emptyToFull += (!same) && oldFeat[oldFeat.size() - 1] == 1;
-        fullInNew += newFeat[newFeat.size() - 1] != 1;
+        sameFull += same && newFeat[0][newFeat.size() - 1] != 1;
+        fullToEmpty += (!same) && newFeat[0][newFeat.size() - 1] == 1;
+        emptyToFull += (!same) && oldFeat[0][oldFeat.size() - 1] == 1;
+        fullInNew += newFeat[0][newFeat.size() - 1] != 1;
         if(same) {
             sameF++;
         }
         else
         {
             diff++;
-            bool display = (newFeat[newFeat.size() - 1] != 1) && (oldFeat[oldFeat.size() - 1] == 1);
+            bool display = (newFeat[0][newFeat.size() - 1] != 1) && (oldFeat[0][oldFeat.size() - 1] == 1);
             if(display) {
                 cout << "Different: " << endl;
                 cout << "new: ";
-                for (int i = 0; i < newFeat.size(); i++)
-                    cout << newFeat[i] << " ";
+                for (int i = 0; i < newFeat[0].size(); i++)
+                    cout << newFeat[0][i] << " ";
                 cout << endl;
                 cout << "old: ";
-                for (int i = 0; i < oldFeat.size(); i++)
-                    cout << oldFeat[i] << " ";
+                for (int i = 0; i < oldFeat[0].size(); i++)
+                    cout << oldFeat[0][i] << " ";
                 cout << endl;
             }
 

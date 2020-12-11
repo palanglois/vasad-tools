@@ -59,4 +59,7 @@ std::pair<std::vector<int>, std::vector<std::vector<int>>>
 mergeNodesFromVisibility(PlaneArrangement &planeArr, const std::vector<double> &nodeVisibility,
                          double visThreshold);
 
+
+EdgeFeatures mergeEdgeFeatures(const EdgeFeatures &edgeFeatures, const std::vector<int> &cell2Merged);
+
 #endif //BIM_DATA_GRAPHSTATS_H

@@ -377,9 +377,9 @@ void savePlyFromEdgeFeatures(const std::string &filename, Arrangement &arr, cons
         int goodLabel = -1;
         double bestScore = -1;
         for(int i=0; i < classesWithColor.size() + 1; i++)
-            if(edgeFeatures.at(goodKey)[i] > bestScore)
+            if(edgeFeatures.at(goodKey)[0][i] > bestScore)
             {
-                bestScore = edgeFeatures.at(goodKey)[i];
+                bestScore = edgeFeatures.at(goodKey)[0][i];
                 goodLabel = i;
             }
         if(goodLabel != -1)
@@ -522,7 +522,7 @@ PlaneArrangement::PlaneArrangement(const string& name) : isArrangementComputed(f
         {
             vector<int> keyVec = edgeFeat[0][0].get<vector<int>>();
             pair<int, int> key(keyVec[0], keyVec[1]);
-            vector<double> val = edgeFeat[0][1].get<vector<double>>();
+            vector<vector<double>> val = edgeFeat[0][1].get<vector<vector<double>>>();
             _edgeFeatures[key] = val;
 
 //            // DEBUG

@@ -142,7 +142,7 @@ TEST_F(PlaneArrangementFixture, NodeFusionFromVisibility) {
         if(!myPlaneArrangement.is_cell_bounded(facetIt->superface(1))) continue;
         int cell0 = planeArrangement.cell2label().at(facetIt->superface(0));
         int cell1 = planeArrangement.cell2label().at(facetIt->superface(1));
-        edgeFeatures[make_pair(cell0, cell1)] = defaultFeature;
+        edgeFeatures[make_pair(cell0, cell1)] = {defaultFeature};
     }
 
     cout.setstate(ios_base::failbit);
@@ -162,7 +162,13 @@ TEST_F(PlaneArrangementFixture, NodeFusionFromVisibility) {
         ASSERT_EQ(targetCell2Merged[i], mergeMappings.first[i]);
     for(int i=0; i < mergeMappings.second.size(); i++)
         for(int j=0; j < mergeMappings.second[i].size(); j++)
-        ASSERT_EQ(targetMerged2Cell[i][j], mergeMappings.second[i][j]);
+            ASSERT_EQ(targetMerged2Cell[i][j], mergeMappings.second[i][j]);
+
+    EdgeFeatures newFeatures = mergeEdgeFeatures(edgeFeatures, mergeMappings.first);
+
+    ASSERT_EQ(newFeatures.size(), 1);
+    ASSERT_NE(newFeatures.find(make_pair(0, 1)), newFeatures.end());
+    ASSERT_EQ(newFeatures.at(make_pair(0, 1)).size(), 2);
 }
 
 TEST_F(PlaneArrangementFixture, NodeLabeling)
@@ -246,7 +252,7 @@ TEST_F(PlaneArrangementFixture, visibilityRays)
         if(!myPlaneArrangement.is_cell_bounded(facetIt->superface(1))) continue;
         int cell0 = planeArrangement.cell2label().at(facetIt->superface(0));
         int cell1 = planeArrangement.cell2label().at(facetIt->superface(1));
-        edgeFeatures[make_pair(cell0, cell1)] = defaultFeature;
+        edgeFeatures[make_pair(cell0, cell1)] = {defaultFeature};
     }
 
     cout.setstate(ios_base::failbit);
@@ -256,7 +262,7 @@ TEST_F(PlaneArrangementFixture, visibilityRays)
     cerr.clear();
     auto goodKey = edgeFeatures.find(make_pair(0, 1)) != edgeFeatures.end() ? make_pair(0, 1) : make_pair(1, 0);
 
-    ASSERT_EQ(edgeFeatures[goodKey][nbClasses], 2);
+    ASSERT_EQ(edgeFeatures[goodKey][0][nbClasses], 2);
 
 }
 
@@ -316,11 +322,11 @@ TEST_F(PlaneArrangementFixture, pointSampling)
     {
         stringstream outStream;
         outStream << "We got the following feature on edge (" << cell1 << ", " << cell2 << ") : " ;
-        for(double i : features.at(edgeZeroV1))
+        for(double i : features.at(edgeZeroV1)[0])
             outStream << i << " ";
         outStream << endl;
         for(int i=0; i < targetDistrib.size(); i++)
-            ASSERT_EQ(features.at(edgeZeroV1)[i], targetDistrib[i]) << outStream.rdbuf();
+            ASSERT_EQ(features.at(edgeZeroV1)[0][i], targetDistrib[i]) << outStream.rdbuf();
     }
 }
 

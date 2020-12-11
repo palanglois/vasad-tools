@@ -466,19 +466,19 @@ EdgeFeatures computeTrivialEdgeFeatures(PlaneArrangement& planeArr, vector<int> 
             {
                 // We're at a void/full transition
                 edgeFeature[cellLabel2] = 1.;
-                edgeFeatures[make_pair(cellFeatureIdx1, cellFeatureIdx2)] = edgeFeature;
+                edgeFeatures[make_pair(cellFeatureIdx1, cellFeatureIdx2)] = {edgeFeature};
             }
             else if(cellLabel1 != -1 && cellLabel2 == -1)
             {
                 // Same here but different direction
                 edgeFeature[cellLabel1] = 1.;
-                edgeFeatures[make_pair(cellFeatureIdx1, cellFeatureIdx2)] = edgeFeature;
+                edgeFeatures[make_pair(cellFeatureIdx1, cellFeatureIdx2)] = {edgeFeature};
             }
             else
             {
                 // We're not at a transition
                 edgeFeature[nbClasses] = 1.;
-                edgeFeatures[make_pair(cellFeatureIdx1, cellFeatureIdx2)] = edgeFeature;
+                edgeFeatures[make_pair(cellFeatureIdx1, cellFeatureIdx2)] = {edgeFeature};
             }
         }
     }
@@ -652,7 +652,7 @@ vector<double> computeVisibility(PlaneArrangement &planeArr, const vector<Point>
             std::pair<int, int> keyTwo = make_pair(cell1, cell0);
             std::pair<int, int> goodKey = edgeFeatures.find(keyTwo) != edgeFeatures.end() ? keyTwo : keyOne;
             assert(edgeFeatures.find(goodKey) != edgeFeatures.end());
-            edgeFeatures[goodKey][nbClasses]++;
+            edgeFeatures[goodKey][0][nbClasses]++;
         }
     }
     return nodeVisibility;
@@ -697,11 +697,11 @@ EdgeFeatures computeFeaturesFromLabeledPoints(PlaneArrangement &planeArr, const 
         int cell2 = facetIt->superface(1);
         if(!arr.is_cell_bounded(cell2)) continue;
         pair<int, int> facetId(cell2label.at(cell1), cell2label.at(cell2));
-        features[facetId] = vector<double>(nbClasses + 2, 0);
+        features[facetId] = {vector<double>(nbClasses + 2, 0)};
         if(!withVisibility)
-            features[facetId][nbClasses] = 1.;
+            features[facetId][0][nbClasses] = 1.;
         double facetOrientation = computeFacetOrientation(arr, arr.facet_handle(*facetIt));
-        features[facetId][nbClasses + 1] = facetOrientation;
+        features[facetId][0][nbClasses + 1] = facetOrientation;
         facetAreasMapping[facetId] = computeFacetArea(arr, arr.facet_handle(*facetIt));
         facetOrientationMapping[facetId] = facetOrientation;
     }
@@ -749,13 +749,13 @@ EdgeFeatures computeFeaturesFromLabeledPoints(PlaneArrangement &planeArr, const 
         auto pair2 = make_pair(cell2, cell1);
         pair<int, int> goodPair;
         if(features.find(pair1) != features.end()) {
-            features[pair1][labels[i]] += 1;
-            features[pair1][nbClasses] = 0;
+            features[pair1][0][labels[i]] += 1;
+            features[pair1][0][nbClasses] = 0;
             goodPair = pair1;
         }
         else if(features.find(pair2) != features.end()) {
-            features[pair2][labels[i]] += 1;
-            features[pair2][nbClasses] = 0;
+            features[pair2][0][labels[i]] += 1;
+            features[pair2][0][nbClasses] = 0;
             goodPair = pair2;
         }
         else
@@ -805,15 +805,15 @@ EdgeFeatures computeFeaturesFromLabeledPoints(PlaneArrangement &planeArr, const 
     for(auto& edgeFeat: features)
     {
         double expectedNbOfPoints = facetAreasMapping[edgeFeat.first] / (3.141592 * pow(averageNNDistance, 2));
-        if (expectedNbOfPoints >= 1. && edgeFeat.second[nbClasses] != 1.) {
+        if (expectedNbOfPoints >= 1. && edgeFeat.second[0][nbClasses] != 1.) {
             for (int i = 0; i < nbClasses + 1; i++)
-                edgeFeat.second[i] /= expectedNbOfPoints;
+                edgeFeat.second[0][i] /= expectedNbOfPoints;
         } else {
-            edgeFeat.second = emptyVec;
-            edgeFeat.second[nbClasses + 1] = facetOrientationMapping[edgeFeat.first];
+            edgeFeat.second[0] = emptyVec;
+            edgeFeat.second[0][nbClasses + 1] = facetOrientationMapping[edgeFeat.first];
         }
 	// Renormalization
-    for (auto &elem: edgeFeat.second)
+    for (auto &elem: edgeFeat.second[0])
         elem = min(elem, 1.);
     }
 
@@ -1327,4 +1327,25 @@ pair<vector<int>, vector<vector<int>>> mergeNodesFromVisibility(PlaneArrangement
         mergedNodeId++;
     }
     return make_pair(node2merged, merged2node);
+}
+
+EdgeFeatures mergeEdgeFeatures(const EdgeFeatures &edgeFeatures, const vector<int> &cell2Merged)
+{
+    // Build new edges, accumulate inner edges
+    EdgeFeatures cumulatedFeatures;
+    for(const auto& pair2feature: edgeFeatures)
+    {
+        assert(pair2feature.second.size() == 1);
+        int newCell0 = cell2Merged[pair2feature.first.first];
+        int newCell1 = cell2Merged[pair2feature.first.second];
+        // If newCell0, newCell1, it means that the current edge has been collapsed;
+        if(newCell0 == newCell1)
+            continue;
+        pair<int, int> newKey(min(newCell0, newCell1), max(newCell0, newCell1));
+        if(cumulatedFeatures.find(newKey) == cumulatedFeatures.end())
+            cumulatedFeatures[newKey] = {pair2feature.second};
+        else
+            cumulatedFeatures.at(newKey).push_back(pair2feature.second[0]);
+    }
+    return cumulatedFeatures;
 }

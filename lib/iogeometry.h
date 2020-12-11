@@ -96,7 +96,7 @@ typedef std::vector<std::vector<int>> Nodes;
 typedef std::vector<std::pair<int, int>> Edges;
 typedef std::set<std::pair<int, int>> UniqueEdges;
 typedef std::vector<std::vector<double>> NodeFeatures;
-typedef std::map<std::pair<int, int>, std::vector<double>> EdgeFeatures;
+typedef std::map<std::pair<int, int>, std::vector<std::vector<double>>> EdgeFeatures;
 
 
 // Hash for Triangle
