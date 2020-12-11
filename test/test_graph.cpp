@@ -169,6 +169,18 @@ TEST_F(PlaneArrangementFixture, NodeFusionFromVisibility) {
     ASSERT_EQ(newFeatures.size(), 1);
     ASSERT_NE(newFeatures.find(make_pair(0, 1)), newFeatures.end());
     ASSERT_EQ(newFeatures.at(make_pair(0, 1)).size(), 2);
+
+    vector<vector<double>> nodeFeatures = {{0., 0., 0., nodeVisibility[0], 0.2},
+                                           {0., 0., 0., nodeVisibility[1], 0.3},
+                                           {0., 0., 0., nodeVisibility[2], 0.4},
+                                           {0., 0., 0., nodeVisibility[3], 0.5}};
+    NodeFeatures newNodeFeatures = mergeNodeFeatures(nodeFeatures, mergeMappings.first, mergeMappings.second,
+                                                     planeArrangement, true);
+    vector<vector<double>> expectedFeatures = {{0., 0., 0., nodeVisibility[0], 0.2},
+                                               {1., 1., 1., 0., 1.2}};
+    for(int i=0; i < expectedFeatures.size(); i++)
+        for(int j=0; j < expectedFeatures[i].size(); j++)
+            ASSERT_DOUBLE_EQ(newNodeFeatures[i][j], expectedFeatures[i][j]);
 }
 
 TEST_F(PlaneArrangementFixture, NodeLabeling)

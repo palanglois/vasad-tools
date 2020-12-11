@@ -60,6 +60,10 @@ mergeNodesFromVisibility(PlaneArrangement &planeArr, const std::vector<double> &
                          double visThreshold);
 
 
-EdgeFeatures mergeEdgeFeatures(const EdgeFeatures &edgeFeatures, const std::vector<int> &cell2Merged);
+EdgeFeatures mergeEdgeFeatures(const EdgeFeatures &edgeFeatures, const std::vector<int> &node2Merged);
+
+NodeFeatures mergeNodeFeatures(const NodeFeatures &nodeFeatures, const std::vector<int> &cell2Merged,
+                               const std::vector<std::vector<int>>& merged2Cell, PlaneArrangement &planeArr,
+                               bool withVolume=false);
 
 #endif //BIM_DATA_GRAPHSTATS_H

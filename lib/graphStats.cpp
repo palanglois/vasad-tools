@@ -1329,15 +1329,15 @@ pair<vector<int>, vector<vector<int>>> mergeNodesFromVisibility(PlaneArrangement
     return make_pair(node2merged, merged2node);
 }
 
-EdgeFeatures mergeEdgeFeatures(const EdgeFeatures &edgeFeatures, const vector<int> &cell2Merged)
+EdgeFeatures mergeEdgeFeatures(const EdgeFeatures &edgeFeatures, const vector<int> &node2Merged)
 {
     // Build new edges, accumulate inner edges
     EdgeFeatures cumulatedFeatures;
     for(const auto& pair2feature: edgeFeatures)
     {
         assert(pair2feature.second.size() == 1);
-        int newCell0 = cell2Merged[pair2feature.first.first];
-        int newCell1 = cell2Merged[pair2feature.first.second];
+        int newCell0 = node2Merged[pair2feature.first.first];
+        int newCell1 = node2Merged[pair2feature.first.second];
         // If newCell0 == newCell1, it means that the current edge has been collapsed;
         if(newCell0 == newCell1)
             continue;
@@ -1348,4 +1348,50 @@ EdgeFeatures mergeEdgeFeatures(const EdgeFeatures &edgeFeatures, const vector<in
             cumulatedFeatures.at(newKey).push_back(pair2feature.second[0]);
     }
     return cumulatedFeatures;
+}
+
+NodeFeatures mergeNodeFeatures(const NodeFeatures &nodeFeatures, const vector<int> &node2Merged,
+                               const vector<vector<int>>& merged2Node, PlaneArrangement &planeArr, bool withVolume)
+{
+    Arrangement& arr = planeArr.arrangement();
+    vector<CGAL::Bbox_3> nodesBbox(merged2Node.size());
+    NodeFeatures newFeatures(merged2Node.size(), vector<double>(0));
+    for(int i=0; i < merged2Node.size(); i++)
+    {
+        if(merged2Node[i].size() == 1)
+        {
+            // Unmerged cell
+            newFeatures[i] = nodeFeatures[merged2Node[i][0]];
+        }
+        else
+        {
+            double volume = 0.;
+            // Computing the new bounding box
+            CGAL::Bbox_3 bbox;
+            for(int j : merged2Node[i])
+            {
+                auto curCell = arr.cell(planeArr.label2cell().at(j));
+                for(auto facetIt = curCell.subfaces_begin(); facetIt != curCell.subfaces_end(); facetIt++)
+                {
+                    auto curFacet = arr.facet(*facetIt);
+                    for(auto edgeIt = curFacet.subfaces_begin(); edgeIt != curFacet.subfaces_end(); edgeIt++)
+                    {
+                        auto curEdge = arr.edge(*edgeIt);
+                        for(auto pointIt = curEdge.subfaces_begin(); pointIt != curEdge.subfaces_end(); pointIt++)
+                            bbox += arr.vertex(*pointIt).point().bbox();
+                    }
+                }
+                if(withVolume)
+                    volume += nodeFeatures[j][4];
+            }
+            // Unmerged cell
+            newFeatures[i] = {bbox.xmax() - bbox.xmin(),
+                              bbox.ymax() - bbox.ymin(),
+                              bbox.zmax() - bbox.zmin(),
+                              /* Merged nodes are empty*/0};
+            if(withVolume)
+                newFeatures[i].push_back(volume);
+        }
+    }
+    return newFeatures;
 }
