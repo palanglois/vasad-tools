@@ -1259,3 +1259,72 @@ vector<Point> findPtViewInBboxWithRefine(const CGAL::Bbox_3 &bbox, vector<facesL
     return ptViews;
 
 }
+
+pair<vector<int>, vector<vector<int>>> mergeNodesFromVisibility(PlaneArrangement& planeArr,
+                                                                const vector<double> &nodeVisibility,
+                                                                double visThreshold)
+{
+    // Initialize mappings
+    vector<int> node2merged(planeArr.cell2label().size(), 0);
+    vector<vector<int>> merged2node;
+
+    // Local algorithm variables
+    vector<bool> visitedNodes(planeArr.cell2label().size(), false);
+    int mergedNodeId = 0;
+    int curNode = 0;
+
+    // Initial node
+    while(curNode < planeArr.cell2label().size())
+    {
+        // Finding an empty cell
+        while ((nodeVisibility[curNode] < visThreshold || visitedNodes[curNode]) &&
+        curNode < planeArr.cell2label().size()) {
+            if(visitedNodes[curNode])
+                curNode++;
+            else {
+                node2merged[curNode] = mergedNodeId;
+                merged2node.push_back({curNode});
+                mergedNodeId++;
+                visitedNodes[curNode++] = true;
+            }
+        }
+
+        // Check that we actually found something
+        if(curNode >= planeArr.cell2label().size()) break;
+
+        // Region growing
+        queue<int> potentialInliers;
+        potentialInliers.push(curNode);
+        vector<int> currentInliers;
+        while(!potentialInliers.empty())
+        {
+            // Get the front of the queue
+            int curPotentialInlier = potentialInliers.front();
+            potentialInliers.pop();
+
+            // If the candidate does not match the criteria, we do not grow from it.
+            if(nodeVisibility[curPotentialInlier] < visThreshold) continue;
+
+            // If the candidate matches the criteria, we add it to the current merged class
+            currentInliers.push_back(curPotentialInlier);
+            node2merged[curPotentialInlier] = mergedNodeId;
+            visitedNodes[curPotentialInlier] = true;
+
+            // We expand the potential inliers to the non-visited neighbours of curPotentialInlier
+            auto curPotentialCell = planeArr.arrangement().cell(planeArr.label2cell().at(curPotentialInlier));
+            for(auto facetIt = curPotentialCell.subfaces_begin(); facetIt != curPotentialCell.subfaces_end(); facetIt++)
+            {
+                int cell0 = planeArr.arrangement().facet(*facetIt).superface(0);
+                int cell1 = planeArr.arrangement().facet(*facetIt).superface(1);
+                int goodCell = cell0 == planeArr.label2cell().at(curPotentialInlier) ? cell1 : cell0;
+                if(!planeArr.arrangement().is_cell_bounded(goodCell)) continue;
+                int goodCellIdx = planeArr.cell2label().at(goodCell);
+                if(!visitedNodes[goodCellIdx])
+                    potentialInliers.push(goodCellIdx);
+            }
+        }
+        merged2node.push_back(currentInliers);
+        mergedNodeId++;
+    }
+    return make_pair(node2merged, merged2node);
+}

@@ -117,6 +117,54 @@ TEST_F(PlaneArrangementFixture, NodeFusion)
     ASSERT_EQ(nodesEdges2.second.size(), 4);
 }
 
+
+TEST_F(PlaneArrangementFixture, NodeFusionFromVisibility) {
+    cout.setstate(ios_base::failbit);
+    cerr.setstate(ios_base::failbit);
+    Arrangement &myPlaneArrangement = planeArrangement.arrangement();
+    cout.clear();
+    cerr.clear();
+
+    vector<Point> inPoints;
+    vector<Point> pointOfViews;
+    inPoints.emplace_back(0.75, 0.5, 0.75);
+    pointOfViews.emplace_back(0.75, 0.5, -0.25);
+    inPoints.emplace_back(0.75, 0.5, 0.75);
+    pointOfViews.emplace_back(0.25, 0.5, 0.75);
+
+    EdgeFeatures edgeFeatures;
+    int nbClasses = 1;
+    vector<double> defaultFeature(nbClasses + 2, 0.);
+    for(auto facetIt = myPlaneArrangement.facets_begin(); facetIt != myPlaneArrangement.facets_end(); facetIt++)
+    {
+        if(!myPlaneArrangement.is_facet_bounded(*facetIt)) continue;
+        if(!myPlaneArrangement.is_cell_bounded(facetIt->superface(0))) continue;
+        if(!myPlaneArrangement.is_cell_bounded(facetIt->superface(1))) continue;
+        int cell0 = planeArrangement.cell2label().at(facetIt->superface(0));
+        int cell1 = planeArrangement.cell2label().at(facetIt->superface(1));
+        edgeFeatures[make_pair(cell0, cell1)] = defaultFeature;
+    }
+
+    cout.setstate(ios_base::failbit);
+    cerr.setstate(ios_base::failbit);
+    vector<double> nodeVisibility = computeVisibility(planeArrangement, inPoints, pointOfViews,
+                                                      edgeFeatures, nbClasses);
+    cout.clear();
+    cerr.clear();
+
+    double visThreshold = 0.1;
+
+    pair<vector<int>, vector<vector<int>>> mergeMappings = mergeNodesFromVisibility(planeArrangement, nodeVisibility,
+                                                                                    visThreshold);
+    vector<int> targetCell2Merged = {0, 1, 1, 1};
+    vector<vector<int>> targetMerged2Cell = {{0}, {1, 2, 3}};
+    for(int i=0; i < mergeMappings.first.size(); i++)
+        ASSERT_EQ(targetCell2Merged[i], mergeMappings.first[i]);
+    for(int i=0; i < mergeMappings.second.size(); i++)
+        for(int j=0; j < mergeMappings.second[i].size(); j++)
+        ASSERT_EQ(targetMerged2Cell[i][j], mergeMappings.second[i][j]);
+}
+
 TEST_F(PlaneArrangementFixture, NodeLabeling)
 {
     // Test-mesh

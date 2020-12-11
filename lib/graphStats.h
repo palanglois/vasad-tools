@@ -52,6 +52,11 @@ void sampleBetweenPoints(const std::vector<Kernel2::Point_3>& points, std::vecto
 
 void refinePoint(Point &point, std::vector<Triangle> &mesh, int nbShoot=100);
 std::vector<Point> findPtViewInBbox(const CGAL::Bbox_3 &bbox, std::vector<facesLabelName> &shapesAndClasses,
-                                    std::vector<Triangle> &mesh, int nbShoot, int nbCandidates=100, bool verbose=false);
+                                    std::vector<Triangle> &mesh, int nbShoot, int nbCandidates = 100,
+                                    bool verbose = false);
+
+std::pair<std::vector<int>, std::vector<std::vector<int>>>
+mergeNodesFromVisibility(PlaneArrangement &planeArr, const std::vector<double> &nodeVisibility,
+                         double visThreshold);
 
 #endif //BIM_DATA_GRAPHSTATS_H

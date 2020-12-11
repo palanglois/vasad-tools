@@ -195,6 +195,7 @@ public:
     // Accessors
     [[nodiscard]] Arrangement &arrangement();
     [[nodiscard]] const std::map<int, int> &cell2label() const;
+    [[nodiscard]] const std::map<int, int> &label2cell();
     [[nodiscard]] const std::vector<int> &labels() const;
     [[nodiscard]] const std::vector<int> &gtLabels() const;
     [[nodiscard]] const CGAL::Bbox_3 &bbox() const;
@@ -217,6 +218,7 @@ public:
 private:
     Arrangement _arr;
     std::map<int, int> _cell2label;
+    std::map<int, int> _label2cell;
     std::vector<int> _labels;
     std::vector<int> _gtLabels;
     CGAL::Bbox_3 _bbox;

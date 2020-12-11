@@ -655,6 +655,13 @@ const std::map<int, int> &PlaneArrangement::cell2label() const {
     return _cell2label;
 }
 
+const std::map<int, int> &PlaneArrangement::label2cell() {
+    if(_label2cell.size() != _cell2label.size())
+        for(const auto mapIt: _cell2label)
+            _label2cell[mapIt.second] = mapIt.first;
+    return _label2cell;
+}
+
 const std::vector<int> &PlaneArrangement::labels() const {
     return _labels;
 }
