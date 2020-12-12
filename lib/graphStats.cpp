@@ -391,8 +391,9 @@ vector<int> assignLabel(PlaneArrangement& planeArr,
     return labels;
 }
 
-NodeFeatures computeNodeFeatures(PlaneArrangement& planeArr, vector<int> &labels, const double proba,
-                                 const bool withGeom, bool verbose)
+NodeFeatures computeNodeFeatures(PlaneArrangement& planeArr, const vector<double> &nodeVisibility,
+                                 const double visThreshold, const vector<double> &nodeVolume, const bool withGeom,
+                                 bool verbose)
 {
     const map<int, int> &cell2label = planeArr.cell2label();
     const Arrangement &arr = planeArr.arrangement();
@@ -405,13 +406,16 @@ NodeFeatures computeNodeFeatures(PlaneArrangement& planeArr, vector<int> &labels
         if (!arr.is_cell_bounded(*cellIt)) continue;
         auto cellHandle = arr.cell_handle(*cellIt);
         int labelIdx = cell2label.at(cellHandle);
-        double feature = 1.; // We suppose the current cell is full
-        if (labels[labelIdx] == -1) {
-            // If it was actually empty, we only say it in proba% of the cases
-            if (unitRandom(generator) < proba)
-                feature = 0.;
-        }
 
+        double feature = 0.; // if nodeVisibility[labelIdx] >= visThreshold, the current cell is empty
+        if(visThreshold != -1.)
+        {
+            if (nodeVisibility[labelIdx] < visThreshold && visThreshold != -1.) {
+                feature = 1. - nodeVisibility[labelIdx] / visThreshold;
+            }
+        }
+        else
+            feature = 1.; // if vis is disabled, the current cell is set to full by default
         nodeFeatures[labelIdx] = {feature};
 
         // Node geometry
@@ -435,6 +439,10 @@ NodeFeatures computeNodeFeatures(PlaneArrangement& planeArr, vector<int> &labels
             nodeFeatures[labelIdx].push_back(curBbox[4] - curBbox[1]);
             nodeFeatures[labelIdx].push_back(curBbox[5] - curBbox[2]);
         }
+
+        // Node volume
+        if(!nodeVolume.empty())
+            nodeFeatures[labelIdx].push_back(nodeVolume[labelIdx]);
     }
     return nodeFeatures;
 }
@@ -895,7 +903,7 @@ void subdivideBboxLongestAxis(queue<CGAL::Bbox_3> &bboxes, CGAL::Bbox_3 curBbox)
 vector<Json>
 splitArrangementInBatch(const PlaneArrangement &planeArr, vector<facesLabelName> &labeledShapes, int nbClasses,
         double step, int maxNodes, const pair<vector<Point>, vector<int>> &labeledPointCloud,
-        const vector<Point> &pointOfViews, int maxNbPlanes, int nbSamplesPerCell, double proba, bool geom,
+        const vector<Point> &pointOfViews, int maxNbPlanes, int nbSamplesPerCell, double visThreshold, bool geom,
         double ratioReconstructed, bool verbose) {
 
     vector<Json> computedArrangements;
@@ -951,7 +959,6 @@ splitArrangementInBatch(const PlaneArrangement &planeArr, vector<facesLabelName>
             // labelling, feature computing
             vector<int> gtLabels = assignLabel(fullArrangement,
                                     labeledShapes, nbClasses,  nbSamplesPerCell, verbose);
-            NodeFeatures nodeFeats = computeNodeFeatures(fullArrangement, gtLabels, proba, geom, verbose);
 
             // Compiling into json
             Json data;
@@ -959,21 +966,43 @@ splitArrangementInBatch(const PlaneArrangement &planeArr, vector<facesLabelName>
             for(auto idx: fullArrangement.cell2label())
                 cell2labelJ[to_string(idx.first)] = idx.second;
             data["map"] = cell2labelJ;
-            data["NodeFeatures"] = nodeFeats;
-            if(labeledPointCloud.first.empty())
-                data["EdgeFeatures"] = computeTrivialEdgeFeatures(fullArrangement, gtLabels, nbClasses, verbose);
+            vector<double> nodeVisibility;
+            EdgeFeatures edgeFeatures;
+            if(labeledPointCloud.first.empty()) {
+                edgeFeatures = computeTrivialEdgeFeatures(fullArrangement, gtLabels, nbClasses, verbose);
+                nodeVisibility = vector<double>(fullArrangement.cell2label().size(), 1.); /*No info on node visibility*/
+            }
             else {
-                vector<double> nodeVisibility;
-                data["EdgeFeatures"] = computeFeaturesFromLabeledPoints(fullArrangement, labeledPointCloud.first,
+                edgeFeatures = computeFeaturesFromLabeledPoints(fullArrangement, labeledPointCloud.first,
                                                                         labeledPointCloud.second, nbClasses,
                                                                         nbSamplesPerCell, nodeVisibility,
                                                                         pointOfViews, verbose);
                 data["NodeVisibility"] = nodeVisibility;
             }
+            vector<double> nodeVolumes = fullArrangement.computeAllNodesVolumes();
+            NodeFeatures nodeFeats = computeNodeFeatures(fullArrangement, nodeVisibility, visThreshold, nodeVolumes, geom);
+            if(visThreshold != -1)
+            {
+                // There is a threshold, we apply merging
+                if(verbose)
+                    cout << endl << "Nb of nodes before merging: " << nodeFeats.size() << endl;
+                auto mergeMappings = mergeNodesFromVisibility(fullArrangement, nodeVisibility, nodeVolumes, visThreshold);
+                edgeFeatures = mergeEdgeFeatures(edgeFeatures, mergeMappings.first);
+                nodeFeats = mergeNodeFeatures(nodeFeats, mergeMappings.first, mergeMappings.second,
+                                              fullArrangement, true);
+                gtLabels = mergeGtLabels(gtLabels, mergeMappings.second, nbClasses);
+                nodeVolumes = mergeNodeVolumes(nodeVolumes, mergeMappings.second);
+                data["Node2Merged"] = mergeMappings.first;
+                data["Merged2Node"] = mergeMappings.second;
+                if(verbose)
+                    cout << "Nb of nodes before merging: " << nodeFeats.size() << endl;
+            }
+            data["NodeFeatures"] = nodeFeats;
+            data["EdgeFeatures"] = edgeFeatures;
             data["gtLabels"] = gtLabels;
             data["NodePoints"] = getCellsPoints(fullArrangement.cell2label(), onlyArrangement);
             data["NodeBbox"] = getCellsBbox(fullArrangement.cell2label(), onlyArrangement);
-            data["NodeVolumes"] = fullArrangement.computeAllNodesVolumes();
+            data["NodeVolumes"] = nodeVolumes;
             vector<Plane> currentPlanes;
             for(int validIdx: validPlaneIdx)
                 currentPlanes.push_back(planeArr.planes()[validIdx]);
@@ -1262,6 +1291,7 @@ vector<Point> findPtViewInBboxWithRefine(const CGAL::Bbox_3 &bbox, vector<facesL
 
 pair<vector<int>, vector<vector<int>>> mergeNodesFromVisibility(PlaneArrangement& planeArr,
                                                                 const vector<double> &nodeVisibility,
+                                                                const vector<double> &nodeVolumes,
                                                                 double visThreshold)
 {
     // Initialize mappings
@@ -1277,7 +1307,7 @@ pair<vector<int>, vector<vector<int>>> mergeNodesFromVisibility(PlaneArrangement
     while(curNode < planeArr.cell2label().size())
     {
         // Finding an empty cell
-        while ((nodeVisibility[curNode] < visThreshold || visitedNodes[curNode]) &&
+        while ((nodeVisibility[curNode] / pow(nodeVolumes[curNode], 1./3.) < visThreshold || visitedNodes[curNode]) &&
         curNode < planeArr.cell2label().size()) {
             if(visitedNodes[curNode])
                 curNode++;
@@ -1293,17 +1323,18 @@ pair<vector<int>, vector<vector<int>>> mergeNodesFromVisibility(PlaneArrangement
         if(curNode >= planeArr.cell2label().size()) break;
 
         // Region growing
-        queue<int> potentialInliers;
-        potentialInliers.push(curNode);
+        set<int> potentialInliers;
+        potentialInliers.insert(curNode);
         vector<int> currentInliers;
         while(!potentialInliers.empty())
         {
             // Get the front of the queue
-            int curPotentialInlier = potentialInliers.front();
-            potentialInliers.pop();
+            auto curInlierIt = potentialInliers.begin();
+            int curPotentialInlier = *curInlierIt;
+            potentialInliers.erase(curInlierIt);
 
             // If the candidate does not match the criteria, we do not grow from it.
-            if(nodeVisibility[curPotentialInlier] < visThreshold) continue;
+            if(nodeVisibility[curPotentialInlier] / pow(nodeVolumes[curNode], 1./3.) < visThreshold) continue;
 
             // If the candidate matches the criteria, we add it to the current merged class
             currentInliers.push_back(curPotentialInlier);
@@ -1320,7 +1351,7 @@ pair<vector<int>, vector<vector<int>>> mergeNodesFromVisibility(PlaneArrangement
                 if(!planeArr.arrangement().is_cell_bounded(goodCell)) continue;
                 int goodCellIdx = planeArr.cell2label().at(goodCell);
                 if(!visitedNodes[goodCellIdx])
-                    potentialInliers.push(goodCellIdx);
+                    potentialInliers.insert(goodCellIdx);
             }
         }
         merged2node.push_back(currentInliers);
@@ -1384,14 +1415,36 @@ NodeFeatures mergeNodeFeatures(const NodeFeatures &nodeFeatures, const vector<in
                 if(withVolume)
                     volume += nodeFeatures[j][4];
             }
-            // Unmerged cell
-            newFeatures[i] = {bbox.xmax() - bbox.xmin(),
+            newFeatures[i] = {0, /* Merged nodes are empty*/
+                              bbox.xmax() - bbox.xmin(),
                               bbox.ymax() - bbox.ymin(),
-                              bbox.zmax() - bbox.zmin(),
-                              /* Merged nodes are empty*/0};
+                              bbox.zmax() - bbox.zmin()};
             if(withVolume)
                 newFeatures[i].push_back(volume);
         }
     }
     return newFeatures;
+}
+
+vector<int> mergeGtLabels(const vector<int> &gtLabels, const vector<vector<int>> &merged2Node, int nbClasses)
+{
+    vector<int> newLabels(merged2Node.size());
+    for(int i=0; i < merged2Node.size(); i++)
+        if(merged2Node[i].size() == 1)
+            newLabels[i] = gtLabels[merged2Node[i][0]]; // Unmerged nodes keep their label
+        else
+            newLabels[i] = nbClasses; // Merged nodes are empty
+    return newLabels;
+}
+
+vector<double> mergeNodeVolumes(const vector<double> &nodeVolumes, const vector<vector<int>> &merged2Node)
+{
+    vector<double> newVolumes(merged2Node.size());
+    for (int i = 0; i < merged2Node.size(); i++) {
+        double volume = 0.;
+        for (int j = 0; j < merged2Node[i].size(); j++)
+            volume += nodeVolumes[merged2Node[i][j]];
+        newVolumes[i] = volume;
+    }
+    return newVolumes;
 }

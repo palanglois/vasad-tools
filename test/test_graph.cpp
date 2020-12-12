@@ -154,8 +154,9 @@ TEST_F(PlaneArrangementFixture, NodeFusionFromVisibility) {
 
     double visThreshold = 0.1;
 
+    vector<double> nodeVolumes = planeArrangement.computeAllNodesVolumes();
     pair<vector<int>, vector<vector<int>>> mergeMappings = mergeNodesFromVisibility(planeArrangement, nodeVisibility,
-                                                                                    visThreshold);
+                                                                                    nodeVolumes, visThreshold);
     vector<int> targetCell2Merged = {0, 1, 1, 1};
     vector<vector<int>> targetMerged2Cell = {{0}, {1, 2, 3}};
     for(int i=0; i < mergeMappings.first.size(); i++)
@@ -170,17 +171,28 @@ TEST_F(PlaneArrangementFixture, NodeFusionFromVisibility) {
     ASSERT_NE(newFeatures.find(make_pair(0, 1)), newFeatures.end());
     ASSERT_EQ(newFeatures.at(make_pair(0, 1)).size(), 2);
 
-    vector<vector<double>> nodeFeatures = {{0., 0., 0., nodeVisibility[0], 0.2},
-                                           {0., 0., 0., nodeVisibility[1], 0.3},
-                                           {0., 0., 0., nodeVisibility[2], 0.4},
-                                           {0., 0., 0., nodeVisibility[3], 0.5}};
+    vector<vector<double>> nodeFeatures = {{nodeVisibility[0], 0., 0., 0., 0.2},
+                                           {nodeVisibility[1], 0., 0., 0., 0.3},
+                                           {nodeVisibility[2], 0., 0., 0., 0.4},
+                                           {nodeVisibility[3], 0., 0., 0., 0.5}};
     NodeFeatures newNodeFeatures = mergeNodeFeatures(nodeFeatures, mergeMappings.first, mergeMappings.second,
                                                      planeArrangement, true);
-    vector<vector<double>> expectedFeatures = {{0., 0., 0., nodeVisibility[0], 0.2},
-                                               {1., 1., 1., 0., 1.2}};
+    vector<vector<double>> expectedFeatures = {{nodeVisibility[0], 0., 0., 0., 0.2},
+                                               {0., 1., 1., 1., 1.2}};
     for(int i=0; i < expectedFeatures.size(); i++)
         for(int j=0; j < expectedFeatures[i].size(); j++)
             ASSERT_DOUBLE_EQ(newNodeFeatures[i][j], expectedFeatures[i][j]);
+
+    vector<int> gtLabels = {2, 1, 1, 1};
+    vector<int> newGtLabels = mergeGtLabels(gtLabels, mergeMappings.second, nbClasses);
+    vector<int> targetLabels = {2, nbClasses};
+    for(int i=0; i < targetLabels.size(); i++)
+        ASSERT_EQ(targetLabels[i], newGtLabels[i]);
+
+    vector<double> targetVolumes = {0.25, 0.75};
+    vector<double> mergedVolumes = mergeNodeVolumes(nodeVolumes, mergeMappings.second);
+    for(int i=0; i < targetVolumes.size(); i++)
+        ASSERT_DOUBLE_EQ(targetVolumes[i], mergedVolumes[i]);
 }
 
 TEST_F(PlaneArrangementFixture, NodeLabeling)
@@ -429,7 +441,7 @@ TEST(GraphStatistics, SplitingModel)
     int nbSamplesPerCell = 40;
     int maxNodes = 14;
     int maxNbPlanes = 250;
-    double proba = 0.05;
+    double visThreshold = -1.;
     bool geom = true;
     RegionGrowing rg(testObjPath, epsilonPoint, epsilonNormal, sigmaPoint, sigmaNormal, false);
     int nbPrimitives = rg.run();
@@ -442,7 +454,7 @@ TEST(GraphStatistics, SplitingModel)
     auto allTrees = loadTreesFromObj(testObjPath, classesWithColor);
     pair<vector<Point>, vector<int>> pointsWithLabel;
     vector<Json> allSplits = splitArrangementInBatch(myArrangement, allTrees, classesWithColor.size(),
-            step, maxNodes, pointsWithLabel, vector<Point>(0), maxNbPlanes, nbSamplesPerCell, proba, geom, 0.95, false);
+                                                     step, maxNodes, pointsWithLabel, vector<Point>(0), maxNbPlanes, nbSamplesPerCell, visThreshold, geom, 0.95, false);
     cout.clear();
     cerr.clear();
     ASSERT_GE(allSplits.size(), 1);
@@ -549,11 +561,13 @@ TEST_F(PlaneArrangementFixture, sampleInConvexCell)
 TEST_F(PlaneArrangementFixture, computeNodeFeatures)
 {
     vector<int> labels = {1, -1, -1, -1};
-    double proba = 0.;
+    vector<double> nodeVisibility = {0., 0., 0., 0.};
+    const double visThreshold = 0.5;
     bool withGeom = true;
     cout.setstate(ios_base::failbit);
     cerr.setstate(ios_base::failbit);
-    NodeFeatures nodeFeats = computeNodeFeatures(planeArrangement, labels, proba, withGeom);
+    NodeFeatures nodeFeats = computeNodeFeatures(planeArrangement, nodeVisibility, visThreshold, vector<double>(0),
+            withGeom);
     cout.clear();
     cerr.clear();
 
@@ -566,10 +580,10 @@ TEST_F(PlaneArrangementFixture, computeNodeFeatures)
         //No emptiness should be specified
         ASSERT_EQ(feature[0], 1);
     }
-    proba = 1.;
+    nodeVisibility = {1., 1., 1., 1.};
     cout.setstate(ios_base::failbit);
     cerr.setstate(ios_base::failbit);
-    nodeFeats = computeNodeFeatures(planeArrangement, labels, proba, withGeom);
+    nodeFeats = computeNodeFeatures(planeArrangement, nodeVisibility, visThreshold, vector<double>(0), withGeom);
     cout.clear();
     cerr.clear();
 

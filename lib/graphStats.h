@@ -11,8 +11,10 @@
 std::pair<Nodes, Edges> computeGraphStatistics(const std::vector<bool> &labels,
         const std::map<int, int> &cell2label, const Arrangement &arr, bool verbose=false);
 
-NodeFeatures computeNodeFeatures(PlaneArrangement& planeArr, std::vector<int> &labels, const double proba,
-                                 const bool withGeom, bool verbose=false);
+NodeFeatures computeNodeFeatures(PlaneArrangement& planeArr, const std::vector<double> &nodeVisibility,
+                                 const double visThreshold=-1,
+                                 const std::vector<double> &nodeVolume=std::vector<double>(0),
+                                         const bool withGeom=true, bool verbose=false);
 
 EdgeFeatures computeTrivialEdgeFeatures(PlaneArrangement& planeArr, std::vector<int> &labels, const int nbClasses,
                                         bool verbose=false);
@@ -43,7 +45,7 @@ std::vector<nlohmann::json> splitArrangementInBatch(const PlaneArrangement &plan
         std::vector<facesLabelName> &labeledShapes, int nbClasses, double step, int maxNodes,
         const std::pair<std::vector<Point>, std::vector<int>> &labeledPointCloud,
         const std::vector<Point> &pointOfViews=std::vector<Point>(0),
-        int maxNbPlanes=250, int nbSamplesPerCell=40, double proba=1, bool geom=false,
+        int maxNbPlanes=250, int nbSamplesPerCell=40, double visThreshold=1, bool geom=false,
         double ratioReconstructed=0.98, bool verbose=false);
 
 std::pair<Matrix, PointRg> computeTransform(const Eigen::MatrixXd &rotPoints);
@@ -57,13 +59,18 @@ std::vector<Point> findPtViewInBbox(const CGAL::Bbox_3 &bbox, std::vector<facesL
 
 std::pair<std::vector<int>, std::vector<std::vector<int>>>
 mergeNodesFromVisibility(PlaneArrangement &planeArr, const std::vector<double> &nodeVisibility,
-                         double visThreshold);
-
+                         const std::vector<double> &nodeVolumes, double visThreshold);
 
 EdgeFeatures mergeEdgeFeatures(const EdgeFeatures &edgeFeatures, const std::vector<int> &node2Merged);
 
 NodeFeatures mergeNodeFeatures(const NodeFeatures &nodeFeatures, const std::vector<int> &cell2Merged,
                                const std::vector<std::vector<int>>& merged2Cell, PlaneArrangement &planeArr,
                                bool withVolume=false);
+
+std::vector<int> mergeGtLabels(const std::vector<int> &gtLabels, const std::vector<std::vector<int>> &merged2Node,
+                               int nbClasses);
+
+std::vector<double> mergeNodeVolumes(const std::vector<double> &nodeVolumes,
+                                     const std::vector<std::vector<int>> &merged2Node);
 
 #endif //BIM_DATA_GRAPHSTATS_H

@@ -87,7 +87,10 @@ int main(int argc, char *argv[]) {
 
     cout << "Computing statistics" << endl;
     int nbClasses = classesWithColor.size();
-    NodeFeatures nodeFeats = computeNodeFeatures(currentArrangement, gtLabels, proba, geom, true);
+    vector<double> nodeVisibility(currentArrangement.cell2label().size(), 0.);
+    double visThreshold = 0.5;
+    NodeFeatures nodeFeats = computeNodeFeatures(currentArrangement, nodeVisibility, visThreshold,
+                                                 vector<double>(0), geom, true);
     EdgeFeatures edgeFeats = computeTrivialEdgeFeatures(currentArrangement, gtLabels, nbClasses, true);
     cout << "Statistics Computed" << endl;
 
