@@ -370,7 +370,7 @@ void savePlyFromEdgeFeatures(const std::string &filename, Arrangement &arr, cons
             goodKey = key1;
         else if(edgeFeatures.find(key2) != edgeFeatures.end())
             goodKey = key2;
-        assert(goodKey.first != -1);
+        if(goodKey.first == -1) continue; // Merged edge
         f.to_draw = true;
 
         // We find the dominating label of the edge feature
@@ -863,6 +863,22 @@ const std::vector<std::vector<int>> &PlaneArrangement::merged2Nodes() const
 const std::vector<int> &PlaneArrangement::nodes2Merged() const
 {
     return _nodes2merged;
+}
+
+std::map<int, int> PlaneArrangement::mergedMapping()
+{
+    if(!_nodes2merged.empty()) {
+        map<int, int> correctMapping;
+        // If the nodes have been merged, we need to compose cell2label and nodes2merged
+        static_cast<void>(arrangement()); // Make sure that the arrangement has been built
+        for (auto cellIt = _arr.cells_begin(); cellIt != _arr.cells_end(); cellIt++) {
+            if (!_arr.is_cell_bounded(*cellIt)) continue;
+            int cellLabel = _arr.cell_handle(*cellIt);
+            correctMapping[cellLabel] = _nodes2merged[_cell2label.at(cellLabel)];
+        }
+        return correctMapping;
+    }
+    return _cell2label;
 }
 
 double PlaneArrangement::computeNodeVolume(const Arrangement::Face_handle &cellHandle) const

@@ -45,7 +45,7 @@ int main(int argc, char *argv[]) {
 
     // Save the edge features representation
     savePlyFromEdgeFeatures(outputPath, currentArrangement.arrangement(),
-                            currentArrangement.cell2label(), currentArrangement.edgeFeatures(), classesWithColor);
+                            currentArrangement.mergedMapping(), currentArrangement.edgeFeatures(), classesWithColor);
 
     return 0;
 }

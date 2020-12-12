@@ -207,6 +207,9 @@ public:
     [[nodiscard]] const std::vector<std::vector<int>> &merged2Nodes() const;
     [[nodiscard]] const std::vector<int> &nodes2Merged() const;
 
+    // Merged mapping (arrangement cell index to merged label index)
+    [[nodiscard]] std::map<int, int> mergedMapping();
+
     // Hit and run sampling for the plane arrangement
     void sampleInConvexCell(int cellHandle, int nbSamples=40);
 
