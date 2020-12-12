@@ -67,8 +67,7 @@ NodeFeatures mergeNodeFeatures(const NodeFeatures &nodeFeatures, const std::vect
                                const std::vector<std::vector<int>>& merged2Cell, PlaneArrangement &planeArr,
                                bool withVolume=false);
 
-std::vector<int> mergeGtLabels(const std::vector<int> &gtLabels, const std::vector<std::vector<int>> &merged2Node,
-                               int nbClasses);
+std::vector<int> mergeGtLabels(const std::vector<int> &gtLabels, const std::vector<std::vector<int>> &merged2Node);
 
 std::vector<double> mergeNodeVolumes(const std::vector<double> &nodeVolumes,
                                      const std::vector<std::vector<int>> &merged2Node);

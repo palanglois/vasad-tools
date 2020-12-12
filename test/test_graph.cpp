@@ -184,8 +184,8 @@ TEST_F(PlaneArrangementFixture, NodeFusionFromVisibility) {
             ASSERT_DOUBLE_EQ(newNodeFeatures[i][j], expectedFeatures[i][j]);
 
     vector<int> gtLabels = {2, 1, 1, 1};
-    vector<int> newGtLabels = mergeGtLabels(gtLabels, mergeMappings.second, nbClasses);
-    vector<int> targetLabels = {2, nbClasses};
+    vector<int> newGtLabels = mergeGtLabels(gtLabels, mergeMappings.second);
+    vector<int> targetLabels = {2, -1};
     for(int i=0; i < targetLabels.size(); i++)
         ASSERT_EQ(targetLabels[i], newGtLabels[i]);
 

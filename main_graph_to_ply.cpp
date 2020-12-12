@@ -50,8 +50,21 @@ int main(int argc, char *argv[]) {
             cout << endl << "Class " << i << " is " << get<0>(classesWithColor[i]);
         cout << endl;
 
+    // If nodes have been merged, we need to build the correct mapping
+    const vector<int> &nodes2Merge = currentArrangement.nodes2Merged();
+    map<int, int> correctMapping;
+    if(!nodes2Merge.empty()) {
+        for (auto cellIt = arr.cells_begin(); cellIt != arr.cells_end(); cellIt++) {
+            if (!arr.is_cell_bounded(*cellIt)) continue;
+            int cellLabel = arr.cell_handle(*cellIt);
+            correctMapping[cellLabel] = nodes2Merge[cell2label.at(cellLabel)];
+        }
+    }
+    else
+        correctMapping = cell2label;
+
     // Extract mesh
-    savePlyFromLabel(outputPath, arr, cell2label, gtLabels, classesWithColor);
+    savePlyFromLabel(outputPath, arr, correctMapping, gtLabels, classesWithColor);
 
     return 0;
 }

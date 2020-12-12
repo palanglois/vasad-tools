@@ -558,6 +558,18 @@ PlaneArrangement::PlaneArrangement(const string& name) : isArrangementComputed(f
     else
         _nodeVolumes = vector<double>(0);
 
+    //Merged to nodes
+    if (data.find("Merged2Node") != data.end())
+        _merged2Nodes = data["Merged2Node"].get<vector<vector<int>>>();
+    else
+        _merged2Nodes = vector<vector<int>>(0);
+
+    //Nodes to merged
+    if (data.find("Node2Merged") != data.end())
+        _nodes2merged = data["Node2Merged"].get<vector<int>>();
+    else
+        _nodes2merged = vector<int>(0);
+
     cout << "Arrangement loaded" << endl;
 }
 
@@ -602,6 +614,8 @@ void PlaneArrangement::saveAsJson(const string &outPath) {
     for(int i=0; i < _points.size(); i++)
         pointCloud[i] = {_points[i].x(), _points[i].y(), _points[i].z()};
     data["pointCloud"] = pointCloud;
+    data["Merged2Node"] = _merged2Nodes;
+    data["Node2Merged"] = _nodes2merged;
 
     // Save to disk
     ofstream outFile(outPath);
@@ -839,6 +853,16 @@ const vector<pair<Point, int>> &PlaneArrangement::getSamples(int nbSamplesPerCel
         }
     }
     return _samples;
+}
+
+const std::vector<std::vector<int>> &PlaneArrangement::merged2Nodes() const
+{
+    return _merged2Nodes;
+}
+
+const std::vector<int> &PlaneArrangement::nodes2Merged() const
+{
+    return _nodes2merged;
 }
 
 double PlaneArrangement::computeNodeVolume(const Arrangement::Face_handle &cellHandle) const

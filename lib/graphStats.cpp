@@ -990,7 +990,7 @@ splitArrangementInBatch(const PlaneArrangement &planeArr, vector<facesLabelName>
                 edgeFeatures = mergeEdgeFeatures(edgeFeatures, mergeMappings.first);
                 nodeFeats = mergeNodeFeatures(nodeFeats, mergeMappings.first, mergeMappings.second,
                                               fullArrangement, true);
-                gtLabels = mergeGtLabels(gtLabels, mergeMappings.second, nbClasses);
+                gtLabels = mergeGtLabels(gtLabels, mergeMappings.second);
                 nodeVolumes = mergeNodeVolumes(nodeVolumes, mergeMappings.second);
                 data["Node2Merged"] = mergeMappings.first;
                 data["Merged2Node"] = mergeMappings.second;
@@ -1426,14 +1426,14 @@ NodeFeatures mergeNodeFeatures(const NodeFeatures &nodeFeatures, const vector<in
     return newFeatures;
 }
 
-vector<int> mergeGtLabels(const vector<int> &gtLabels, const vector<vector<int>> &merged2Node, int nbClasses)
+vector<int> mergeGtLabels(const vector<int> &gtLabels, const vector<vector<int>> &merged2Node)
 {
     vector<int> newLabels(merged2Node.size());
     for(int i=0; i < merged2Node.size(); i++)
         if(merged2Node[i].size() == 1)
             newLabels[i] = gtLabels[merged2Node[i][0]]; // Unmerged nodes keep their label
         else
-            newLabels[i] = nbClasses; // Merged nodes are empty
+            newLabels[i] = -1; // Merged nodes are empty
     return newLabels;
 }
 
