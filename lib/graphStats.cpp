@@ -1442,8 +1442,8 @@ vector<double> mergeNodeVolumes(const vector<double> &nodeVolumes, const vector<
     vector<double> newVolumes(merged2Node.size());
     for (int i = 0; i < merged2Node.size(); i++) {
         double volume = 0.;
-        for (int j = 0; j < merged2Node[i].size(); j++)
-            volume += nodeVolumes[merged2Node[i][j]];
+        for (int j : merged2Node[i])
+            volume += nodeVolumes[j];
         newVolumes[i] = volume;
     }
     return newVolumes;
