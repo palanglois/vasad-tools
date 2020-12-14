@@ -218,7 +218,7 @@ public:
     [[nodiscard]] double computeNodeVolume(const Arrangement::Face_handle &cellHandle) const;
 
     // Compute neighbourhoods
-    std::vector<UniqueEdges> euclidianNeighbourhoods(const std::vector<double> maxDistances);
+    std::vector<UniqueEdges> euclidianNeighbourhoods(const std::vector<double> &maxDistances);
 
 private:
     Arrangement _arr;

@@ -701,9 +701,29 @@ const EdgeFeatures &PlaneArrangement::edgeFeatures() const {
 }
 
 const std::vector<Point> &PlaneArrangement::nodePoints() {
+    if(!_nodes2merged.empty()) {
+        static_cast<void>(arrangement());
+        _nodePoints = vector<Point>(_merged2Nodes.size(), Point(0., 0., 0.));
+        vector<int> nbPoints(_merged2Nodes.size(), 0);
+        Epeck_to_Simple e2s;
+        for (auto cellIt = _arr.cells_begin(); cellIt != _arr.cells_end(); cellIt++) {
+            if (!_arr.is_cell_bounded(*cellIt)) continue;
+            int mergedNodeIdx = _nodes2merged.at(_cell2label.at(_arr.cell_handle(*cellIt)));
+            _nodePoints[mergedNodeIdx] += (e2s(cellIt->point()) - CGAL::ORIGIN);
+            nbPoints[mergedNodeIdx]++;
+        }
+        for(int i=0; i < _nodePoints.size(); i++)
+            _nodePoints[i] = CGAL::ORIGIN + (_nodePoints[i] - CGAL::ORIGIN) / nbPoints[i];
+    }
     if(_nodePoints.empty()) {
         static_cast<void>(arrangement());
-        _nodePoints = getCellsPoints(_cell2label, _arr);
+        Epeck_to_Simple e2s;
+        _nodePoints = vector<Point>(_cell2label.size(), Point(0., 0., 0.));
+        for (auto cellIt = _arr.cells_begin(); cellIt != _arr.cells_end(); cellIt++) {
+            if (!_arr.is_cell_bounded(*cellIt)) continue;
+
+            _nodePoints[_cell2label.at(_arr.cell_handle(*cellIt))] = e2s(cellIt->point());
+        }
     }
     return _nodePoints;
 }
@@ -922,7 +942,7 @@ vector<double> PlaneArrangement::computeAllNodesVolumes()
     return nodeVolumes;
 }
 
-vector<UniqueEdges> PlaneArrangement::euclidianNeighbourhoods(const vector<double> maxDistances)
+vector<UniqueEdges> PlaneArrangement::euclidianNeighbourhoods(const vector<double> &maxDistances)
 {
     vector<UniqueEdges> neighbourhoods(maxDistances.size());
     // We transform the distances to avoid using square roots

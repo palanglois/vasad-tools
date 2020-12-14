@@ -43,7 +43,7 @@ int main(int argc, char *argv[]) {
     double volume = PI*4.*pow(radius, 3)/3.;
     for(int i=0; i < nbNeighbourhoods - 1; i++)
     {
-        double newRadius = pow((3. * volume) / (4. * PI) + pow(distances[i], 3), 1./3.);
+        double newRadius = 1.1*pow((3. * volume) / (4. * PI) + pow(distances[i], 3), 1./3.);
         distances.push_back(newRadius);
     }
 
