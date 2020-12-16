@@ -904,7 +904,7 @@ vector<Json>
 splitArrangementInBatch(const PlaneArrangement &planeArr, vector<facesLabelName> &labeledShapes, int nbClasses,
         double step, int maxNodes, const pair<vector<Point>, vector<int>> &labeledPointCloud,
         const vector<Point> &pointOfViews, int maxNbPlanes, int nbSamplesPerCell, double visThreshold, bool geom,
-        double ratioReconstructed, bool verbose) {
+        double ratioReconstructed, bool merging, bool verbose) {
 
     vector<Json> computedArrangements;
 
@@ -981,7 +981,7 @@ splitArrangementInBatch(const PlaneArrangement &planeArr, vector<facesLabelName>
             }
             vector<double> nodeVolumes = fullArrangement.computeAllNodesVolumes();
             NodeFeatures nodeFeats = computeNodeFeatures(fullArrangement, nodeVisibility, visThreshold, nodeVolumes, geom);
-            if(visThreshold != -1)
+            if(visThreshold != -1 && merging)
             {
                 // There is a threshold, we apply merging
                 if(verbose)
