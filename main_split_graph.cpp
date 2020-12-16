@@ -22,7 +22,8 @@ int main(int argc, char *argv[]) {
     opt.add_option("-pr", "--prefix", "Prefix to the output files", "");
     opt.add_option("-m", "--mesh", "Path to the input obj ground truth", "");
     opt.add_option("-pv", "--pov", "[Optional] Path to the point of views (if visibility)", "");
-    opt.add_option("-vt", "--vis_threshold", "Threshold on visibility for cell merging (default no merging)", "-1.");
+    opt.add_option("-vt", "--vis_threshold", "Threshold on visibility ", "0.7");
+    opt.add_option("-mg", "--merging", "Enables node merging", "");
     opt.add_option("-g", "--geom", "Adds the bounding box dimensions of each cell as a node feature");
     opt.add_option("-pt", "--pointCloud", "Path to the input point cloud. If set, edge features are computed thanks to it.", "");
     opt.add_option("-s", "--step", "Subdivision step in meters", "4");
@@ -72,6 +73,7 @@ int main(int argc, char *argv[]) {
     const double ratioReconstructed = op::str2double(opt["-r"]);
     const string pointOfViewPath = opt["-pv"];
     const bool withPov = !opt["-pv"].empty();
+    const bool merging = op::str2bool(opt["-mg"]);
     bool verbose = op::str2bool(opt["-v"]);
 
     // Load semantic_classes
@@ -104,7 +106,8 @@ int main(int argc, char *argv[]) {
     // Make splits
     vector<Json> allSplits = splitArrangementInBatch(currentArrangement, shapesAndClasses, classesWithColor.size(),
                                                      step, maxNodes, pointsWithLabel, pointOfViews, maxNbPlanes,
-                                                     nbSamplesPerCell, visThreshold, geom, ratioReconstructed, verbose);
+                                                     nbSamplesPerCell, visThreshold, geom, ratioReconstructed, merging,
+                                                     verbose);
     for (int i = 0; i < allSplits.size(); i++) {
         ofstream outStream(outputPath + prefix + padTo(to_string(i), 4) + ".json");
         outStream << allSplits[i];

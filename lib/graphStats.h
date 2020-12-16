@@ -46,7 +46,7 @@ std::vector<nlohmann::json> splitArrangementInBatch(const PlaneArrangement &plan
         const std::pair<std::vector<Point>, std::vector<int>> &labeledPointCloud,
         const std::vector<Point> &pointOfViews=std::vector<Point>(0),
         int maxNbPlanes=250, int nbSamplesPerCell=40, double visThreshold=1, bool geom=false,
-        double ratioReconstructed=0.98, bool verbose=false);
+        double ratioReconstructed=0.98, bool merging=false, bool verbose=false);
 
 std::pair<Matrix, PointRg> computeTransform(const Eigen::MatrixXd &rotPoints);
 void sampleBetweenPoints(const std::vector<Kernel2::Point_3>& points, std::vector<std::pair<Point, int>> &query,
