@@ -256,7 +256,8 @@ std::pair<std::vector<Point>, std::vector<int>> loadPointsWithLabel(const std::s
 
 // Output functions
 void savePointsAsObj(const std::vector<Point>& points, const std::string &outPath);
-void savePointsAsObjWithLabel(const std::pair<std::vector<Point>, std::map<Point, int>> &pointsWithLabel, const std::string &outPath);
+void savePointsAsObjWithLabel(const std::pair<std::vector<Point>, std::map<Point, int>> &pointsWithLabel,
+                              const std::string &outPath, const std::vector<Vector> &normals=std::vector<Vector>(0));
 void savePointsAsObjWithColors(std::vector<Point> points, std::vector<colorTuple> colors, const std::string &outPath);
 void saveTrianglesAsObj(const std::vector<Triangle>& triangles, const std::string &outPath, TriangleClassMap triangleClasses, const std::vector<classKeywordsColor> &classes);
 void saveSeparatedObj(std::vector<Triangle> triangles, const std::string &outPath, TriangleClassMap triangleClasses, const std::vector<classKeywordsColor> &classes);

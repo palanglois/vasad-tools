@@ -275,12 +275,17 @@ void savePointsAsObj(const vector<Point>& points, const string &outPath) {
     realFileOut.close();
 }
 
-void savePointsAsObjWithLabel(const pair<vector<Point>, map<Point, int>> &pointsWithLabel, const string &outPath) {
+void savePointsAsObjWithLabel(const pair<vector<Point>, map<Point, int>> &pointsWithLabel, const string &outPath,
+                              const vector<Vector> &normals) {
     stringstream fileOut(outPath);
-    for(const auto point: pointsWithLabel.first)
+    for(int i=0; i < pointsWithLabel.first.size(); i++)
     {
+        auto& point = pointsWithLabel.first[i];
         fileOut << "v " << point.x() << " " << point.y() << " " << point.z() << endl;
         fileOut << "vla " << pointsWithLabel.second.at(point) << endl;
+        if(!normals.empty())
+            fileOut << "vn " << normals[i].x() << " " << normals[i].y() << " " << normals[i].z() << endl;
+
     }
     ofstream realFileOut(outPath.c_str());
     realFileOut << fileOut.rdbuf();

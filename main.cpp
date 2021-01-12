@@ -36,6 +36,7 @@ int main(int argc, char *argv[]) {
     opt.add_option("-gt", "--groundtruth", "Output the ground truth mesh with colored classes");
     opt.add_option("-pov", "--pointofview", "Save the point of views for each point");
     opt.add_option("-so", "--save_objects", "Output the separated_images");
+    opt.add_option("-no", "--normal", "Save normals");
 
     //Parsing options
     bool correctParsing = opt.parse_options(argc, argv);
@@ -50,6 +51,8 @@ int main(int argc, char *argv[]) {
     string outPath = opt["-o"][opt["-o"].size()-1] == '/' ? opt["-o"] : opt["-o"] + "/";
 
     int nbShoot = op::str2int(opt["-n"]);
+
+    const bool withNormal = op::str2bool(opt["-no"]);
 
     // Load point of views
     vector<Point> pointOfViews;
@@ -77,6 +80,7 @@ int main(int argc, char *argv[]) {
     int nbShootPerPov = nbShoot / pointOfViews.size();
     vector<Point> sampledPoints;
     vector<Point> pointOfViews2;
+    vector<Vector> normals;
     vector<colorTuple> pointColors;
     map<Point, int> pointClasses;
     pointColors.reserve(nbShoot);
@@ -104,7 +108,16 @@ int main(int argc, char *argv[]) {
 #pragma omp critical
                 {
                     if (boost::get<Point>(&(intersection->first))) {
-                        int classIdx = trianglesAndClasses.second[*boost::get<Primitive_id>(intersection->second)];
+                        Triangle& curTri = *boost::get<Primitive_id>(intersection->second);
+                        Vector curNormal;
+                        if(withNormal) {
+                            curNormal = CGAL::normal(curTri.vertex(0), curTri.vertex(1), curTri.vertex(2));
+                            curNormal /= sqrt(curNormal.squared_length());
+                            if (ray.to_vector() * curNormal > 0)
+                                curNormal *= -1.;
+                            normals.push_back(curNormal);
+                        }
+                        int classIdx = trianglesAndClasses.second[curTri];
                         pointColors.push_back(get<2>(classesWithColor[classIdx]));
                         const Point *p = boost::get<Point>(&(intersection->first));
                         sampledPoints.push_back(*p);
@@ -117,7 +130,7 @@ int main(int argc, char *argv[]) {
         }
     }
     savePointsAsObjWithColors(sampledPoints, pointColors, outPath + "out.obj");
-    savePointsAsObjWithLabel(make_pair(sampledPoints, pointClasses), outPath + "samplesWithLabel.obj");
+    savePointsAsObjWithLabel(make_pair(sampledPoints, pointClasses), outPath + "samplesWithLabel.obj", normals);
     if(op::str2bool(opt["-pov"]))
         savePointsAsObj(pointOfViews2, outPath + "pov.obj");
     return 0;
