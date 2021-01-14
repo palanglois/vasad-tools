@@ -988,7 +988,7 @@ vector<UniqueEdges> PlaneArrangement::euclidianNeighbourhoods(const vector<doubl
 
 vector<double> getThicknessFeatures(const vector<Point> &points, const vector<Vector> &normals, double threshold)
 {
-    vector<double> features;
+    vector<double> features(points.size());
 
     // Build a point 2 normal map
     map<Point, Vector> point2Normal;
@@ -998,9 +998,9 @@ vector<double> getThicknessFeatures(const vector<Point> &points, const vector<Ve
     // Build a kd tree
     incrementalKdTree tree(points.begin(), points.end());
 
-    auto tqPoints = tq::trange(points.size()); // works for rvalues too!
-    tqPoints.set_prefix("Computing point features: ");
-    for (int i : tqPoints) {
+    int count = 0;
+#pragma omp parallel for
+    for(int i=0; i < points.size(); i++) {
         const auto& point = points[i];
         const auto& normal = normals[i];
 
@@ -1027,7 +1027,13 @@ vector<double> getThicknessFeatures(const vector<Point> &points, const vector<Ve
             criteriaMet = true;
             feature = min(feature, sqrt(curElem->second));
         }
-        features.push_back(feature);
+#pragma omp atomic
+        count++;
+#pragma omp critical
+{
+        if(count % 1000 == 0) cout << "Done " << 100.*double(count) / points.size() << "%" << endl;
+        features[i] = feature;
+}
     }
 
     return features;
