@@ -276,7 +276,7 @@ void savePointsAsObj(const vector<Point>& points, const string &outPath) {
 }
 
 void savePointsAsObjWithLabel(const pair<vector<Point>, map<Point, int>> &pointsWithLabel, const string &outPath,
-                              const vector<Vector> &normals) {
+                              const vector<Vector> &normals, const vector<double> &features) {
     stringstream fileOut(outPath);
     for(int i=0; i < pointsWithLabel.first.size(); i++)
     {
@@ -285,7 +285,8 @@ void savePointsAsObjWithLabel(const pair<vector<Point>, map<Point, int>> &points
         fileOut << "vla " << pointsWithLabel.second.at(point) << endl;
         if(!normals.empty())
             fileOut << "vn " << normals[i].x() << " " << normals[i].y() << " " << normals[i].z() << endl;
-
+        if(!features.empty())
+            fileOut << "vf " << features[i] << endl;
     }
     ofstream realFileOut(outPath.c_str());
     realFileOut << fileOut.rdbuf();
@@ -983,4 +984,51 @@ vector<UniqueEdges> PlaneArrangement::euclidianNeighbourhoods(const vector<doubl
     }
 
     return neighbourhoods;
+}
+
+vector<double> getThicknessFeatures(const vector<Point> &points, const vector<Vector> &normals, double threshold)
+{
+    vector<double> features;
+
+    // Build a point 2 normal map
+    map<Point, Vector> point2Normal;
+    for(int i=0; i < points.size(); i++)
+        point2Normal[points[i]] = normals[i];
+
+    // Build a kd tree
+    incrementalKdTree tree(points.begin(), points.end());
+
+    auto tqPoints = tq::trange(points.size()); // works for rvalues too!
+    tqPoints.set_prefix("Computing point features: ");
+    for (int i : tqPoints) {
+        const auto& point = points[i];
+        const auto& normal = normals[i];
+
+        NN_incremental_search NN(tree, point);
+        auto incrementalIt = NN.begin();
+        incrementalIt++; // We ignore the current point
+
+        bool criteriaMet = false;
+        double feature = 1.;
+        while (!criteriaMet && incrementalIt != NN.end()) {
+            auto curElem = incrementalIt++;
+            if(curElem->second >= 1.) break;
+            const auto& neighbourPoint = curElem->first;
+            const auto& neighbourNormal = point2Normal[neighbourPoint];
+
+            // Criteria one: opposite normal directions
+            double dotProd = normal * neighbourNormal;
+            if(dotProd > threshold) continue;
+
+            // Criteria two: normals are not facing each other
+            bool arePointsFacing = (neighbourPoint - point) * normal > 0.;
+            if(arePointsFacing) continue;
+
+            criteriaMet = true;
+            feature = min(feature, sqrt(curElem->second));
+        }
+        features.push_back(feature);
+    }
+
+    return features;
 }

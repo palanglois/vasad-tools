@@ -671,6 +671,48 @@ TEST(PointOfViews, SamplePtViewOnObject)
     ASSERT_EQ(ptViews.size(), nbShoot);
 }
 
+
+TEST(PointFeatures, thicknessFeatures)
+{
+    vector<Point> points;
+    vector<Vector> normals;
+
+    Vector normalLeft(-1., 0., 0.);
+    Vector normalTop(0., 1., 0.);
+    Vector normalRight(1., 0., 0.);
+
+    points.emplace_back(0., 0., 0.);
+    normals.push_back(normalLeft);
+
+    points.emplace_back(0.05, 0.05, 0.);
+    normals.push_back(normalTop);
+
+    points.emplace_back(0.1, 0., 0.);
+    normals.push_back(normalRight);
+
+    points.emplace_back(0., -0.05, 0.);
+    normals.push_back(normalLeft);
+
+    points.emplace_back(0.1, -0.05, 0.);
+    normals.push_back(normalRight);
+
+    points.emplace_back(-0.05, 0., 0.);
+    normals.push_back(normalRight);
+
+    cout.setstate(ios_base::failbit);
+    cerr.setstate(ios_base::failbit);
+    vector<double> thicknessFeatures = getThicknessFeatures(points, normals, -0.5);
+    cout.clear();
+    cerr.clear();
+
+    ASSERT_EQ(thicknessFeatures[0], 0.1);
+    ASSERT_EQ(thicknessFeatures[1], 1.);
+    ASSERT_EQ(thicknessFeatures[2], 0.1);
+    ASSERT_EQ(thicknessFeatures[3], 0.1);
+    ASSERT_EQ(thicknessFeatures[4], 0.1);
+    ASSERT_EQ(thicknessFeatures[5], 1.);
+}
+
 TEST_F(PlaneArrangementFixture, computeNodeVolume)
 {
     cout.setstate(ios_base::failbit);

@@ -37,6 +37,7 @@ int main(int argc, char *argv[]) {
     opt.add_option("-pov", "--pointofview", "Save the point of views for each point");
     opt.add_option("-so", "--save_objects", "Output the separated_images");
     opt.add_option("-no", "--normal", "Save normals");
+    opt.add_option("-tf", "--thickness_features", "Save thickness features");
 
     //Parsing options
     bool correctParsing = opt.parse_options(argc, argv);
@@ -53,6 +54,7 @@ int main(int argc, char *argv[]) {
     int nbShoot = op::str2int(opt["-n"]);
 
     const bool withNormal = op::str2bool(opt["-no"]);
+    const bool withThicknessFeatures = op::str2bool(opt["-tf"]);
 
     // Load point of views
     vector<Point> pointOfViews;
@@ -129,8 +131,10 @@ int main(int argc, char *argv[]) {
             }
         }
     }
+    vector<double> features = getThicknessFeatures(sampledPoints, normals);
     savePointsAsObjWithColors(sampledPoints, pointColors, outPath + "out.obj");
-    savePointsAsObjWithLabel(make_pair(sampledPoints, pointClasses), outPath + "samplesWithLabel.obj", normals);
+    savePointsAsObjWithLabel(make_pair(sampledPoints, pointClasses), outPath + "samplesWithLabel.obj", normals,
+                             features);
     if(op::str2bool(opt["-pov"]))
         savePointsAsObj(pointOfViews2, outPath + "pov.obj");
     return 0;
