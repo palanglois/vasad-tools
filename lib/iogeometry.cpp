@@ -1018,7 +1018,7 @@ vector<double> getThicknessFeatures(const vector<Point> &points, const vector<Ve
 
             // Criteria one: opposite normal directions
             double dotProd = normal * neighbourNormal;
-            if(dotProd > threshold) continue;
+            if(dotProd >= threshold) continue;
 
             // Criteria two: normals are not facing each other
             bool arePointsFacing = (neighbourPoint - point) * normal > 0.;
