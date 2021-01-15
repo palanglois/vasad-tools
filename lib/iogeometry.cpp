@@ -1025,7 +1025,10 @@ vector<double> getThicknessFeatures(const vector<Point> &points, const vector<Ve
             if(arePointsFacing) continue;
 
             criteriaMet = true;
-            feature = min(feature, sqrt(curElem->second));
+            // Distance from point to the intersection of
+            // line (point, normal) and plane (neighbourPoint, neighbourNormal)
+            double dist = abs(((neighbourPoint - point) * neighbourNormal) / (normal * neighbourNormal));
+            feature = min(feature, dist);
         }
 #pragma omp atomic
         count++;
