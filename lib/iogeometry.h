@@ -323,6 +323,6 @@ std::vector<Point> getCellsPoints(const std::map<int, int> &cell2label, const Ar
 std::vector<std::vector<double>> getCellsBbox(const std::map<int, int> &cell2label, const Arrangement &arr);
 
 // Point cloud level features
-std::vector<double> getThicknessFeatures(const std::vector<Point> &points, const std::vector<Vector> &normals, double threshold = 0.);
+std::vector<double> getThicknessFeatures(const std::vector<Point> &points, const std::vector<Vector> &normals, double threshold=-0.5);
 
 #endif
