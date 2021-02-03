@@ -7,13 +7,6 @@
 using namespace std;
 using Json = nlohmann::json;
 
-string padTo(string str, const size_t num, const char paddingChar = '0')
-{
-    if(num > str.size())
-        str.insert(0, num - str.size(), paddingChar);
-    return str;
-}
-
 int main(int argc, char *argv[]) {
     op::OptionParser opt;
     opt.add_option("-h", "--help", "show option help");
@@ -104,15 +97,11 @@ int main(int argc, char *argv[]) {
         pointOfViews = loadPointCloudObj(pointOfViewPath);
 
     // Make splits
-    vector<Json> allSplits = splitArrangementInBatch(currentArrangement, shapesAndClasses, classesWithColor.size(),
-                                                     step, maxNodes, pointsWithLabel, pointOfViews, maxNbPlanes,
-                                                     nbSamplesPerCell, visThreshold, geom, ratioReconstructed, merging,
-                                                     verbose);
-    for (int i = 0; i < allSplits.size(); i++) {
-        ofstream outStream(outputPath + prefix + padTo(to_string(i), 4) + ".json");
-        outStream << allSplits[i];
-        outStream.close();
-    }
-
+    int nbSplit = splitArrangementInBatch(currentArrangement, shapesAndClasses, outputPath + prefix,
+                                          classesWithColor.size(), step, maxNodes, pointsWithLabel, pointOfViews,
+                                          maxNbPlanes, nbSamplesPerCell, visThreshold, geom, ratioReconstructed,
+                                          merging, verbose);
+    
+    cout << "Made " << nbSplit << " out of model " << inputPath << endl;
     return 0;
 }

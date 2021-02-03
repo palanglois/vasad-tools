@@ -900,13 +900,13 @@ void subdivideBboxLongestAxis(queue<CGAL::Bbox_3> &bboxes, CGAL::Bbox_3 curBbox)
     }
 }
 
-vector<Json>
-splitArrangementInBatch(const PlaneArrangement &planeArr, vector<facesLabelName> &labeledShapes, int nbClasses,
-        double step, int maxNodes, const pair<vector<Point>, vector<int>> &labeledPointCloud,
-        const vector<Point> &pointOfViews, int maxNbPlanes, int nbSamplesPerCell, double visThreshold, bool geom,
-        double ratioReconstructed, bool merging, bool verbose) {
+int
+splitArrangementInBatch(const PlaneArrangement &planeArr, vector<facesLabelName> &labeledShapes, const string &path,
+                        int nbClasses, double step, int maxNodes,
+                        const pair<vector<Point>, vector<int>> &labeledPointCloud, const vector<Point> &pointOfViews,
+                        int maxNbPlanes, int nbSamplesPerCell, double visThreshold, bool geom,
+                        double ratioReconstructed, bool merging, bool verbose) {
 
-    vector<Json> computedArrangements;
 
 //    // Computing steps along x axis
 //    vector<double> xSteps;
@@ -928,6 +928,7 @@ splitArrangementInBatch(const PlaneArrangement &planeArr, vector<facesLabelName>
         for(int j = 0; j < ySteps.size() - 1; j++)
             bboxes.emplace(xSteps[i], ySteps[j], planeArr.bbox().zmin(),
                            xSteps[i + 1], ySteps[j + 1], planeArr.bbox().zmax());*/
+    int chunkIterator(0);
     while(!bboxes.empty()) {
         if(verbose)
             cout << endl << "Bbox queue size: \033[1;31m"  << bboxes.size() << "\033[0m" << endl;
@@ -1010,14 +1011,15 @@ splitArrangementInBatch(const PlaneArrangement &planeArr, vector<facesLabelName>
             data["bbox"] = curBbox;
             data["nbPlanes"] = validPlaneIdx.size();
 
-            // Adding to the valid arrangements
-            computedArrangements.push_back(data);
+            ofstream outStream(path + padTo(to_string(chunkIterator), 4) + ".json");
+            outStream << data;
+            outStream.close();
+            chunkIterator++;
         }
         else
             subdivideBboxLongestAxis(bboxes, curBbox);
     }
-
-    return computedArrangements;
+    return chunkIterator;
 }
 
 pair<Matrix, PointRg> computeTransform(const Eigen::MatrixXd &rotPoints)

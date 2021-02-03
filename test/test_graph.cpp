@@ -453,15 +453,12 @@ TEST(GraphStatistics, SplitingModel)
     PlaneArrangement myArrangement(outPath);
     auto allTrees = loadTreesFromObj(testObjPath, classesWithColor);
     pair<vector<Point>, vector<int>> pointsWithLabel;
-    vector<Json> allSplits = splitArrangementInBatch(myArrangement, allTrees, classesWithColor.size(),
-                                                     step, maxNodes, pointsWithLabel, vector<Point>(0), maxNbPlanes, nbSamplesPerCell, visThreshold, geom, 0.95, false);
+    int nbSplit = splitArrangementInBatch(myArrangement, allTrees, (string) TEST_DIR, classesWithColor.size(), step, maxNodes,
+                            pointsWithLabel, vector<Point>(0), maxNbPlanes, nbSamplesPerCell, visThreshold, geom, 0.95,
+                            false);
     cout.clear();
     cerr.clear();
-    ASSERT_GE(allSplits.size(), 1);
-    for(const auto &split: allSplits) {
-        ASSERT_LE(split.at("NodeFeatures").size(), maxNodes);
-        ASSERT_GE(split.at("NodeFeatures").size(), 2);
-    }
+    ASSERT_GE(nbSplit, 1);
 }
 
 TEST(GraphStatistics, SampleBoundingBox)

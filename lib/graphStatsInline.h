@@ -90,4 +90,11 @@ inline void addSegmentIfInBbox(const std::vector<Point> &pointOfViews, const std
     }
 }
 
+inline std::string padTo(std::string str, const size_t num, const char paddingChar = '0')
+{
+    if(num > str.size())
+        str.insert(0, num - str.size(), paddingChar);
+    return str;
+}
+
 #endif //BIM_DATA_GRAPHSTATSINLINE_H

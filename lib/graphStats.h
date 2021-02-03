@@ -41,8 +41,8 @@ std::vector<int> assignLabel(PlaneArrangement& planeArr,
 std::vector<int> computePlanesInBoundingBox(const std::vector<Plane> &planes, const std::vector<Point> &points,
                                             CGAL::Bbox_3 bbox, double ratioReconstructed=0.98);
 
-std::vector<nlohmann::json> splitArrangementInBatch(const PlaneArrangement &planeArr,
-        std::vector<facesLabelName> &labeledShapes, int nbClasses, double step, int maxNodes,
+int splitArrangementInBatch(const PlaneArrangement &planeArr,
+        std::vector<facesLabelName> &labeledShapes, const std::string& path, int nbClasses, double step, int maxNodes,
         const std::pair<std::vector<Point>, std::vector<int>> &labeledPointCloud,
         const std::vector<Point> &pointOfViews=std::vector<Point>(0),
         int maxNbPlanes=250, int nbSamplesPerCell=40, double visThreshold=1, bool geom=false,
