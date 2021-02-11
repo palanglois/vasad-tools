@@ -123,6 +123,116 @@ pair<Nodes, Edges> computeGraphStatistics(const vector<bool> &labels, const map<
     return make_pair(nodes, edges);
 }
 
+vector<int> assignLabelToPoints(const vector<pair<Point, int>>& queryPoints, vector<facesLabelName> &labeledShapes,
+                                int nbClasses, const CGAL::Bbox_3 &bbox)
+{
+
+    //Build bbox for each shape
+    vector<CGAL::Bbox_3> bboxes;
+    for(const auto& labeledShape: labeledShapes)
+        bboxes.push_back(CGAL::bbox_3(get<0>(labeledShape).begin(), get<0>(labeledShape).end()));
+
+    int voidClass = nbClasses;
+    // For every point, test it for every shape
+    Tree tree;
+    vector<int> pointsLabel(queryPoints.size(), voidClass);
+    auto tqLabeledShapes = tq::trange(labeledShapes.size()); // works for rvalues too!
+    tqLabeledShapes.set_prefix("Labeling each point: ");
+    for (int j : tqLabeledShapes)
+    {
+        if(bboxes[j].xmax() < bbox.xmin()) continue;
+        if(bboxes[j].xmin() > bbox.xmax()) continue;
+        if(bboxes[j].ymax() < bbox.ymin()) continue;
+        if(bboxes[j].ymin() > bbox.ymax()) continue;
+        if(bboxes[j].zmax() < bbox.zmin()) continue;
+        if(bboxes[j].zmin() > bbox.zmax()) continue;
+        auto &labeledTree = labeledShapes[j];
+        tree.rebuild(get<0>(labeledTree).begin(), get<0>(labeledTree).end());
+        bool warningSent = false;
+#pragma omp parallel for schedule(static)
+        for(int i=0; i < queryPoints.size(); i++)
+        {
+
+            auto &point = queryPoints[i].first;
+            //if(point.x() < 0.5 && point.z() < 0.6) // DEBUG
+            //    cout << "debug" << endl;
+//            int label = voidClass;
+            if(point.x() < bboxes[j].xmin()) continue;
+            if(point.x() > bboxes[j].xmax()) continue;
+            if(point.y() < bboxes[j].ymin()) continue;
+            if(point.y() > bboxes[j].ymax()) continue;
+            if(point.z() < bboxes[j].zmin()) continue;
+            if(point.z() > bboxes[j].zmax()) continue;
+//            cout << point << endl;
+//            if(j==1 && point.x() < 0.5 && point.z() > 0.6)
+//                cout << "debug" << endl;
+//            cout << "DEBUG: tree nb " << j << " out of " << labeledShapes.size() << endl;
+//            cout << labeledTree.first->bbox() << endl;
+//            if(j == labeledShapes.size() - 1) {
+//                for (auto prim: labeledShapes[labeledShapes.size() - 1].first->m_primitives)
+//                    cout << prim.datum() << endl;
+//                cout << endl;
+//            }
+            //Make a random query ray and intersect it
+            //Ray query(point, Vector(1., 0., 0.));
+            vector<Ray> queries = {Ray(point, Vector(1., 0., 0.)),
+                                   Ray(point, Vector(0., 1., 0.)),
+                                   Ray(point, Vector(0., 0., 1.))};
+            vector<list<Ray_intersection>> intersections(3, list<Ray_intersection>(0));
+            for(int k=0; k < queries.size(); k++)
+            {
+                tree.all_intersections(queries[k], back_inserter(intersections[k]));
+                // Checking for duplicated intersections
+                set<Point> pointSet;
+                vector<list<Ray_intersection>::iterator> duplicatedIntersections;
+                for(auto interIt = intersections[k].begin(); interIt != intersections[k].end(); interIt++)
+                {
+                    auto insert = pointSet.insert(*boost::get<Point>(&((*interIt)->first)));
+                    if(!insert.second)
+                        duplicatedIntersections.push_back(interIt);
+                }
+                // Removing duplicated intersections
+                for(auto interIt: duplicatedIntersections)
+                    intersections[k].erase(interIt);
+            }
+
+            unsigned int odd = 0;
+            for(const auto& inter: intersections)
+                odd += int(inter.size() % 2 == 1);
+            if(odd == 2)
+            {
+                if(!warningSent) {
+#pragma omp critical
+                    {
+                        warningSent = true;
+                        cout << endl << "\033[1;34mPotential issue with shape " << get<2>(labeledTree) << "\033[0m" << endl;
+                    }
+                }
+            }
+
+            // Test the nb of intersections for parity
+            if(odd >= 2)
+            {
+                // In the current shape
+#pragma omp critical
+                {
+
+                    pointsLabel[i] = get<1>(labeledTree);
+//                    cout << "Label: " << pointsLabel[i] << endl;
+//                    cout << "Point: " << point << endl;
+//                    cout << "Nb of intersections: ";
+//                    for (int k = 0; k < queries.size(); k++) {
+//                        cout << intersections[k].size() << " ";
+//                    }
+//                    cout << endl << endl;
+                }
+                //cout << "Here " << labeledTree.second << endl;
+            }
+        }
+    }
+    return pointsLabel;
+}
+
 //vector<int> assignLabel(const Arrangement &arr, const map<int, int> &cell2label, CGAL::Bbox_3 bbox,
 //                        vector<facesLabelName> &labeledShapes, int nbClasses,
 //                        int nbSamplesPerCell, bool verbose)
@@ -136,10 +246,6 @@ vector<int> assignLabel(PlaneArrangement& planeArr,
 
     Simple_to_Epeck s2e;
     Epeck_to_Simple e2s;
-    //Build bbox for each shape
-    vector<CGAL::Bbox_3> bboxes;
-    for(const auto& labeledShape: labeledShapes)
-        bboxes.push_back(CGAL::bbox_3(get<0>(labeledShape).begin(), get<0>(labeledShape).end()));
     // Number of classes to consider
 //    int nbClasses = 0;
 //    for(auto &labeledTree: labeledShapes)
@@ -230,78 +336,8 @@ vector<int> assignLabel(PlaneArrangement& planeArr,
 //            }
 //    }
 
-    // For every point, test it for every shape
-    Tree tree;
-    vector<int> pointsLabel(queryPoints.size(), voidClass);
-    auto tqLabeledShapes = tq::trange(labeledShapes.size()); // works for rvalues too!
-    tqLabeledShapes.set_prefix("Labeling each point: ");
-    for (int j : tqLabeledShapes)
-    {
-        if(bboxes[j].xmax() < bbox.xmin()) continue;
-        if(bboxes[j].xmin() > bbox.xmax()) continue;
-        if(bboxes[j].ymax() < bbox.ymin()) continue;
-        if(bboxes[j].ymin() > bbox.ymax()) continue;
-        if(bboxes[j].zmax() < bbox.zmin()) continue;
-        if(bboxes[j].zmin() > bbox.zmax()) continue;
-        auto &labeledTree = labeledShapes[j];
-        tree.rebuild(get<0>(labeledTree).begin(), get<0>(labeledTree).end());
-        bool warningSent = false;
-#pragma omp parallel for schedule(static)
-	for(int i=0; i < queryPoints.size(); i++)
-        {
+    vector<int> pointsLabel = assignLabelToPoints(queryPoints, labeledShapes, nbClasses, bbox);
 
-            auto &point = queryPoints[i].first;
-            //if(point.x() < 0.5 && point.z() < 0.6) // DEBUG
-            //    cout << "debug" << endl;
-//            int label = voidClass;
-            if(point.x() < bboxes[j].xmin()) continue;
-            if(point.x() > bboxes[j].xmax()) continue;
-            if(point.y() < bboxes[j].ymin()) continue;
-            if(point.y() > bboxes[j].ymax()) continue;
-            if(point.z() < bboxes[j].zmin()) continue;
-            if(point.z() > bboxes[j].zmax()) continue;
-//            cout << point << endl;
-//            if(j==1 && point.x() < 0.5 && point.z() > 0.6)
-//                cout << "debug" << endl;
-//            cout << "DEBUG: tree nb " << j << " out of " << labeledShapes.size() << endl;
-//            cout << labeledTree.first->bbox() << endl;
-//            if(j == labeledShapes.size() - 1) {
-//                for (auto prim: labeledShapes[labeledShapes.size() - 1].first->m_primitives)
-//                    cout << prim.datum() << endl;
-//                cout << endl;
-//            }
-            //Make a random query ray and intersect it
-            //Ray query(point, Vector(1., 0., 0.));
-            vector<Ray> queries = {Ray(point, Vector(1., 0., 0.)),
-                                   Ray(point, Vector(0., 1., 0.)),
-                                   Ray(point, Vector(0., 0., 1.))};
-            vector<list<Ray_intersection>> intersections(3, list<Ray_intersection>(0));
-            for(int k=0; k < queries.size(); k++)
-                tree.all_intersections(queries[k], back_inserter(intersections[k]));
-            unsigned int odd = 0;
-            for(const auto& inter: intersections)
-                odd += int(inter.size() % 2 == 1);
-            if(odd == 2)
-            {
-                if(!warningSent) {
-#pragma omp critical
-{
-                    warningSent = true;
-                    cout << endl << "\033[1;34mPotential issue with shape " << get<2>(labeledTree) << "\033[0m" << endl;
-}
-                }
-            }
-
-            // Test the nb of intersections for parity
-            if(odd >= 2)
-            {
-                // In the current shape
-#pragma omp critical
-                pointsLabel[i] = get<1>(labeledTree);
-                //cout << "Here " << labeledTree.second << endl;
-            }
-        }
-    }
     auto tqQueryPoints = tq::trange(queryPoints.size());
     tqQueryPoints.set_prefix("Computing cell votes: ");
     for(int i: tqQueryPoints) {
