@@ -25,10 +25,15 @@ public:
     // Labeling the voxels
     void assignLabel(std::vector<facesLabelName> &labeledShapes, int nbClasses, bool verbose);
 
+    // Computing the features from labeled points with their point of views
+    void computeFeatures(const std::vector<Point> &points, const std::vector<Point> &pointOfViews,
+                         const std::vector<int> &labels, int nbClasses, bool verbose);
+
     // Getters
     [[nodiscard]] const std::vector<Plane> &planes() const;
     [[nodiscard]] const Arrangement::Plane &planeFromFacetHandle(int handle) const;
     [[nodiscard]] const LabelTensor &labels() const;
+    [[nodiscard]] const FeatTensor &features() const;
 private:
     Arrangement _arr;
     CGAL::Bbox_3 _bbox;
@@ -43,7 +48,6 @@ private:
     int _width;
     int _height;
     int _depth;
-
 };
 
 

@@ -81,4 +81,34 @@ TEST(VoxelArrangement, Labeling)
             }
     ASSERT_EQ(nbPartition, 2);
     ASSERT_EQ(nbVoid, 6);
+    ASSERT_EQ(labels[0][0][0], partitionIdx);
+    ASSERT_EQ(labels[0][0][1], partitionIdx);
+}
+
+TEST(VoxelArrangement, Features)
+{
+    CGAL::Bbox_3 bbox(0., 0., 0., 1., 1., 1.);
+    double voxelSize1 = 0.5;
+    cout.setstate(ios_base::failbit);
+    cerr.setstate(ios_base::failbit);
+    auto voxArr = VoxelArrangement(bbox, voxelSize1);
+    cout.clear();
+    cerr.clear();
+
+    int nbClasses = 3;
+    vector<Point> points;
+    vector<Point> pointOfViews;
+    vector<int> labels;
+
+    // 1st point
+    points.emplace_back(0.6, 0.25, 0.25);
+    pointOfViews.emplace_back(0.9, 0.6, 0.25);
+    labels.push_back(1);
+
+    voxArr.computeFeatures(points, pointOfViews, labels, nbClasses, false);
+
+    VoxelArrangement::FeatTensor features = voxArr.features();
+    ASSERT_DOUBLE_EQ(features[0][0][0][1], 1.);
+    ASSERT_DOUBLE_EQ(features[1][1][0][nbClasses], 1.);
+    ASSERT_DOUBLE_EQ(features[1][0][0][nbClasses], 1.);
 }

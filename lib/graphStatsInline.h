@@ -71,10 +71,11 @@ inline bool isInShape(const Point &candidate, const CGAL::Bbox_3 &bbox, std::vec
 }
 
 template<class OutputIterator>
-inline void addSegmentIfInBbox(const std::vector<Point> &pointOfViews, const std::vector<Point> &points,
+inline std::vector<int> addSegmentIfInBbox(const std::vector<Point> &pointOfViews, const std::vector<Point> &points,
                                OutputIterator beginPointIt, OutputIterator endPointIt,
                                const CGAL::Bbox_3 &bbox)
 {
+    std::vector<int> selectedIndex;
     std::vector<Triangle> bboxMesh = meshBbox(bbox);
     Tree bboxTree(bboxMesh.begin(), bboxMesh.end());
     for(int i=0; i < pointOfViews.size(); i++) {
@@ -87,7 +88,9 @@ inline void addSegmentIfInBbox(const std::vector<Point> &pointOfViews, const std
             continue;
         *beginPointIt++ = pointOfViews[i];
         *endPointIt++ = pointOfViews[i] + 1. * (points[i] - pointOfViews[i]);
+        selectedIndex.push_back(i);
     }
+    return selectedIndex;
 }
 
 inline std::string padTo(std::string str, const size_t num, const char paddingChar = '0')

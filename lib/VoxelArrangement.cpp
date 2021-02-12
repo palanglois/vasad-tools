@@ -140,6 +140,83 @@ void VoxelArrangement::assignLabel(vector<facesLabelName> &labeledShapes, int nb
     }
 }
 
+void VoxelArrangement::computeFeatures(const vector<Point> &points, const vector<Point> &pointOfViews,
+                                       const vector<int> &labels, int nbClasses, bool verbose) {
+    Simple_to_Epeck s2e;
+    Epeck_to_Simple e2s;
+    // Make sure that the arrangement has been built
+    buildArrangement();
+    // Initialize the features
+    _features = vector<vector<vector<vector<double>>>>(_width,
+                  vector<vector<vector<double>>>(_height,
+                          vector<vector<double>>(_depth,
+                                  vector<double>(nbClasses + 1, 0.))));
+
+    // Select the points that lie in the bounding box
+    vector<Point> beginPoints;
+    vector<Point> endPoints;
+    vector<int> validIdx = addSegmentIfInBbox(pointOfViews, points, back_inserter(beginPoints), back_inserter(endPoints), _bbox);
+
+    // Go through the points
+    for(int i=0; i < validIdx.size(); i++)
+    {
+        const Point &point = endPoints[i];
+        const Point &pov = beginPoints[i];
+        const int &label = labels[validIdx[i]];
+
+        // Retrieve the closest facet to the current point
+        int facetHandle = closestFacet(s2e(point));
+
+        // Retrieve the index of the opposite cell of the points of view w.r.t the facet
+        Kernel2::Point_3 facetPoint = _arr.facet(facetHandle).point();
+        int cellIdx0 = _arr.facet(facetHandle).superface(0);
+        Kernel2::Point_3 cellPoint0 = _arr.cell(cellIdx0).point();
+        int cellIdx1 = _arr.facet(facetHandle).superface(1);
+        Vector visibilityVector(pov, point);
+        Vector vectorCell0(e2s(facetPoint), e2s(cellPoint0));
+        double scalarProduct = CGAL::scalar_product(visibilityVector, vectorCell0);
+        int validCellIdx = (scalarProduct >= 0) ? cellIdx0 : cellIdx1;
+        triplet coordinates = _node2index[validCellIdx];
+
+        // Update the label distribution
+        _features[get<0>(coordinates)][get<1>(coordinates)][get<2>(coordinates)][label]++;
+
+        // Visibility
+
+        // Retrieving the cell in which lies the point of view
+        int idx_x = floor((CGAL::to_double(pov.x()) - _bbox.xmin())/_voxelSide);
+        int idx_y = floor((CGAL::to_double(pov.y()) - _bbox.ymin())/_voxelSide);
+        int idx_z = floor((CGAL::to_double(pov.z()) - _bbox.zmin())/_voxelSide);
+        int povCell = _index2node[make_tuple(idx_x, idx_y, idx_z)];
+
+        // Intersect point_of_view <-> detected point segments with the plane arrangement
+        Arrangement::Face_handle begin_cell;
+        Arrangement::Face_handle end_cell;
+        vector<pair<Arrangement::Face_handle, int>> intersectedFacets;
+        vector<pair<Arrangement::Face_handle, double>> intersectedCellsAndDists;
+        segment_search_advanced(_arr, s2e(pov), facetPoint, begin_cell, back_inserter(intersectedFacets),
+                                back_inserter(intersectedCellsAndDists), end_cell, povCell, true);
+
+        // Add visibility information
+        for(const auto& cellAndDist: intersectedCellsAndDists){
+            if(!_arr.is_cell_bounded(cellAndDist.first)) continue;
+            triplet cellIdx = _node2index[cellAndDist.first];
+            _features[get<0>(cellIdx)][get<1>(cellIdx)][get<2>(cellIdx)][nbClasses]++;
+        }
+    }
+    // Normalization
+    for(int i=0; i < _width; i++)
+        for(int j=0; j < _height; j++)
+            for(int k=0; k < _depth; k++) {
+                double nbElems = 0.;
+                for (int l = 0; l < nbClasses + 1; l++)
+                    nbElems += _features[i][j][k][l];
+                if(nbElems == 0.) continue;
+                for (int l = 0; l < nbClasses + 1; l++)
+                    _features[i][j][k][l] /= nbElems;
+            }
+}
+
 const std::vector<Plane> &VoxelArrangement::planes() const
 {
     return _planes;
@@ -152,4 +229,8 @@ const Arrangement::Plane & VoxelArrangement::planeFromFacetHandle(int handle) co
 
 const VoxelArrangement::LabelTensor & VoxelArrangement::labels() const {
     return _labels;
+}
+
+const VoxelArrangement::FeatTensor & VoxelArrangement::features() const {
+    return _features;
 }
