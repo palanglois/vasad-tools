@@ -297,6 +297,7 @@ void VoxelArrangement::saveAsPly(const string &path, const vector<classKeywordsC
     }
     Colormap colormap(map);
 
+    // Label each facet which needs to be drawn
     for(auto itf = _arr.facets_begin(); itf != _arr.facets_end(); itf++){
         Arrangement::Face& f = *itf;
         f._info = -1;
@@ -317,6 +318,7 @@ void VoxelArrangement::saveAsPly(const string &path, const vector<classKeywordsC
             f._info = label1;
     }
 
+    // Standard polyhedral complex output procedure
     typedef Polyhedral_complex_3::Mesh_3<> Mesh;
     typedef Polyhedral_complex_3::Mesh_extractor_3<Arrangement,Mesh> Extractor;
     Mesh meshGC;

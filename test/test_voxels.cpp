@@ -142,10 +142,12 @@ TEST(VoxelArrangement, VoxelInOut)
     string outputPath = (string) TEST_DIR + "voxelOutput.json";
     string outputPlyPath = (string) TEST_DIR + "voxelOutput.ply";
     voxArr.saveAsJson((string) TEST_DIR + "voxelOutput.json");
-    voxArr.saveAsPly(outputPlyPath, classesWithColor);
 
     //Input
     VoxelArrangement newVoxArr(outputPath);
+
+    // Ply output
+    newVoxArr.saveAsPly(outputPlyPath, classesWithColor);
 
     cout.clear();
     cerr.clear();
