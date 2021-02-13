@@ -112,3 +112,45 @@ TEST(VoxelArrangement, Features)
     ASSERT_DOUBLE_EQ(features[1][1][0][nbClasses], 1.);
     ASSERT_DOUBLE_EQ(features[1][0][0][nbClasses], 1.);
 }
+
+TEST(VoxelArrangement, VoxelInOut)
+{
+    CGAL::Bbox_3 bbox(0., 0., 0., 1., 1., 1.);
+    double voxelSize1 = 0.5;
+    cout.setstate(ios_base::failbit);
+    cerr.setstate(ios_base::failbit);
+
+    auto voxArr = VoxelArrangement(bbox, voxelSize1);
+
+    // Features
+    int nbClasses = 3;
+    vector<Point> points;
+    vector<Point> pointOfViews;
+    vector<int> pointLabels;
+    points.emplace_back(0.6, 0.25, 0.25);
+    pointOfViews.emplace_back(0.9, 0.6, 0.25);
+    pointLabels.push_back(1);
+    voxArr.computeFeatures(points, pointOfViews, pointLabels, nbClasses, false);
+
+    // Labels
+    const string testObjPath = (string) TEST_DIR + "simplecube.obj";
+    vector<classKeywordsColor> classesWithColor = loadSemanticClasses((string) TEST_DIR + "semantic_classes.json");
+    auto allTrees =  loadTreesFromObj(testObjPath, classesWithColor);
+    voxArr.assignLabel(allTrees, classesWithColor.size(), false);
+
+    // Output
+    string outputPath = (string) TEST_DIR + "voxelOutput.json";
+    voxArr.saveAsJson((string) TEST_DIR + "voxelOutput.json");
+
+    //Input
+    VoxelArrangement newVoxArr(outputPath);
+
+    cout.clear();
+    cerr.clear();
+
+    VoxelArrangement::FeatTensor features = newVoxArr.features();
+    ASSERT_DOUBLE_EQ(features[0][0][0][1], 1.);
+    ASSERT_EQ(voxArr.width(), newVoxArr.width());
+    ASSERT_EQ(voxArr.height(), newVoxArr.height());
+    ASSERT_EQ(voxArr.depth(), newVoxArr.depth());
+}

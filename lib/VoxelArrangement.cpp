@@ -1,14 +1,44 @@
 #include "VoxelArrangement.h"
 
 using namespace std;
+using Json = nlohmann::json;
 
-VoxelArrangement::VoxelArrangement(const std::string &name) : isArrangementComputed(false)
-{
+VoxelArrangement::VoxelArrangement(const std::string &name) : isArrangementComputed(false), _width(0), _height(0),
+                                                              _depth(0) {
+    cout << "Loading voxels!" << endl;
+    ifstream inStream(name);
+    Json data;
+    inStream >> data;
 
+    //Features
+    _features = data["features"].get<FeatTensor>();
+
+    // Labels
+    _labels = data["labels"].get<LabelTensor>();
+
+    // width, height, depth
+    if(!_labels.empty())
+    {
+        _width = _labels.size();
+        _height = _labels[0].size();
+        _depth = _labels[0][0].size();
+    }
+
+    // Map
+    _index2node = data["map"].get<map<triplet, int>>();
+
+    // Planes
+    _planes = data["planes"].get<vector<Plane>>();
+
+    // Bbox
+    _bbox = data["bbox"].get<CGAL::Bbox_3>();
+
+    // Voxel side size
+    _voxelSide = data["voxelSide"].get<double>();
 }
 
 VoxelArrangement::VoxelArrangement(const CGAL::Bbox_3 &inBbox, double inVoxelSide) : _bbox(inBbox),
-_voxelSide(inVoxelSide), isArrangementComputed(false)
+_voxelSide(inVoxelSide), isArrangementComputed(false), _width(0), _height(0), _depth(0)
 {
     computePlanes();
     buildArrangement();
@@ -189,7 +219,7 @@ void VoxelArrangement::computeFeatures(const vector<Point> &points, const vector
         int idx_z = floor((CGAL::to_double(pov.z()) - _bbox.zmin())/_voxelSide);
         int povCell = _index2node[make_tuple(idx_x, idx_y, idx_z)];
 
-        // Intersect point_of_view <-> detected point segments with the plane arrangement
+        // Intersect the (point_of_view <-> target facet point) segment with the plane arrangement
         Arrangement::Face_handle begin_cell;
         Arrangement::Face_handle end_cell;
         vector<pair<Arrangement::Face_handle, int>> intersectedFacets;
@@ -217,6 +247,38 @@ void VoxelArrangement::computeFeatures(const vector<Point> &points, const vector
             }
 }
 
+void VoxelArrangement::saveAsJson(const string &path)
+{
+    //Features
+    Json features = _features;
+
+    // Labels
+    Json labels = _labels;
+
+    // Map
+    Json map = _index2node;
+
+    // Planes
+    Json planes = _planes;
+
+    // NbPlanes
+    Json nbPlanes = _planes.size();
+
+    // Bbox
+    Json bbox = _bbox;
+
+    // Voxel side size
+    Json voxelSide = _voxelSide;
+
+    // Compiling the output data
+    Json outputData = {{"features", features}, {"labels", labels}, {"map", map}, {"planes", planes},
+                       {"nbPlanes", nbPlanes}, {"bbox", bbox}, {"voxelSide", voxelSide}};
+
+    // Output the json file
+    ofstream outFile(path);
+    outFile << outputData;
+}
+
 const std::vector<Plane> &VoxelArrangement::planes() const
 {
     return _planes;
@@ -233,4 +295,16 @@ const VoxelArrangement::LabelTensor & VoxelArrangement::labels() const {
 
 const VoxelArrangement::FeatTensor & VoxelArrangement::features() const {
     return _features;
+}
+
+double VoxelArrangement::width() const {
+    return _width;
+}
+
+double VoxelArrangement::height() const {
+    return _height;
+}
+
+double VoxelArrangement::depth() const {
+    return _depth;
 }

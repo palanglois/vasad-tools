@@ -29,11 +29,17 @@ public:
     void computeFeatures(const std::vector<Point> &points, const std::vector<Point> &pointOfViews,
                          const std::vector<int> &labels, int nbClasses, bool verbose);
 
+    // Save as json
+    void saveAsJson(const std::string &path);
+
     // Getters
     [[nodiscard]] const std::vector<Plane> &planes() const;
     [[nodiscard]] const Arrangement::Plane &planeFromFacetHandle(int handle) const;
     [[nodiscard]] const LabelTensor &labels() const;
     [[nodiscard]] const FeatTensor &features() const;
+    [[nodiscard]] double width() const;
+    [[nodiscard]] double height() const;
+    [[nodiscard]] double depth() const;
 private:
     Arrangement _arr;
     CGAL::Bbox_3 _bbox;
