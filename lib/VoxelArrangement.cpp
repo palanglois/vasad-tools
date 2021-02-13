@@ -27,6 +27,10 @@ VoxelArrangement::VoxelArrangement(const std::string &name) : isArrangementCompu
     // Map
     _index2node = data["map"].get<map<triplet, int>>();
 
+    // Inverse mapping
+    for(const auto &indexAndNode: _index2node)
+        _node2index[indexAndNode.second] = indexAndNode.first;
+
     // Planes
     _planes = data["planes"].get<vector<Plane>>();
 
@@ -166,7 +170,7 @@ void VoxelArrangement::assignLabel(vector<facesLabelName> &labeledShapes, int nb
     _labels = vector<vector<vector<int>>>(_width, vector<vector<int>>(_height, vector<int>(_depth, -1)));
     for (int i = 0; i < points.size(); i++) {
         tuple<int, int, int> idx = _node2index[points[i].second];
-        _labels[get<0>(idx)][get<1>(idx)][get<2>(idx)] = labels[i];
+        _labels[get<0>(idx)][get<1>(idx)][get<2>(idx)] = labels[i] == nbClasses ? -1: labels[i];
     }
 }
 
@@ -277,6 +281,54 @@ void VoxelArrangement::saveAsJson(const string &path)
     // Output the json file
     ofstream outFile(path);
     outFile << outputData;
+}
+
+void VoxelArrangement::saveAsPly(const string &path, const vector<classKeywordsColor> &classesWithColor) {
+    // Make sure that the arrangement has been built
+    buildArrangement();
+    // Making colormap
+    std::map<int, Colormap::Color> map;
+    for(int i = 0; i < classesWithColor.size(); i++)
+    {
+        const auto& classColor = get<2>(classesWithColor[i]);
+        map[i] = Colormap::Color(static_cast<unsigned char>(get<0>(classColor)),
+                                 static_cast<unsigned char>(get<1>(classColor)),
+                                 static_cast<unsigned char>(get<2>(classColor)));
+    }
+    Colormap colormap(map);
+
+    for(auto itf = _arr.facets_begin(); itf != _arr.facets_end(); itf++){
+        Arrangement::Face& f = *itf;
+        f._info = -1;
+        itf->to_draw = false;
+        if(! _arr.is_facet_bounded(f)){continue;}
+        Arrangement::Face_handle ch0 = f.superface(0), ch1 = f.superface(1);
+        if(!_arr.is_cell_bounded(ch0) || !_arr.is_cell_bounded(ch1)) continue;
+        triplet idxCh0 = _node2index[ch0];
+        triplet idxCh1 = _node2index[ch1];
+        int label1 = _labels[get<0>(idxCh0)][get<1>(idxCh0)][get<2>(idxCh0)];
+        int label2 = _labels[get<0>(idxCh1)][get<1>(idxCh1)][get<2>(idxCh1)];
+        if(label1 != label2){
+            f.to_draw = true;
+        }
+        if(label1 == -1 && label2 != -1)
+            f._info = label2;
+        if(label1 != -1 && label2 == -1)
+            f._info = label1;
+    }
+
+    typedef Polyhedral_complex_3::Mesh_3<> Mesh;
+    typedef Polyhedral_complex_3::Mesh_extractor_3<Arrangement,Mesh> Extractor;
+    Mesh meshGC;
+    Extractor extractorGC(_arr);
+    extractorGC.extract(meshGC,false);
+    {
+        std::ofstream stream(path.c_str());
+        if (!stream.is_open())
+            return ;
+        Polyhedral_complex_3::print_mesh_with_facet_color_PLY(stream, meshGC, colormap);
+        stream.close();
+    }
 }
 
 const std::vector<Plane> &VoxelArrangement::planes() const

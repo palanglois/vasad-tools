@@ -9,6 +9,7 @@ data/debugEdgeFeatures*
 data/testRot*
 data/ptView*
 data/voxelOutput.json
+data/voxelOutput.ply
 data/debug_triangles.obj
 .clion.source.upload.marker
 data/00*json

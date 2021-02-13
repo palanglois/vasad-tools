@@ -32,6 +32,9 @@ public:
     // Save as json
     void saveAsJson(const std::string &path);
 
+    // Save as ply (based on ground truth labels)
+    void saveAsPly(const std::string &path, const std::vector<classKeywordsColor> &classesWithColor);
+
     // Getters
     [[nodiscard]] const std::vector<Plane> &planes() const;
     [[nodiscard]] const Arrangement::Plane &planeFromFacetHandle(int handle) const;

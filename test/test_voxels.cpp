@@ -140,7 +140,9 @@ TEST(VoxelArrangement, VoxelInOut)
 
     // Output
     string outputPath = (string) TEST_DIR + "voxelOutput.json";
+    string outputPlyPath = (string) TEST_DIR + "voxelOutput.ply";
     voxArr.saveAsJson((string) TEST_DIR + "voxelOutput.json");
+    voxArr.saveAsPly(outputPlyPath, classesWithColor);
 
     //Input
     VoxelArrangement newVoxArr(outputPath);
