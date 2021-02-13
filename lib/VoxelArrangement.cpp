@@ -45,7 +45,6 @@ VoxelArrangement::VoxelArrangement(const CGAL::Bbox_3 &inBbox, double inVoxelSid
 _voxelSide(inVoxelSide), isArrangementComputed(false), _width(0), _height(0), _depth(0)
 {
     computePlanes();
-    buildArrangement();
 }
 
 void VoxelArrangement::computePlanes()
@@ -61,7 +60,6 @@ void VoxelArrangement::computePlanes()
     vector<double> mins = {_bbox.xmin(), _bbox.ymin(), _bbox.zmin()};
     vector<double> maxs = {_bbox.xmax(), _bbox.ymax(), _bbox.zmax()};
     vector<Vector> normals = {{1., 0., 0.}, {0., 1., 0.}, {0., 0., 1.}};
-    vector<Point> pointCloud;
     int faceAccum = 0;
     for(int i=0; i < ranges.size(); i++) {
         int nbPlanes = ceil(ranges[i] / _voxelSide);
@@ -72,22 +70,22 @@ void VoxelArrangement::computePlanes()
             lowLeft[i] = curAxisCoordinate;
             lowLeft[(i + 1) % 3] = mins[(i + 1) % 3];
             lowLeft[(i + 2) % 3] = mins[(i + 2) % 3];
-            pointCloud.emplace_back(lowLeft[0], lowLeft[1], lowLeft[2]);
+            _pointCloud.emplace_back(lowLeft[0], lowLeft[1], lowLeft[2]);
             vector<double> lowRight = {0., 0., 0.};
             lowRight[i] = curAxisCoordinate;
             lowRight[(i + 1) % 3] = maxs[(i + 1) % 3];
             lowRight[(i + 2) % 3] = mins[(i + 2) % 3];
-            pointCloud.emplace_back(lowRight[0], lowRight[1], lowRight[2]);
+            _pointCloud.emplace_back(lowRight[0], lowRight[1], lowRight[2]);
             vector<double> topLeft = {0., 0., 0.};
             topLeft[i] = curAxisCoordinate;
             topLeft[(i + 1) % 3] = mins[(i + 1) % 3];
             topLeft[(i + 2) % 3] = maxs[(i + 2) % 3];
-            pointCloud.emplace_back(topLeft[0], topLeft[1], topLeft[2]);
+            _pointCloud.emplace_back(topLeft[0], topLeft[1], topLeft[2]);
             vector<double> topRight = {0., 0., 0.};
             topRight[i] = curAxisCoordinate;
             topRight[(i + 1) % 3] = maxs[(i + 1) % 3];
             topRight[(i + 2) % 3] = maxs[(i + 2) % 3];
-            pointCloud.emplace_back(topRight[0], topRight[1], topRight[2]);
+            _pointCloud.emplace_back(topRight[0], topRight[1], topRight[2]);
             double area = (ranges[(i + 1) % 3] * ranges[(i + 2) % 3]);
 
             // Triangulating the plane
@@ -131,6 +129,18 @@ void VoxelArrangement::buildArrangement()
             cellFacets.push_back(*faceIt);
         _node2facets[_arr.cell_handle(*cellIt)] = cellFacets;
     }
+}
+
+int VoxelArrangement::numberOfCells()
+{
+    // Make sure that the arrangement has been built
+    buildArrangement();
+    // Compute number of cells
+    int nbCells = 0;
+    for(auto cellIt = _arr.cells_begin(); cellIt != _arr.cells_end(); cellIt++)
+        if(_arr.is_cell_bounded(*cellIt))
+            nbCells++;
+    return nbCells;
 }
 
 int VoxelArrangement::closestFacet(const Arrangement::Point &query)
@@ -192,6 +202,7 @@ void VoxelArrangement::computeFeatures(const vector<Point> &points, const vector
     vector<int> validIdx = addSegmentIfInBbox(pointOfViews, points, back_inserter(beginPoints), back_inserter(endPoints), _bbox);
 
     // Go through the points
+#pragma omp parallel for
     for(int i=0; i < validIdx.size(); i++)
     {
         const Point &point = endPoints[i];
@@ -213,6 +224,7 @@ void VoxelArrangement::computeFeatures(const vector<Point> &points, const vector
         triplet coordinates = _node2index[validCellIdx];
 
         // Update the label distribution
+#pragma omp critical
         _features[get<0>(coordinates)][get<1>(coordinates)][get<2>(coordinates)][label]++;
 
         // Visibility
@@ -235,6 +247,7 @@ void VoxelArrangement::computeFeatures(const vector<Point> &points, const vector
         for(const auto& cellAndDist: intersectedCellsAndDists){
             if(!_arr.is_cell_bounded(cellAndDist.first)) continue;
             triplet cellIdx = _node2index[cellAndDist.first];
+#pragma omp critical
             _features[get<0>(cellIdx)][get<1>(cellIdx)][get<2>(cellIdx)][nbClasses]++;
         }
     }
@@ -338,8 +351,15 @@ const std::vector<Plane> &VoxelArrangement::planes() const
     return _planes;
 }
 
-const Arrangement::Plane & VoxelArrangement::planeFromFacetHandle(int handle) const
+const std::vector<Point> &VoxelArrangement::pointCloud() const
 {
+    return _pointCloud;
+}
+
+const Arrangement::Plane & VoxelArrangement::planeFromFacetHandle(int handle)
+{
+    // Make sure that the arrangement has been built
+    buildArrangement();
     return _arr.plane(_arr.facet_plane(handle));
 }
 
@@ -361,4 +381,77 @@ double VoxelArrangement::height() const {
 
 double VoxelArrangement::depth() const {
     return _depth;
+}
+
+int splitArrangementInVoxels(vector<facesLabelName> &labeledShapes,
+                             const vector<Point> &pointOfViews,
+                             const vector<Point> &pointCloud,
+                             const vector<int> &pointCloudLabels,
+                             double voxelSide,
+                             int nbClasses, const string &path, int maxNodes, bool verbose)
+{
+    // Compute initial bounding box
+    CGAL::Bbox_3 initialBbox;
+    for(const auto& shape: labeledShapes)
+        for(const auto& triangle: get<0>(shape))
+            initialBbox += triangle.bbox();
+    queue<CGAL::Bbox_3> bboxes;
+    bboxes.push(initialBbox);
+
+    // Gather all the planes
+    VoxelArrangement globalVoxels(initialBbox, voxelSide);
+    const vector<Plane> &planes = globalVoxels.planes();
+    const vector<Point> &pointCloudPlanes = globalVoxels.pointCloud();
+
+    // Max number of plane gets an initial value and will be adjusted during computation
+    int maxNbPlanes = 125;
+
+    // We iteratively subdivide the bboxes until they are at acceptable scale
+    int chunkIterator(0);
+    while(!bboxes.empty()) {
+        if (verbose)
+            cout << endl << "Bbox queue size: \033[1;31m" << bboxes.size() << "\033[0m" << endl;
+        CGAL::Bbox_3 curBbox = bboxes.front();
+        bboxes.pop();
+        // Compute planes in current bbox
+        vector<int> validPlaneIdx = computePlanesInBoundingBox(planes, pointCloudPlanes, curBbox, 1.);
+
+        // If we have too many planes or no plane at all, we subdivide the current bounding box
+        if(validPlaneIdx.size() > maxNbPlanes || validPlaneIdx.empty())
+        {
+            subdivideBboxLongestAxis(bboxes, curBbox);
+            continue;
+        }
+        if(verbose)
+            cout << "Found " << validPlaneIdx.size() << " valid planes in current bbox which is: " << curBbox << endl;
+
+        // We build the arrangement corresponding to the current bounding box
+        auto fullArrangement = VoxelArrangement(curBbox, voxelSide);
+
+        // Compute the number of cells in the current arrangement
+        int nbCells = fullArrangement.numberOfCells();
+
+        // We need at least 2 nodes to have a valid chunk
+        if(nbCells < 2) continue;
+
+        // If we have too many cells, we update maxNbPlanes accordingly and we subdivide the current bounding box
+        if(nbCells > maxNodes)
+        {
+            maxNbPlanes = validPlaneIdx.size();
+            subdivideBboxLongestAxis(bboxes, curBbox);
+            continue;
+        }
+
+        // We compute the labels
+        fullArrangement.assignLabel(labeledShapes, nbClasses, verbose);
+
+        // We compute the features
+        fullArrangement.computeFeatures(pointCloud, pointOfViews, pointCloudLabels, nbClasses, verbose);
+
+        // We save the current chunk
+        string outPath(path + padTo(to_string(chunkIterator), 4) + ".json");
+        fullArrangement.saveAsJson(outPath);
+        chunkIterator++;
+    }
+    return chunkIterator;
 }

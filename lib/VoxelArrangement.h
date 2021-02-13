@@ -19,6 +19,9 @@ public:
     void computePlanes();
     void buildArrangement();
 
+    // Count the number of cells
+    int numberOfCells();
+
     // Finding the closest facet to a query point
     int closestFacet(const Arrangement::Point &query);
 
@@ -37,7 +40,8 @@ public:
 
     // Getters
     [[nodiscard]] const std::vector<Plane> &planes() const;
-    [[nodiscard]] const Arrangement::Plane &planeFromFacetHandle(int handle) const;
+    [[nodiscard]] const std::vector<Point> &pointCloud() const;
+    [[nodiscard]] const Arrangement::Plane &planeFromFacetHandle(int handle);
     [[nodiscard]] const LabelTensor &labels() const;
     [[nodiscard]] const FeatTensor &features() const;
     [[nodiscard]] double width() const;
@@ -53,11 +57,19 @@ private:
     FeatTensor _features;
     LabelTensor _labels;
     std::vector<Plane> _planes;
+    std::vector<Point> _pointCloud;
     bool isArrangementComputed;
     int _width;
     int _height;
     int _depth;
 };
+
+int splitArrangementInVoxels(std::vector<facesLabelName> &labeledShapes,
+                             const std::vector<Point> &pointOfViews,
+                             const std::vector<Point> &pointCloud,
+                             const std::vector<int> &pointCloudLabels,
+                             double voxelSide,
+                             int nbClasses, const std::string &path, int maxNodes, bool verbose);
 
 
 #endif //BIM_DATA_VOXELARRANGEMENT_H

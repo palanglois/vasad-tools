@@ -100,4 +100,30 @@ inline std::string padTo(std::string str, const size_t num, const char paddingCh
     return str;
 }
 
+
+
+inline void subdivideBboxLongestAxis(std::queue<CGAL::Bbox_3> &bboxes, CGAL::Bbox_3 curBbox) {
+    // Subdivides curBbox in 2 along its longest axis
+    int longestDim = -1;
+    double dimX = curBbox.xmax() - curBbox.xmin();
+    double dimY = curBbox.ymax() - curBbox.ymin();
+    double dimZ = curBbox.zmax() - curBbox.zmin();
+    if (dimX >= dimY && dimX >= dimZ) {
+        bboxes.emplace(curBbox.xmin(), curBbox.ymin(), curBbox.zmin(),
+                       curBbox.xmin() + dimX / 2., curBbox.ymax(), curBbox.zmax());
+        bboxes.emplace(curBbox.xmin() + dimX / 2., curBbox.ymin(), curBbox.zmin(),
+                       curBbox.xmax(), curBbox.ymax(), curBbox.zmax());
+    } else if (dimY >= dimZ && dimY >= dimX) {
+        bboxes.emplace(curBbox.xmin(), curBbox.ymin(), curBbox.zmin(),
+                       curBbox.xmax(), curBbox.ymin() + dimY / 2., curBbox.zmax());
+        bboxes.emplace(curBbox.xmin(), curBbox.ymin() + dimY / 2., curBbox.zmin(),
+                       curBbox.xmax(), curBbox.ymax(), curBbox.zmax());
+    } else {
+        bboxes.emplace(curBbox.xmin(), curBbox.ymin(), curBbox.zmin(),
+                       curBbox.xmax(), curBbox.ymax(), curBbox.zmin() + dimZ / 2.);
+        bboxes.emplace(curBbox.xmin(), curBbox.ymin(), curBbox.zmin() + dimZ / 2.,
+                       curBbox.xmax(), curBbox.ymax(), curBbox.zmax());
+    }
+}
+
 #endif //BIM_DATA_GRAPHSTATSINLINE_H

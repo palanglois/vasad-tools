@@ -8,6 +8,7 @@ data/coloredGtPlanes*
 data/debugEdgeFeatures*
 data/testRot*
 data/ptView*
+data/testSplit_*
 data/voxelOutput.json
 data/voxelOutput.ply
 data/debug_triangles.obj

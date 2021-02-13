@@ -25,8 +25,6 @@ TEST(VoxelArrangement, PointQuery)
     cout.setstate(ios_base::failbit);
     cerr.setstate(ios_base::failbit);
     auto voxArr = VoxelArrangement(bbox, voxelSize1);
-    cout.clear();
-    cerr.clear();
 
     Kernel2::Point_3 query1(0., 0., 0.5);
     auto projQuery1 = voxArr.planeFromFacetHandle(voxArr.closestFacet(query1)).projection(query1);
@@ -47,6 +45,8 @@ TEST(VoxelArrangement, PointQuery)
     auto projQuery4 = voxArr.planeFromFacetHandle(voxArr.closestFacet(query4)).projection(query4);
     double projDistance4 = CGAL::to_double((projQuery4 - query4).squared_length());
     ASSERT_DOUBLE_EQ(projDistance4, pow(0.1, 2));
+    cout.clear();
+    cerr.clear();
 
 }
 
@@ -67,7 +67,7 @@ TEST(VoxelArrangement, Labeling)
 
     VoxelArrangement::LabelTensor labels = voxArr.labels();
     const int partitionIdx = 5;
-    const int voidIdx = 11;
+    const int voidIdx = -1;
     int nbPartition = 0;
     int nbVoid = 0;
     for(int i=0; i < labels.size(); i++)
@@ -92,8 +92,6 @@ TEST(VoxelArrangement, Features)
     cout.setstate(ios_base::failbit);
     cerr.setstate(ios_base::failbit);
     auto voxArr = VoxelArrangement(bbox, voxelSize1);
-    cout.clear();
-    cerr.clear();
 
     int nbClasses = 3;
     vector<Point> points;
@@ -106,6 +104,8 @@ TEST(VoxelArrangement, Features)
     labels.push_back(1);
 
     voxArr.computeFeatures(points, pointOfViews, labels, nbClasses, false);
+    cout.clear();
+    cerr.clear();
 
     VoxelArrangement::FeatTensor features = voxArr.features();
     ASSERT_DOUBLE_EQ(features[0][0][0][1], 1.);
@@ -157,4 +157,36 @@ TEST(VoxelArrangement, VoxelInOut)
     ASSERT_EQ(voxArr.width(), newVoxArr.width());
     ASSERT_EQ(voxArr.height(), newVoxArr.height());
     ASSERT_EQ(voxArr.depth(), newVoxArr.depth());
+}
+
+TEST(VoxelArrangement, Split)
+{
+    CGAL::Bbox_3 bbox(0., 0., 0., 1., 1., 1.);
+    double voxelSide = 0.25;
+    cout.setstate(ios_base::failbit);
+    cerr.setstate(ios_base::failbit);
+
+    // Features
+    vector<Point> points;
+    vector<Point> pointOfViews;
+    vector<int> pointLabels;
+    points.emplace_back(0.6, 0.25, 0.25);
+    pointOfViews.emplace_back(0.9, 0.6, 0.25);
+    pointLabels.push_back(1);
+
+    // Labels
+    const string testObjPath = (string) TEST_DIR + "simplecube.obj";
+    vector<classKeywordsColor> classesWithColor = loadSemanticClasses((string) TEST_DIR + "semantic_classes.json");
+    auto allTrees =  loadTreesFromObj(testObjPath, classesWithColor);
+
+    const string outPath = (string) TEST_DIR + "/testSplit_";
+    int maxNodes = 8;
+    bool verbose = false;
+
+    int nbSplits = splitArrangementInVoxels(allTrees, pointOfViews, points, pointLabels, voxelSide,
+                                            classesWithColor.size(), outPath, maxNodes, verbose);
+
+    cout.clear();
+    cerr.clear();
+    ASSERT_EQ(nbSplits, 2);
 }
