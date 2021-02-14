@@ -147,14 +147,14 @@ TEST(VoxelArrangement, VoxelInOut)
     //Input
     VoxelArrangement newVoxArr(outputPath);
 
-    cout.clear();
-    cerr.clear();
-
     // Ply output
     newVoxArr.saveAsPly(outputPlyPath, classesWithColor);
 
     // Feature output
     newVoxArr.saveFeaturesAsPly(outputFeaturesPath, classesWithColor);
+
+    cout.clear();
+    cerr.clear();
 
     VoxelArrangement::FeatTensor features = newVoxArr.features();
     ASSERT_DOUBLE_EQ(features[0][0][0][1], 1.);
