@@ -387,6 +387,63 @@ void VoxelArrangement::saveAsPly(const string &path, const vector<classKeywordsC
     }
 }
 
+void VoxelArrangement::saveFeaturesAsPly(const string &path, const vector<classKeywordsColor> &classesWithColor)
+{
+    // Make sure that the arrangement has been built
+    buildArrangement();
+    // Making colormap
+    std::map<int, Colormap::Color> map;
+    for(int i = 0; i < classesWithColor.size(); i++)
+    {
+        const auto& classColor = get<2>(classesWithColor[i]);
+        map[i] = Colormap::Color(static_cast<unsigned char>(get<0>(classColor)),
+                                 static_cast<unsigned char>(get<1>(classColor)),
+                                 static_cast<unsigned char>(get<2>(classColor)));
+    }
+    Colormap colormap(map);
+
+    int voidClass = classesWithColor.size();
+
+    // Label each facet which needs to be drawn
+    for(auto itf = _arr.facets_begin(); itf != _arr.facets_end(); itf++){
+        Arrangement::Face& f = *itf;
+        f._info = -1;
+        itf->to_draw = false;
+        if(! _arr.is_facet_bounded(f)){continue;}
+        Arrangement::Face_handle ch0 = f.superface(0), ch1 = f.superface(1);
+        if(!_arr.is_cell_bounded(ch0) || !_arr.is_cell_bounded(ch1)) continue;
+        triplet idxCh0 = _node2index[ch0];
+        triplet idxCh1 = _node2index[ch1];
+        vector<double> feature1 = _features[get<0>(idxCh0)][get<1>(idxCh0)][get<2>(idxCh0)];
+        vector<double> feature2 = _features[get<0>(idxCh1)][get<1>(idxCh1)][get<2>(idxCh1)];
+        int label1 = arg_max(feature1) == voidClass ? -1 : arg_max(feature1);
+        int label2 = arg_max(feature2) == voidClass ? -1 : arg_max(feature2);
+        if(*max_element(feature1.begin(), feature1.end()) == 0) label1 = -1;
+        if(*max_element(feature2.begin(), feature2.end()) == 0) label2 = -1;
+        if(label1 != label2){
+            f.to_draw = true;
+        }
+        if(label1 == -1 && label2 != -1)
+            f._info = label2;
+        if(label1 != -1 && label2 == -1)
+            f._info = label1;
+    }
+
+    // Standard polyhedral complex output procedure
+    typedef Polyhedral_complex_3::Mesh_3<> Mesh;
+    typedef Polyhedral_complex_3::Mesh_extractor_3<Arrangement,Mesh> Extractor;
+    Mesh meshGC;
+    Extractor extractorGC(_arr);
+    extractorGC.extract(meshGC,false);
+    {
+        std::ofstream stream(path.c_str());
+        if (!stream.is_open())
+            return ;
+        Polyhedral_complex_3::print_mesh_with_facet_color_PLY(stream, meshGC, colormap);
+        stream.close();
+    }
+}
+
 void VoxelArrangement::saveArrangementAsPly(const string &path)
 {
     // Make sure that the arrangement has been built

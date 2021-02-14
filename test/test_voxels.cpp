@@ -122,8 +122,14 @@ TEST(VoxelArrangement, VoxelInOut)
 
     auto voxArr = VoxelArrangement(bbox, voxelSize1);
 
+    // Labels
+    const string testObjPath = (string) TEST_DIR + "simplecube.obj";
+    vector<classKeywordsColor> classesWithColor = loadSemanticClasses((string) TEST_DIR + "semantic_classes.json");
+    auto allTrees =  loadTreesFromObj(testObjPath, classesWithColor);
+    voxArr.assignLabel(allTrees, classesWithColor.size(), false);
+
     // Features
-    int nbClasses = 3;
+    int nbClasses = classesWithColor.size();
     vector<Point> points;
     vector<Point> pointOfViews;
     vector<int> pointLabels;
@@ -132,25 +138,23 @@ TEST(VoxelArrangement, VoxelInOut)
     pointLabels.push_back(1);
     voxArr.computeFeatures(points, pointOfViews, pointLabels, nbClasses, false);
 
-    // Labels
-    const string testObjPath = (string) TEST_DIR + "simplecube.obj";
-    vector<classKeywordsColor> classesWithColor = loadSemanticClasses((string) TEST_DIR + "semantic_classes.json");
-    auto allTrees =  loadTreesFromObj(testObjPath, classesWithColor);
-    voxArr.assignLabel(allTrees, classesWithColor.size(), false);
-
     // Output
     string outputPath = (string) TEST_DIR + "voxelOutput.json";
     string outputPlyPath = (string) TEST_DIR + "voxelOutput.ply";
+    string outputFeaturesPath = (string) TEST_DIR + "voxelFeatures.ply";
     voxArr.saveAsJson((string) TEST_DIR + "voxelOutput.json");
 
     //Input
     VoxelArrangement newVoxArr(outputPath);
 
+    cout.clear();
+    cerr.clear();
+
     // Ply output
     newVoxArr.saveAsPly(outputPlyPath, classesWithColor);
 
-    cout.clear();
-    cerr.clear();
+    // Feature output
+    newVoxArr.saveFeaturesAsPly(outputFeaturesPath, classesWithColor);
 
     VoxelArrangement::FeatTensor features = newVoxArr.features();
     ASSERT_DOUBLE_EQ(features[0][0][0][1], 1.);

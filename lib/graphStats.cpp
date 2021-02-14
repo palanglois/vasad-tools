@@ -4,11 +4,6 @@
 using namespace std;
 using Json = nlohmann::json;
 
-template <typename T, typename A>
-int arg_max(vector<T, A> const& vec) {
-    return static_cast<int>(distance(vec.begin(), max_element(vec.begin(), vec.end())));
-}
-
 pair<Nodes, Edges> computeGraphStatistics(const vector<bool> &labels, const map<int, int> &cell2label,
         const Arrangement &arr, bool verbose)
 {

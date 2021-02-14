@@ -38,6 +38,9 @@ public:
     // Save as ply (based on ground truth labels)
     void saveAsPly(const std::string &path, const std::vector<classKeywordsColor> &classesWithColor);
 
+    // Save a representation of the features
+    void saveFeaturesAsPly(const std::string &path, const std::vector<classKeywordsColor> &classesWithColor);
+
     // Save raw arrangement (for debug purpose)
     void saveArrangementAsPly(const std::string &path);
 

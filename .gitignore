@@ -16,3 +16,4 @@ data/debug_triangles.obj
 data/00*json
 /data/arrangement.ply
 /data/segment.obj
+/data/voxelFeatures.ply

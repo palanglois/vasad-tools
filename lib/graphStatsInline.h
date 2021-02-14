@@ -4,6 +4,11 @@
 #include "iogeometry.h"
 
 
+template <typename T, typename A>
+int arg_max(std::vector<T, A> const& vec) {
+    return static_cast<int>(std::distance(vec.begin(), std::max_element(vec.begin(), vec.end())));
+}
+
 struct SetComparison {
   bool operator() (const std::pair<Point, double>& a, const std::pair<Point, double>& b) const {
     return (a.second > b.second);

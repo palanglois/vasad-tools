@@ -106,6 +106,8 @@ add_executable(splitVoxels main_split_voxels.cpp)
 
 add_executable(voxels2ply main_voxels_to_ply.cpp)
 
+add_executable(voxelFeatures2ply main_voxel_features_to_ply.cpp)
+
 
 target_link_libraries(bim_data ${CGAL_LIBRARIES} io_geometry)
 target_link_libraries(color_classes io_geometry)
@@ -127,6 +129,7 @@ target_link_libraries(visibilityLines ${CGAL_LIBRARIES} io_geometry graph_statis
 target_link_libraries(voxelizeModel ${CGAL_LIBRARIES} io_geometry)
 target_link_libraries(splitVoxels ${CGAL_LIBRARIES} io_geometry voxel_arrangement graph_statistics)
 target_link_libraries(voxels2ply ${CGAL_LIBRARIES} io_geometry voxel_arrangement graph_statistics)
+target_link_libraries(voxelFeatures2ply ${CGAL_LIBRARIES} io_geometry voxel_arrangement graph_statistics)
 if(MKL_FOUND)
     target_link_libraries(mesh2plane ${MKL_LIBRARIES})
 endif()
