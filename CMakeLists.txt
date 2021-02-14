@@ -102,6 +102,10 @@ add_executable(visibilityLines main_visibility_lines.cpp)
 
 add_executable(voxelizeModel main_voxelize_model.cpp)
 
+add_executable(splitVoxels main_split_voxels.cpp)
+
+add_executable(voxels2ply main_voxels_to_ply.cpp)
+
 
 target_link_libraries(bim_data ${CGAL_LIBRARIES} io_geometry)
 target_link_libraries(color_classes io_geometry)
@@ -121,6 +125,8 @@ target_link_libraries(assignLabelSingleChunk ${CGAL_LIBRARIES} io_geometry graph
 target_link_libraries(neighbourhoodStats ${CGAL_LIBRARIES} io_geometry)
 target_link_libraries(visibilityLines ${CGAL_LIBRARIES} io_geometry graph_statistics)
 target_link_libraries(voxelizeModel ${CGAL_LIBRARIES} io_geometry)
+target_link_libraries(splitVoxels ${CGAL_LIBRARIES} io_geometry voxel_arrangement graph_statistics)
+target_link_libraries(voxels2ply ${CGAL_LIBRARIES} io_geometry voxel_arrangement graph_statistics)
 if(MKL_FOUND)
     target_link_libraries(mesh2plane ${MKL_LIBRARIES})
 endif()

@@ -96,6 +96,19 @@ void VoxelArrangement::computePlanes()
             _planes.push_back(p);
         }
     }
+    // Sort the planes from the biggest to the smallest
+    sort(_planes.begin(), _planes.end(),
+         [](const Plane & a, const Plane & b) -> bool
+         {
+             return a.cumulatedPercentage > b.cumulatedPercentage;
+         });
+
+    // Compute cumulated percentage of reconstructed surface
+    double areaCumulator = 0.;
+    for(auto &plane: _planes) {
+        areaCumulator += plane.cumulatedPercentage;
+        plane.cumulatedPercentage = areaCumulator / totalArea;
+    }
 }
 
 void VoxelArrangement::buildArrangement()
@@ -196,23 +209,20 @@ void VoxelArrangement::computeFeatures(const vector<Point> &points, const vector
                           vector<vector<double>>(_depth,
                                   vector<double>(nbClasses + 1, 0.))));
 
-    // Select the points that lie in the bounding box
-    vector<Point> beginPoints;
-    vector<Point> endPoints;
-    vector<int> validIdx = addSegmentIfInBbox(pointOfViews, points, back_inserter(beginPoints), back_inserter(endPoints), _bbox);
-
-    // Go through the points
-#pragma omp parallel for
-    for(int i=0; i < validIdx.size(); i++)
+    // Histograms
+    for(int i=0; i < points.size(); i++)
     {
-        const Point &point = endPoints[i];
-        const Point &pov = beginPoints[i];
-        const int &label = labels[validIdx[i]];
+        const Point &point = points[i];
+        const Point &pov = pointOfViews[i];
+        const int &label = labels[i];
+
+        // Use point only if it is in the current bounding box
+        if(!CGAL::do_overlap(_bbox, point.bbox())) continue;
 
         // Retrieve the closest facet to the current point
         int facetHandle = closestFacet(s2e(point));
 
-        // Retrieve the index of the opposite cell of the points of view w.r.t the facet
+        // Retrieve the index of the opposite cell of the point of view w.r.t the facet
         Kernel2::Point_3 facetPoint = _arr.facet(facetHandle).point();
         int cellIdx0 = _arr.facet(facetHandle).superface(0);
         Kernel2::Point_3 cellPoint0 = _arr.cell(cellIdx0).point();
@@ -224,33 +234,64 @@ void VoxelArrangement::computeFeatures(const vector<Point> &points, const vector
         triplet coordinates = _node2index[validCellIdx];
 
         // Update the label distribution
-#pragma omp critical
         _features[get<0>(coordinates)][get<1>(coordinates)][get<2>(coordinates)][label]++;
 
-        // Visibility
+    }
 
-        // Retrieving the cell in which lies the point of view
-        int idx_x = floor((CGAL::to_double(pov.x()) - _bbox.xmin())/_voxelSide);
-        int idx_y = floor((CGAL::to_double(pov.y()) - _bbox.ymin())/_voxelSide);
-        int idx_z = floor((CGAL::to_double(pov.z()) - _bbox.zmin())/_voxelSide);
-        int povCell = _index2node[make_tuple(idx_x, idx_y, idx_z)];
+    // Select the visibility segments that lie in the bounding box
+    vector<Point> beginPoints;
+    vector<Point> endPoints;
+    vector<int> validIdx = addSegmentIfInBbox(pointOfViews, points, back_inserter(beginPoints), back_inserter(endPoints), _bbox);
+
+    // Visibility
+    auto tqPoints = tq::trange(validIdx.size());
+    tqPoints.set_prefix("Computing visibility: ");
+    for (int i : tqPoints)
+    {
+        const Point &point = endPoints[i];
+        const Point &pov = beginPoints[i];
+        const int &label = labels[validIdx[i]];
+
+        bool isPointInBbox = CGAL::do_overlap(point.bbox(), _bbox);
+        int frontCellIdx = _arr.cell_handle(*_arr.cells_begin());
+        Kernel2::Point_3 originPoint = s2e(point);
+        if(isPointInBbox) {
+            // Retrieve the closest facet to the current point
+            int facetHandle = closestFacet(s2e(point));
+
+            // If point is in the bounding box, we use the closest facet's center as the origin of the
+            // visibility ray (to avoid boundary effects).
+            Kernel2::Point_3 facetPoint = _arr.facet(facetHandle).point();
+
+            // Retrieve the index of the opposite cell of the point of view w.r.t the facet
+            int cellIdx0 = _arr.facet(facetHandle).superface(0);
+            Kernel2::Point_3 cellPoint0 = _arr.cell(cellIdx0).point();
+            int cellIdx1 = _arr.facet(facetHandle).superface(1);
+            Vector visibilityVector(pov, point);
+            Vector vectorCell0(e2s(facetPoint), e2s(cellPoint0));
+            double scalarProduct = CGAL::scalar_product(visibilityVector, vectorCell0);
+
+            // Retrieving the cell just before the current point and its center
+            frontCellIdx = (scalarProduct >= 0) ? cellIdx1 : cellIdx0;
+            originPoint = _arr.cell(frontCellIdx).point();
+        }
 
         // Intersect the (point_of_view <-> target facet point) segment with the plane arrangement
         Arrangement::Face_handle begin_cell;
         Arrangement::Face_handle end_cell;
         vector<pair<Arrangement::Face_handle, int>> intersectedFacets;
         vector<pair<Arrangement::Face_handle, double>> intersectedCellsAndDists;
-        segment_search_advanced(_arr, s2e(pov), facetPoint, begin_cell, back_inserter(intersectedFacets),
-                                back_inserter(intersectedCellsAndDists), end_cell, povCell, true);
+        segment_search_advanced(_arr, originPoint, s2e(pov), begin_cell, back_inserter(intersectedFacets),
+                                back_inserter(intersectedCellsAndDists), end_cell, frontCellIdx, false);
 
         // Add visibility information
         for(const auto& cellAndDist: intersectedCellsAndDists){
             if(!_arr.is_cell_bounded(cellAndDist.first)) continue;
             triplet cellIdx = _node2index[cellAndDist.first];
-#pragma omp critical
             _features[get<0>(cellIdx)][get<1>(cellIdx)][get<2>(cellIdx)][nbClasses]++;
         }
     }
+
     // Normalization
     for(int i=0; i < _width; i++)
         for(int j=0; j < _height; j++)
@@ -346,6 +387,37 @@ void VoxelArrangement::saveAsPly(const string &path, const vector<classKeywordsC
     }
 }
 
+void VoxelArrangement::saveArrangementAsPly(const string &path)
+{
+    // Make sure that the arrangement has been built
+    buildArrangement();
+
+    // Label each facet which needs to be drawn
+    for(auto itf = _arr.facets_begin(); itf != _arr.facets_end(); itf++){
+        Arrangement::Face& f = *itf;
+        f._info = -1;
+        itf->to_draw = false;
+        if(! _arr.is_facet_bounded(f)){continue;}
+        Arrangement::Face_handle ch0 = f.superface(0), ch1 = f.superface(1);
+        if(!_arr.is_cell_bounded(ch0) || !_arr.is_cell_bounded(ch1)) continue;
+        itf->to_draw = true;
+    }
+
+    // Standard polyhedral complex output procedure
+    typedef Polyhedral_complex_3::Mesh_3<> Mesh;
+    typedef Polyhedral_complex_3::Mesh_extractor_3<Arrangement,Mesh> Extractor;
+    Mesh meshGC;
+    Extractor extractorGC(_arr);
+    extractorGC.extract(meshGC,false);
+    {
+        std::ofstream stream(path.c_str());
+        if (!stream.is_open())
+            return ;
+        Polyhedral_complex_3::print_mesh_PLY(stream, meshGC);
+        stream.close();
+    }
+}
+
 const std::vector<Plane> &VoxelArrangement::planes() const
 {
     return _planes;
@@ -414,19 +486,21 @@ int splitArrangementInVoxels(vector<facesLabelName> &labeledShapes,
         CGAL::Bbox_3 curBbox = bboxes.front();
         bboxes.pop();
         // Compute planes in current bbox
-        vector<int> validPlaneIdx = computePlanesInBoundingBox(planes, pointCloudPlanes, curBbox, 1.);
+        // We build the arrangement corresponding to the current bounding box
+        auto fullArrangement = VoxelArrangement(curBbox, voxelSide);
+        int nbPlanesInCurrentBbox = fullArrangement.planes().size();
 
-        // If we have too many planes or no plane at all, we subdivide the current bounding box
-        if(validPlaneIdx.size() > maxNbPlanes || validPlaneIdx.empty())
+        // If we have too many planes, we subdivide the current bounding box
+        if(nbPlanesInCurrentBbox > maxNbPlanes)
         {
             subdivideBboxLongestAxis(bboxes, curBbox);
             continue;
         }
+        // If we don't have any plane, we just drop the current bounding box
+        if(nbPlanesInCurrentBbox == 0)
+            continue;
         if(verbose)
-            cout << "Found " << validPlaneIdx.size() << " valid planes in current bbox which is: " << curBbox << endl;
-
-        // We build the arrangement corresponding to the current bounding box
-        auto fullArrangement = VoxelArrangement(curBbox, voxelSide);
+            cout << "Found " << nbPlanesInCurrentBbox << " valid planes in current bbox which is: " << curBbox << endl;
 
         // Compute the number of cells in the current arrangement
         int nbCells = fullArrangement.numberOfCells();
@@ -437,7 +511,7 @@ int splitArrangementInVoxels(vector<facesLabelName> &labeledShapes,
         // If we have too many cells, we update maxNbPlanes accordingly and we subdivide the current bounding box
         if(nbCells > maxNodes)
         {
-            maxNbPlanes = validPlaneIdx.size();
+            maxNbPlanes = nbPlanesInCurrentBbox - 1;
             subdivideBboxLongestAxis(bboxes, curBbox);
             continue;
         }

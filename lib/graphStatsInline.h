@@ -126,4 +126,35 @@ inline void subdivideBboxLongestAxis(std::queue<CGAL::Bbox_3> &bboxes, CGAL::Bbo
     }
 }
 
+inline bool isInBbox(const Triangle& tri, const CGAL::Bbox_3 &bbox)
+{
+    if(tri.bbox().xmin() < bbox.xmin()) return false;
+    if(tri.bbox().ymin() < bbox.ymin()) return false;
+    if(tri.bbox().zmin() < bbox.zmin()) return false;
+    if(tri.bbox().xmax() > bbox.xmax()) return false;
+    if(tri.bbox().ymax() > bbox.ymax()) return false;
+    return !(tri.bbox().zmax() > bbox.zmax());
+}
+
+inline std::vector<int> computePlanesInBoundingBox(const std::vector<Plane> &planes, const std::vector<Point> &points,
+                                              CGAL::Bbox_3 bbox, double ratioReconstructed)
+{
+    std::vector<int> planeIdx;
+    std::vector<Triangle> bboxTriangles = meshBbox(bbox);
+    Tree tree(bboxTriangles.begin(), bboxTriangles.end());
+    for(int i=0; i < planes.size(); i++)
+    {
+        if(planes[i].cumulatedPercentage > ratioReconstructed) continue;
+        bool doesIntersect = false;
+        for(int j=0; j < planes[i].faces.size() && !doesIntersect; j++) {
+            Triangle query(points[planes[i].faces[j][0]], points[planes[i].faces[j][1]],
+                           points[planes[i].faces[j][2]]);
+            doesIntersect = isInBbox(query, bbox) || tree.do_intersect(query);
+        }
+        if(doesIntersect)
+            planeIdx.push_back(i);
+    }
+    return planeIdx;
+}
+
 #endif //BIM_DATA_GRAPHSTATSINLINE_H

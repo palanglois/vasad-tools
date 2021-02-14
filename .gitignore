@@ -14,3 +14,5 @@ data/voxelOutput.ply
 data/debug_triangles.obj
 .clion.source.upload.marker
 data/00*json
+/data/arrangement.ply
+/data/segment.obj
