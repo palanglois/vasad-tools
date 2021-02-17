@@ -127,9 +127,9 @@ void VoxelArrangement::buildArrangement()
     for (auto cellIt = _arr.cells_begin(); cellIt != _arr.cells_end(); cellIt++) {
         if (!_arr.is_cell_bounded(*cellIt)) continue;
         const auto &centroid = cellIt->point();
-        int idx_x = floor((CGAL::to_double(centroid.x()) - _bbox.xmin()) / _voxelSide);
-        int idx_y = floor((CGAL::to_double(centroid.y()) - _bbox.ymin()) / _voxelSide);
-        int idx_z = floor((CGAL::to_double(centroid.z()) - _bbox.zmin()) / _voxelSide);
+        int idx_x = max(0, (int) floor((CGAL::to_double(centroid.x()) - _bbox.xmin()) / _voxelSide));
+        int idx_y = max(0, (int) floor((CGAL::to_double(centroid.y()) - _bbox.ymin()) / _voxelSide));
+        int idx_z = max(0, (int) floor((CGAL::to_double(centroid.z()) - _bbox.zmin()) / _voxelSide));
         if(idx_x + 1 > _width) _width = idx_x + 1;
         if(idx_y + 1 > _height) _height = idx_y + 1;
         if(idx_z + 1 > _depth) _depth = idx_z + 1;
@@ -222,7 +222,7 @@ void VoxelArrangement::assignLabel(vector<facesLabelName> &labeledShapes, int nb
     vector<pair<Point, int>> points;
     for(auto cellIt = _arr.cells_begin(); cellIt != _arr.cells_end(); cellIt++)
         if(_arr.is_cell_bounded(*cellIt))
-            points.emplace_back(e2s(cellIt->point()), _arr.cell_handle(*cellIt));
+            points.emplace_back(e2s(cellIt->point()), _arr.cell_handle(*cellIt));    
     // Label the points
     vector<int> labels = assignLabelToPoints(points, labeledShapes, nbClasses, _bbox);
     // Store them
