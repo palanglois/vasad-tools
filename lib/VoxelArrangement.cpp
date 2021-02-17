@@ -144,6 +144,19 @@ void VoxelArrangement::buildArrangement()
     }
 }
 
+void VoxelArrangement::normalizeFeatures() {
+    for(int i=0; i < _width; i++)
+        for(int j=0; j < _height; j++)
+            for(int k=0; k < _depth; k++) {
+                double nbElems = 0.;
+                for (int l = 0; l < _features[i][j][k].size(); l++)
+                    nbElems += _features[i][j][k][l];
+                if(nbElems == 0.) continue;
+                for (int l = 0; l < _features[i][j][k].size(); l++)
+                    _features[i][j][k][l] /= nbElems;
+            }
+}
+
 int VoxelArrangement::numberOfCells()
 {
     // Make sure that the arrangement has been built
@@ -156,18 +169,24 @@ int VoxelArrangement::numberOfCells()
     return nbCells;
 }
 
-int VoxelArrangement::closestFacet(const Arrangement::Point &query)
-{
+VoxelArrangement::triplet VoxelArrangement::findVoxel(const Point &query) {
     int idx_x = floor((CGAL::to_double(query.x()) - _bbox.xmin())/_voxelSide);
     int idx_y = floor((CGAL::to_double(query.y()) - _bbox.ymin())/_voxelSide);
     int idx_z = floor((CGAL::to_double(query.z()) - _bbox.zmin())/_voxelSide);
-    const vector<int> &cellFacets = _node2facets[_index2node[make_tuple(idx_x, idx_y, idx_z)]];
+    return make_tuple(idx_x, idx_y, idx_z);
+
+}
+
+int VoxelArrangement::closestFacet(const Point &query)
+{
+    Simple_to_Epeck s2e;
+    const vector<int> &cellFacets = _node2facets[_index2node[findVoxel(query)]];
 
     auto bestDistance = DBL_MAX;
     int finalFacet = -1;
     for(const auto facetHandle: cellFacets)
     {
-        double distance = CGAL::to_double((_arr.plane(_arr.facet_plane(facetHandle)).projection(query) - query).squared_length());
+        double distance = CGAL::to_double((_arr.plane(_arr.facet_plane(facetHandle)).projection(s2e(query)) - s2e(query)).squared_length());
         if(distance < bestDistance)
         {
             bestDistance = distance;
@@ -197,6 +216,70 @@ void VoxelArrangement::assignLabel(vector<facesLabelName> &labeledShapes, int nb
     }
 }
 
+void VoxelArrangement::computeFeaturesRegular(const std::vector<Point> &points, const std::vector<Point> &pointOfViews,
+                                              const std::vector<int> &labels, int nbClasses, bool verbose) {
+    Simple_to_Epeck s2e;
+    Epeck_to_Simple e2s;
+    // Make sure that the arrangement has been built
+    buildArrangement();
+    // Initialize the features
+    _features = vector<vector<vector<vector<double>>>>(_width,
+                  vector<vector<vector<double>>>(_height,
+                          vector<vector<double>>(_depth,
+                                  vector<double>(nbClasses + 1, 0.))));
+
+    // Histograms
+    for(int i=0; i < points.size(); i++) {
+        const Point &point = points[i];
+        const Point &pov = pointOfViews[i];
+        const int &label = labels[i];
+
+        // Use point only if it is in the current bounding box
+        if (!CGAL::do_overlap(_bbox, point.bbox())) continue;
+
+        triplet cellIdx = findVoxel(point);
+        _features[get<0>(cellIdx)][get<1>(cellIdx)][get<2>(cellIdx)][label]++;
+    }
+
+
+    // Select the visibility segments that lie in the bounding box
+    vector<Point> beginPoints;
+    vector<Point> endPoints;
+    vector<int> validIdx = addSegmentIfInBbox(pointOfViews, points, back_inserter(beginPoints), back_inserter(endPoints), _bbox);
+
+    // Visibility
+    auto tqPoints = tq::trange(validIdx.size());
+    tqPoints.set_prefix("Computing visibility: ");
+    for (int i : tqPoints) {
+        const Point &point = endPoints[i];
+        const Point &pov = beginPoints[i];
+        const int &label = labels[validIdx[i]];
+
+        bool isPointInBbox = CGAL::do_overlap(point.bbox(), _bbox);
+        int frontCellIdx = _arr.cell_handle(*_arr.cells_begin());
+        if(CGAL::do_overlap(point.bbox(), _bbox))
+            frontCellIdx = _index2node[findVoxel(point)];
+        Kernel2::Point_3 originPoint = s2e(point);
+
+        // Intersect the (point_of_view <-> target facet point) segment with the plane arrangement
+        Arrangement::Face_handle begin_cell;
+        Arrangement::Face_handle end_cell;
+        vector<pair<Arrangement::Face_handle, int>> intersectedFacets;
+        vector<pair<Arrangement::Face_handle, double>> intersectedCellsAndDists;
+        segment_search_advanced(_arr, originPoint, s2e(pov), begin_cell, back_inserter(intersectedFacets),
+                                back_inserter(intersectedCellsAndDists), end_cell, frontCellIdx, false);
+
+        // Add visibility information
+        for(const auto& cellAndDist: intersectedCellsAndDists) {
+            if(cellAndDist.first == begin_cell) continue; // Discard the cell that contains the current point
+            if (!_arr.is_cell_bounded(cellAndDist.first)) continue;
+            triplet cellIdx = _node2index[cellAndDist.first];
+            _features[get<0>(cellIdx)][get<1>(cellIdx)][get<2>(cellIdx)][nbClasses]++;
+        }
+    }
+    normalizeFeatures();
+}
+
 void VoxelArrangement::computeFeatures(const vector<Point> &points, const vector<Point> &pointOfViews,
                                        const vector<int> &labels, int nbClasses, bool verbose) {
     Simple_to_Epeck s2e;
@@ -220,7 +303,7 @@ void VoxelArrangement::computeFeatures(const vector<Point> &points, const vector
         if(!CGAL::do_overlap(_bbox, point.bbox())) continue;
 
         // Retrieve the closest facet to the current point
-        int facetHandle = closestFacet(s2e(point));
+        int facetHandle = closestFacet(point);
 
         // Retrieve the index of the opposite cell of the point of view w.r.t the facet
         Kernel2::Point_3 facetPoint = _arr.facet(facetHandle).point();
@@ -257,7 +340,7 @@ void VoxelArrangement::computeFeatures(const vector<Point> &points, const vector
         Kernel2::Point_3 originPoint = s2e(point);
         if(isPointInBbox) {
             // Retrieve the closest facet to the current point
-            int facetHandle = closestFacet(s2e(point));
+            int facetHandle = closestFacet(point);
 
             // If point is in the bounding box, we use the closest facet's center as the origin of the
             // visibility ray (to avoid boundary effects).
@@ -291,18 +374,7 @@ void VoxelArrangement::computeFeatures(const vector<Point> &points, const vector
             _features[get<0>(cellIdx)][get<1>(cellIdx)][get<2>(cellIdx)][nbClasses]++;
         }
     }
-
-    // Normalization
-    for(int i=0; i < _width; i++)
-        for(int j=0; j < _height; j++)
-            for(int k=0; k < _depth; k++) {
-                double nbElems = 0.;
-                for (int l = 0; l < nbClasses + 1; l++)
-                    nbElems += _features[i][j][k][l];
-                if(nbElems == 0.) continue;
-                for (int l = 0; l < nbClasses + 1; l++)
-                    _features[i][j][k][l] /= nbElems;
-            }
+    normalizeFeatures();
 }
 
 void VoxelArrangement::saveAsJson(const string &path)
@@ -577,7 +649,7 @@ int splitArrangementInVoxels(vector<facesLabelName> &labeledShapes,
         fullArrangement.assignLabel(labeledShapes, nbClasses, verbose);
 
         // We compute the features
-        fullArrangement.computeFeatures(pointCloud, pointOfViews, pointCloudLabels, nbClasses, verbose);
+        fullArrangement.computeFeaturesRegular(pointCloud, pointOfViews, pointCloudLabels, nbClasses, verbose);
 
         // We save the current chunk
         string outPath(path + padTo(to_string(chunkIterator), 4) + ".json");

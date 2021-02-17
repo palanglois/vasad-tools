@@ -18,17 +18,25 @@ public:
     // Internal functions
     void computePlanes();
     void buildArrangement();
+    void normalizeFeatures();
 
     // Count the number of cells
     int numberOfCells();
 
+    // Finding the cell in which a point is
+    triplet findVoxel(const Point &query);
+
     // Finding the closest facet to a query point
-    int closestFacet(const Arrangement::Point &query);
+    int closestFacet(const Point &query);
 
     // Labeling the voxels
     void assignLabel(std::vector<facesLabelName> &labeledShapes, int nbClasses, bool verbose);
 
-    // Computing the features from labeled points with their point of views
+    // Computing the features from labeled points with their point of views (no point snapping on the facets)
+    void computeFeaturesRegular(const std::vector<Point> &points, const std::vector<Point> &pointOfViews,
+                                const std::vector<int> &labels, int nbClasses, bool verbose);
+
+    // Computing the features from labeled points with their point of views (with snapping)
     void computeFeatures(const std::vector<Point> &points, const std::vector<Point> &pointOfViews,
                          const std::vector<int> &labels, int nbClasses, bool verbose);
 
