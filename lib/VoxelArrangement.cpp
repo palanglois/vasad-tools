@@ -157,6 +157,23 @@ void VoxelArrangement::normalizeFeatures() {
             }
 }
 
+bool VoxelArrangement::isLabelEmpty() const {
+    bool empty = true;
+    for(int i=0; i < _width; i++) {
+        for (int j = 0; j < _height; j++) {
+            for (int k = 0; k < _depth; k++) {
+                if (_labels[i][j][k] != -1) {
+                    empty = false;
+                    break;
+                }
+            }
+            if (!empty) break;
+        }
+        if(!empty) break;
+    }
+    return empty;
+}
+
 int VoxelArrangement::numberOfCells()
 {
     // Make sure that the arrangement has been built
@@ -584,6 +601,34 @@ double VoxelArrangement::depth() const {
     return _depth;
 }
 
+vector<CGAL::Bbox_3> splitBigBbox(const CGAL::Bbox_3 &bigBbox, double nbVoxelsAlongAxis, double voxelSide)
+{
+    vector<CGAL::Bbox_3> bboxes;
+    double bboxSide = nbVoxelsAlongAxis*voxelSide;
+    int nbSplitX = ceil(double(bigBbox.xmax() - bigBbox.xmin()) / bboxSide);
+    int nbSplitY = ceil(double(bigBbox.ymax() - bigBbox.ymin()) / bboxSide);
+    int nbSplitZ = ceil(double(bigBbox.zmax() - bigBbox.zmin()) / bboxSide);
+    double originX = (bigBbox.xmin() + bigBbox.xmax() - nbSplitX * bboxSide) / 2.;
+    double originY = (bigBbox.ymin() + bigBbox.ymax() - nbSplitY * bboxSide) / 2.;
+    double originZ = (bigBbox.zmin() + bigBbox.zmax() - nbSplitZ * bboxSide) / 2.;
+    for(int i=0; i < nbSplitX; i++)
+    {
+        for(int j=0; j < nbSplitY; j++)
+        {
+            for(int k=0; k < nbSplitZ; k++)
+            {
+                bboxes.emplace_back(originX + i * bboxSide,
+                                    originY + j * bboxSide,
+                                    originZ + k * bboxSide,
+                                    originX + (i + 1) * bboxSide,
+                                    originY + (j + 1) * bboxSide,
+                                    originZ + (k + 1) * bboxSide);
+            }
+        }
+    }
+    return bboxes;
+}
+
 int splitArrangementInVoxels(vector<facesLabelName> &labeledShapes,
                              const vector<Point> &pointOfViews,
                              const vector<Point> &pointCloud,
@@ -657,4 +702,49 @@ int splitArrangementInVoxels(vector<facesLabelName> &labeledShapes,
         chunkIterator++;
     }
     return chunkIterator;
+}
+
+int splitArrangementInVoxelsRegular(vector<facesLabelName> &labeledShapes,
+                                    const vector<Point> &pointOfViews,
+                                    const vector<Point> &pointCloud,
+                                    const vector<int> &pointCloudLabels,
+                                    double voxelSide,
+                                    int nbClasses, const string &path, double nbVoxelsAlongAxis, bool verbose)
+{
+
+    // Compute initial bounding box
+    CGAL::Bbox_3 initialBbox;
+    for(const auto& shape: labeledShapes)
+        for(const auto& triangle: get<0>(shape))
+            initialBbox += triangle.bbox();
+
+    // Split it
+    vector<CGAL::Bbox_3> bboxes = splitBigBbox(initialBbox, nbVoxelsAlongAxis, voxelSide);
+
+    // Generate the chunks
+    for(int i=0; i < bboxes.size(); i++)
+    {
+        const CGAL::Bbox_3 &curBbox = bboxes[i];
+        if (verbose) {
+            cout << endl << "Bbox \033[1;31m" << i << "\033[0m out of " << bboxes.size() << endl;
+            cout << "Current bbox: " << curBbox << endl;
+        }
+
+        // We build the arrangement corresponding to the current bounding box
+        auto fullArrangement = VoxelArrangement(curBbox, voxelSide);
+
+        // We compute the labels
+        fullArrangement.assignLabel(labeledShapes, nbClasses, verbose);
+
+        // If we have an empty chunk, we discard it
+        if(fullArrangement.isLabelEmpty()) continue;
+
+        // We compute the features
+        fullArrangement.computeFeaturesRegular(pointCloud, pointOfViews, pointCloudLabels, nbClasses, verbose);
+
+        // We save the current chunk
+        string outPath(path + padTo(to_string(i), 4) + ".json");
+        fullArrangement.saveAsJson(outPath);
+    }
+    return bboxes.size();
 }

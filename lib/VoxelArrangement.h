@@ -2,6 +2,7 @@
 #define BIM_DATA_VOXELARRANGEMENT_H
 
 #include "graphStats.h"
+#include <cmath>
 
 
 class VoxelArrangement {
@@ -19,6 +20,7 @@ public:
     void computePlanes();
     void buildArrangement();
     void normalizeFeatures();
+    bool isLabelEmpty() const;
 
     // Count the number of cells
     int numberOfCells();
@@ -78,12 +80,22 @@ private:
     int _depth;
 };
 
+
+std::vector<CGAL::Bbox_3> splitBigBbox(const CGAL::Bbox_3 &bigBbox, double nbVoxelsAlongAxis, double voxelSide);
+
 int splitArrangementInVoxels(std::vector<facesLabelName> &labeledShapes,
                              const std::vector<Point> &pointOfViews,
                              const std::vector<Point> &pointCloud,
                              const std::vector<int> &pointCloudLabels,
                              double voxelSide,
                              int nbClasses, const std::string &path, int maxNodes, bool verbose);
+
+int splitArrangementInVoxelsRegular(std::vector<facesLabelName> &labeledShapes,
+                                    const std::vector<Point> &pointOfViews,
+                                    const std::vector<Point> &pointCloud,
+                                    const std::vector<int> &pointCloudLabels,
+                                    double voxelSide,
+                                    int nbClasses, const std::string &path, double nbVoxelsAlongAxis, bool verbose);
 
 
 #endif //BIM_DATA_VOXELARRANGEMENT_H

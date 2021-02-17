@@ -182,6 +182,7 @@ vector<int> assignLabelToPoints(const vector<pair<Point, int>>& queryPoints, vec
                 vector<list<Ray_intersection>::iterator> duplicatedIntersections;
                 for(auto interIt = intersections[k].begin(); interIt != intersections[k].end(); interIt++)
                 {
+                    if (!boost::get<Point>(&((*interIt)->first))) continue;
                     auto insert = pointSet.insert(*boost::get<Point>(&((*interIt)->first)));
                     if(!insert.second)
                         duplicatedIntersections.push_back(interIt);

@@ -15,7 +15,7 @@ int main(int argc, char *argv[]) {
     opt.add_option("-pv", "--pov", "Path to the point of views", "");
     opt.add_option("-pt", "--pointCloud", "Path to the input point cloud.", "");
     opt.add_option("-vs", "--voxelSide", "Voxel side size in meters", "0.07");
-    opt.add_option("-mn", "--max-nodes", "Max number of nodes per split", "30000");
+    opt.add_option("-va", "--nb_voxels_along_axis", "Number of voxels along each axis in each chunk", "48");
     opt.add_option("-v", "--verbose", "Verbosity trigger");
 
     //Parsing options
@@ -52,7 +52,7 @@ int main(int argc, char *argv[]) {
     const string pointOfViewPath = opt["-pv"];
     const string pointCloudPath = opt["-pt"];
     const double voxelSide = op::str2double(opt["-vs"]);
-    const int maxNodes = op::str2int(opt["-mn"]);
+    const double nbVoxelsAlongAxis = op::str2int(opt["-va"]);
     bool verbose = op::str2bool(opt["-v"]);
 
     // Load semantic_classes
@@ -75,11 +75,11 @@ int main(int argc, char *argv[]) {
     vector<Point> pointOfViews = loadPointCloudObj(pointOfViewPath);
 
     // Make splits
-    int nbSplit = splitArrangementInVoxels(shapesAndClasses, pointOfViews, pointsWithLabel.first,
-                                           pointsWithLabel.second, voxelSide, classesWithColor.size(),
-                                           outputPath + prefix, maxNodes, verbose);
+    int nbSplit = splitArrangementInVoxelsRegular(shapesAndClasses, pointOfViews, pointsWithLabel.first,
+                                                  pointsWithLabel.second, voxelSide, classesWithColor.size(),
+                                                  outputPath + prefix, nbVoxelsAlongAxis, verbose);
 
-    cout << "Made " << nbSplit << " out of model " << gtPath << endl;
+    cout << "Made " << nbSplit << " chunks out of model " << gtPath << endl;
     return 0;
 
 }

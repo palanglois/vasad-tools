@@ -231,10 +231,27 @@ TEST(VoxelArrangement, Split)
     int maxNodes = 8;
     bool verbose = false;
 
+    double nbVoxelsAlongAxis = 2.;
+    int nbSplitsRegular = splitArrangementInVoxelsRegular(allTrees, pointOfViews, points, pointLabels, voxelSide,
+                                                          classesWithColor.size(), outPath, nbVoxelsAlongAxis, verbose);
+
     int nbSplits = splitArrangementInVoxels(allTrees, pointOfViews, points, pointLabels, voxelSide,
                                             classesWithColor.size(), outPath, maxNodes, verbose);
+
 
     cout.clear();
     cerr.clear();
     ASSERT_EQ(nbSplits, 2);
+    ASSERT_EQ(nbSplitsRegular, 2);
+}
+
+TEST(VoxelArrangement, SplitBbox)
+{
+    CGAL::Bbox_3 bbox(0., 0., 0., 10., 10., 10.);
+    double nbVoxelsAlongAxis = 4.;
+    double voxelSide = 1.;
+    vector<CGAL::Bbox_3> bboxes = splitBigBbox(bbox, nbVoxelsAlongAxis, voxelSide);
+    ASSERT_EQ((int) bboxes.size(), 27);
+    ASSERT_EQ(bboxes[0].xmin(), -1.);
+    ASSERT_EQ(bboxes[0].xmax(), 3.);
 }
