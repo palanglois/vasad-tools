@@ -12,8 +12,12 @@ TEST(VoxelArrangement, PlaneCreation)
 
     cout.setstate(ios_base::failbit);
     cerr.setstate(ios_base::failbit);
-    ASSERT_EQ(VoxelArrangement(bbox, voxelSize1).planes().size(), 9);
-    ASSERT_EQ(VoxelArrangement(bbox, voxelSize2).planes().size(), 6);
+    VoxelArrangement voxAr1(bbox, voxelSize1);
+    VoxelArrangement voxAr2(bbox, voxelSize2);
+    ASSERT_EQ(voxAr1.planes().size(), 3);
+    ASSERT_EQ(voxAr2.planes().size(), 0);
+    ASSERT_EQ(voxAr1.numberOfCells(), 8);
+    ASSERT_EQ(voxAr2.numberOfCells(), 1);
     cout.clear();
     cerr.clear();
 }
@@ -248,10 +252,47 @@ TEST(VoxelArrangement, Split)
 TEST(VoxelArrangement, SplitBbox)
 {
     CGAL::Bbox_3 bbox(0., 0., 0., 10., 10., 10.);
-    double nbVoxelsAlongAxis = 4.;
+    int nbVoxelsAlongAxis = 4;
     double voxelSide = 1.;
     vector<CGAL::Bbox_3> bboxes = splitBigBbox(bbox, nbVoxelsAlongAxis, voxelSide);
     ASSERT_EQ((int) bboxes.size(), 27);
     ASSERT_EQ(bboxes[0].xmin(), -1.);
     ASSERT_EQ(bboxes[0].xmax(), 3.);
+}
+
+TEST(VoxelArrangement, randomSplit)
+{
+    cout.setstate(ios_base::failbit);
+    cerr.setstate(ios_base::failbit);
+    // Labels
+    const string testObjPath = (string) TEST_DIR + "simplecube.obj";
+    vector<classKeywordsColor> classesWithColor = loadSemanticClasses((string) TEST_DIR + "semantic_classes.json");
+    auto allTrees =  loadTreesFromObj(testObjPath, classesWithColor);
+
+    // Compute global bbox
+    CGAL::Bbox_3 bboxGlobal;
+    for(const auto& shape: allTrees)
+        for(const auto& triangle: get<0>(shape))
+            bboxGlobal += triangle.bbox();
+
+    int nbVoxelsAlongAxis = 4;
+    double voxelSide = 0.0435;
+    cout.clear();
+    cerr.clear();
+    vector<CGAL::Bbox_3> bboxes = splitBigBbox(bboxGlobal, nbVoxelsAlongAxis, voxelSide);
+    for (const auto &bbox: bboxes) {
+        cout.setstate(ios_base::failbit);
+        cerr.setstate(ios_base::failbit);
+        VoxelArrangement arr(bbox, voxelSide);
+        arr.assignLabel(allTrees, classesWithColor.size(), true);
+        cout.clear();
+        cerr.clear();
+        ASSERT_EQ(arr.labels().size(), nbVoxelsAlongAxis);
+        for(const auto& arr_slice: arr.labels())
+        {
+            ASSERT_EQ(arr_slice.size(), nbVoxelsAlongAxis);
+            for(const auto& arr_line: arr_slice)
+                ASSERT_EQ(arr_line.size(), nbVoxelsAlongAxis) << nbVoxelsAlongAxis;
+        }
+    }
 }

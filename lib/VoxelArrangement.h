@@ -81,7 +81,7 @@ private:
 };
 
 
-std::vector<CGAL::Bbox_3> splitBigBbox(const CGAL::Bbox_3 &bigBbox, double nbVoxelsAlongAxis, double voxelSide);
+std::vector<CGAL::Bbox_3> splitBigBbox(const CGAL::Bbox_3 &bigBbox, int nbVoxelsAlongAxis, double voxelSide);
 
 int splitArrangementInVoxels(std::vector<facesLabelName> &labeledShapes,
                              const std::vector<Point> &pointOfViews,
@@ -95,7 +95,7 @@ int splitArrangementInVoxelsRegular(std::vector<facesLabelName> &labeledShapes,
                                     const std::vector<Point> &pointCloud,
                                     const std::vector<int> &pointCloudLabels,
                                     double voxelSide,
-                                    int nbClasses, const std::string &path, double nbVoxelsAlongAxis, bool verbose);
+                                    int nbClasses, const std::string &path, int nbVoxelsAlongAxis, bool verbose);
 
 
 #endif //BIM_DATA_VOXELARRANGEMENT_H

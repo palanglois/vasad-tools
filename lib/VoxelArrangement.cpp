@@ -62,9 +62,9 @@ void VoxelArrangement::computePlanes()
     vector<Vector> normals = {{1., 0., 0.}, {0., 1., 0.}, {0., 0., 1.}};
     int faceAccum = 0;
     for(int i=0; i < ranges.size(); i++) {
-        int nbPlanes = ceil(ranges[i] / _voxelSide);
+        int nbPlanes = round(ranges[i] / _voxelSide);
         Vector& normal = normals[i];
-        for (int j = 0; j < nbPlanes + 1; j++) {
+        for (int j = 1; j < nbPlanes; j++) {
             double curAxisCoordinate = min(mins[i] + _voxelSide * j, maxs[i]);
             vector<double> lowLeft = {0., 0., 0.};
             lowLeft[i] = curAxisCoordinate;
@@ -601,7 +601,7 @@ double VoxelArrangement::depth() const {
     return _depth;
 }
 
-vector<CGAL::Bbox_3> splitBigBbox(const CGAL::Bbox_3 &bigBbox, double nbVoxelsAlongAxis, double voxelSide)
+vector<CGAL::Bbox_3> splitBigBbox(const CGAL::Bbox_3 &bigBbox, int nbVoxelsAlongAxis, double voxelSide)
 {
     vector<CGAL::Bbox_3> bboxes;
     double bboxSide = nbVoxelsAlongAxis*voxelSide;
@@ -709,7 +709,7 @@ int splitArrangementInVoxelsRegular(vector<facesLabelName> &labeledShapes,
                                     const vector<Point> &pointCloud,
                                     const vector<int> &pointCloudLabels,
                                     double voxelSide,
-                                    int nbClasses, const string &path, double nbVoxelsAlongAxis, bool verbose)
+                                    int nbClasses, const string &path, int nbVoxelsAlongAxis, bool verbose)
 {
 
     // Compute initial bounding box
