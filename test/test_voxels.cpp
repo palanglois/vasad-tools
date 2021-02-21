@@ -187,13 +187,16 @@ TEST(VoxelArrangement, VoxelInOut)
     voxArr.computeFeatures(points, pointOfViews, pointLabels, nbClasses, false);
 
     // Output
-    string outputPath = (string) TEST_DIR + "voxelOutput.json";
+    string outputJsonPath = (string) TEST_DIR + "voxelOutput.json";
     string outputPlyPath = (string) TEST_DIR + "voxelOutput.ply";
+    string outputHdfPath = (string) TEST_DIR + "voxelOutput.h5";
     string outputFeaturesPath = (string) TEST_DIR + "voxelFeatures.ply";
-    voxArr.saveAsJson((string) TEST_DIR + "voxelOutput.json");
+    voxArr.saveAsJson(outputJsonPath);
+    voxArr.saveAsHdf(outputHdfPath);
 
     //Input
-    VoxelArrangement newVoxArr(outputPath);
+    VoxelArrangement newVoxArr(outputJsonPath);
+    VoxelArrangement h5VoxArr(outputHdfPath);
 
     // Ply output
     newVoxArr.saveAsPly(outputPlyPath, classesWithColor);
@@ -209,6 +212,16 @@ TEST(VoxelArrangement, VoxelInOut)
     ASSERT_EQ(voxArr.width(), newVoxArr.width());
     ASSERT_EQ(voxArr.height(), newVoxArr.height());
     ASSERT_EQ(voxArr.depth(), newVoxArr.depth());
+    ASSERT_EQ(voxArr.width(), h5VoxArr.width());
+    ASSERT_EQ(voxArr.height(), h5VoxArr.height());
+    ASSERT_EQ(voxArr.depth(), h5VoxArr.depth());
+    ASSERT_EQ(voxArr.bbox(), h5VoxArr.bbox());
+    for(int i=0; i < voxArr.planes().size(); i++) {
+        ASSERT_EQ(voxArr.planes()[i].inlier, h5VoxArr.planes()[i].inlier);
+        ASSERT_EQ(voxArr.planes()[i].normal, h5VoxArr.planes()[i].normal);
+        ASSERT_EQ(voxArr.planes()[i].faces, h5VoxArr.planes()[i].faces);
+        ASSERT_EQ(voxArr.planes()[i].cumulatedPercentage, h5VoxArr.planes()[i].cumulatedPercentage);
+    }
 }
 
 TEST(VoxelArrangement, Split)

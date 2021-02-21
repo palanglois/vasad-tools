@@ -17,6 +17,9 @@ if (OPENMP_FOUND)
     add_definitions(-DCGAL_USE_GMPXX)
 endif (OPENMP_FOUND)
 
+find_package(HDF5 REQUIRED)
+include_directories(${HDF5_INCLUDE_DIRS})
+
 #Qt
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
@@ -127,6 +130,7 @@ target_link_libraries(assignLabelSingleChunk ${CGAL_LIBRARIES} io_geometry graph
 target_link_libraries(neighbourhoodStats ${CGAL_LIBRARIES} io_geometry)
 target_link_libraries(visibilityLines ${CGAL_LIBRARIES} io_geometry graph_statistics)
 target_link_libraries(voxelizeModel ${CGAL_LIBRARIES} io_geometry)
+target_link_libraries(voxel_arrangement ${HDF5_LIBRARIES})
 target_link_libraries(splitVoxels ${CGAL_LIBRARIES} io_geometry voxel_arrangement graph_statistics)
 target_link_libraries(voxels2ply ${CGAL_LIBRARIES} io_geometry voxel_arrangement graph_statistics)
 target_link_libraries(voxelFeatures2ply ${CGAL_LIBRARIES} io_geometry voxel_arrangement graph_statistics)

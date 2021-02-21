@@ -1,6 +1,8 @@
 #ifndef BIM_DATA_VOXELARRANGEMENT_H
 #define BIM_DATA_VOXELARRANGEMENT_H
 
+#include "highfive/H5Easy.hpp"
+
 #include "graphStats.h"
 #include <cmath>
 
@@ -17,6 +19,8 @@ public:
     VoxelArrangement(const CGAL::Bbox_3 &inBbox, double inVoxelSide);
 
     // Internal functions
+    void loadJson(const std::string& name);
+    void loadHdf(const std::string& name);
     void computePlanes();
     void buildArrangement();
     void normalizeFeatures();
@@ -45,6 +49,9 @@ public:
     // Save as json
     void saveAsJson(const std::string &path);
 
+    // Save as hdf5
+    void saveAsHdf(const std::string &path);
+
     // Save as ply (based on ground truth labels)
     void saveAsPly(const std::string &path, const std::vector<classKeywordsColor> &classesWithColor);
 
@@ -63,6 +70,7 @@ public:
     [[nodiscard]] double width() const;
     [[nodiscard]] double height() const;
     [[nodiscard]] double depth() const;
+    [[nodiscard]] CGAL::Bbox_3 bbox() const;
 private:
     Arrangement _arr;
     CGAL::Bbox_3 _bbox;

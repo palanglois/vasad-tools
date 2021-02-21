@@ -17,3 +17,4 @@ data/00*json
 /data/arrangement.ply
 /data/segment.obj
 /data/voxelFeatures.ply
+/data/voxelOutput.h5

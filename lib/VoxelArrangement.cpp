@@ -2,10 +2,21 @@
 
 using namespace std;
 using Json = nlohmann::json;
+using namespace HighFive;
 
 VoxelArrangement::VoxelArrangement(const std::string &name) : isArrangementComputed(false), _width(0), _height(0),
                                                               _depth(0) {
-    cout << "Loading voxels!" << endl;
+    if(name.substr(name.size() - 4) == "json")
+        loadJson(name);
+    else if(name.substr(name.size() - 2) == "h5")
+        loadHdf(name);
+    else
+        cerr << "Only .json and .h5 files can be loaded!" << endl;
+
+}
+
+void VoxelArrangement::loadJson(const std::string& name) {
+    cout << "Loading voxels from json!" << endl;
     ifstream inStream(name);
     Json data;
     inStream >> data;
@@ -39,6 +50,52 @@ VoxelArrangement::VoxelArrangement(const std::string &name) : isArrangementCompu
 
     // Voxel side size
     _voxelSide = data["voxelSide"].get<double>();
+
+}
+
+void VoxelArrangement::loadHdf(const std::string &name) {
+    H5Easy::File file(name, H5Easy::File::ReadOnly);
+
+    // Features
+    _features = H5Easy::load<FeatTensor>(file, "/features");
+
+    // Labels
+    _labels = H5Easy::load<LabelTensor>(file, "/labels");
+
+    // width, height, depth
+    if(!_labels.empty())
+    {
+        _width = _labels.size();
+        _height = _labels[0].size();
+        _depth = _labels[0][0].size();
+    }
+
+    // Map
+    auto vectorizedMap = H5Easy::load<vector<vector<int>>>(file, "/map");
+    for(auto & mapElem : vectorizedMap)
+        _index2node[make_tuple(mapElem[0], mapElem[1], mapElem[2])] = mapElem[3];
+
+    // Planes
+    auto inliers = H5Easy::load<vector<vector<double>>>(file, "/planes/inliers");
+    auto normals = H5Easy::load<vector<vector<double>>>(file, "/planes/normals");
+    auto faces = H5Easy::load<vector<vector<vector<int>>>>(file, "/planes/faces");
+    auto cumulatedPercentages = H5Easy::load<vector<double>>(file, "/planes/cumulatedPercentages");
+    for(int i=0; i < inliers.size(); i++)
+    {
+        Kernel2::Point_3 inlier(inliers[i][0], inliers[i][1], inliers[i][2]);
+        Kernel2::Vector_3 normal(normals[i][0], normals[i][1], normals[i][2]);
+        vector<vector<int>> curFaces = faces[i];
+        double cumulatedPercentage = cumulatedPercentages[i];
+        _planes.push_back({inlier, normal, curFaces, cumulatedPercentage});
+    }
+
+    // Bbox
+    auto bbox = H5Easy::load<vector<double>>(file, "/bbox");
+    _bbox = CGAL::Bbox_3(bbox[0], bbox[1], bbox[2], bbox[3], bbox[4], bbox[5]);
+
+    // Voxel side size
+    _voxelSide = H5Easy::load<double>(file, "/voxelSide");
+
 }
 
 VoxelArrangement::VoxelArrangement(const CGAL::Bbox_3 &inBbox, double inVoxelSide) : _bbox(inBbox),
@@ -426,6 +483,57 @@ void VoxelArrangement::saveAsJson(const string &path)
     outFile << outputData;
 }
 
+void VoxelArrangement::saveAsHdf(const std::string &path) {
+    H5Easy::File file(path, H5Easy::File::Overwrite);
+    auto options = H5Easy::DumpOptions(H5Easy::Compression(), H5Easy::DumpMode::Overwrite);
+
+    //Features
+    H5Easy::dump(file, "/features", _features, options);
+
+    // Labels
+    H5Easy::dump(file, "/labels", _labels, options);
+
+    // Map
+    vector<vector<int>> vectorizedMap(_index2node.size(), vector<int>(4, 0));
+    int mapIt=0;
+    for(const auto& mapElem: _index2node) {
+        vectorizedMap[mapIt] = {get<0>(mapElem.first), get<1>(mapElem.first), get<2>(mapElem.first), mapElem.second};
+        mapIt++;
+    }
+    H5Easy::dump(file, "/map", vectorizedMap, options);
+
+    // Planes
+    Epeck_to_Simple e2s;
+    vector<vector<double>> inliers(_planes.size(), vector<double>(3, 0.));
+    vector<vector<double>> normals(_planes.size(), vector<double>(3, 0.));
+    vector<vector<vector<int>>> faces;
+    vector<double> cumulatedPercentages;
+    int planeIt=0;
+    for(const auto& pl: _planes) {
+        Point inlier = e2s(pl.inlier);
+        Vector normal = e2s(pl.normal);
+        inliers[planeIt] = {inlier.x(), inlier.y(), inlier.z()};
+        normals[planeIt] = {normal.x(), normal.y(), normal.z()};
+        faces.push_back(pl.faces);
+        cumulatedPercentages.push_back(pl.cumulatedPercentage);
+        planeIt++;
+    }
+    H5Easy::dump(file, "/planes/inliers", inliers, options);
+    H5Easy::dump(file, "/planes/normals", normals, options);
+    H5Easy::dump(file, "/planes/faces", faces, options);
+    H5Easy::dump(file, "/planes/cumulatedPercentages", cumulatedPercentages, options);
+
+    // NbPlanes
+    H5Easy::dump(file, "/nbPlanes", _planes.size(), options);
+
+    // Bbox
+    vector<double> bbox = {_bbox.xmin(), _bbox.ymin(), _bbox.zmin(), _bbox.xmax(), _bbox.ymax(), _bbox.zmax()};
+    H5Easy::dump(file, "/bbox", bbox, options);
+
+    // Voxel side size
+    H5Easy::dump(file, "/voxelSide", _voxelSide, options);
+}
+
 void VoxelArrangement::saveAsPly(const string &path, const vector<classKeywordsColor> &classesWithColor) {
     // Make sure that the arrangement has been built
     buildArrangement();
@@ -601,6 +709,10 @@ double VoxelArrangement::depth() const {
     return _depth;
 }
 
+CGAL::Bbox_3 VoxelArrangement::bbox() const {
+    return _bbox;
+}
+
 vector<CGAL::Bbox_3> splitBigBbox(const CGAL::Bbox_3 &bigBbox, int nbVoxelsAlongAxis, double voxelSide)
 {
     vector<CGAL::Bbox_3> bboxes;
@@ -743,8 +855,8 @@ int splitArrangementInVoxelsRegular(vector<facesLabelName> &labeledShapes,
         fullArrangement.computeFeaturesRegular(pointCloud, pointOfViews, pointCloudLabels, nbClasses, verbose);
 
         // We save the current chunk
-        string outPath(path + padTo(to_string(i), 4) + ".json");
-        fullArrangement.saveAsJson(outPath);
+        string outPath(path + padTo(to_string(i), 4) + ".h5");
+        fullArrangement.saveAsHdf(outPath);
     }
     return bboxes.size();
 }
