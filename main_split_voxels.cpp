@@ -79,7 +79,7 @@ int main(int argc, char *argv[]) {
                                                   pointsWithLabel.second, voxelSide, classesWithColor.size(),
                                                   outputPath + prefix, nbVoxelsAlongAxis, verbose);
 
-    cout << "Made " << nbSplit << " chunks out of model " << gtPath << endl;
+    cout << endl << "Made " << nbSplit << " chunks out of model " << gtPath << endl;
     return 0;
 
 }

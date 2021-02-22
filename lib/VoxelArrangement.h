@@ -24,16 +24,22 @@ public:
     void computePlanes();
     void buildArrangement();
     void normalizeFeatures();
-    bool isLabelEmpty() const;
+    void computeBboxPlanes();
+    void getIntersections(const std::vector<PlaneSimple> &planes,
+                          const Segment &segment, std::vector<Point> &points) const;
+    [[nodiscard]] bool isLabelEmpty() const;
 
     // Count the number of cells
-    int numberOfCells();
+    int numberOfCells() const;
 
     // Finding the cell in which a point is
-    triplet findVoxel(const Point &query);
+    triplet findVoxel(const Point &query) const;
 
-    // Finding the closest facet to a query point
-    int closestFacet(const Point &query);
+    // Intersecting the segment (p, q) with the voxels
+    std::vector<triplet> intersectSegment(const Point& p, const Point& q) const;
+
+//    // Finding the closest facet to a query point
+//    int closestFacet(const Point &query);
 
     // Labeling the voxels
     void assignLabel(std::vector<facesLabelName> &labeledShapes, int nbClasses, bool verbose);
@@ -42,9 +48,9 @@ public:
     void computeFeaturesRegular(const std::vector<Point> &points, const std::vector<Point> &pointOfViews,
                                 const std::vector<int> &labels, int nbClasses, bool verbose);
 
-    // Computing the features from labeled points with their point of views (with snapping)
-    void computeFeatures(const std::vector<Point> &points, const std::vector<Point> &pointOfViews,
-                         const std::vector<int> &labels, int nbClasses, bool verbose);
+//    // Computing the features from labeled points with their point of views (with snapping)
+//    void computeFeatures(const std::vector<Point> &points, const std::vector<Point> &pointOfViews,
+//                         const std::vector<int> &labels, int nbClasses, bool verbose);
 
     // Save as json
     void saveAsJson(const std::string &path);
@@ -62,7 +68,7 @@ public:
     void saveArrangementAsPly(const std::string &path);
 
     // Getters
-    [[nodiscard]] const std::vector<Plane> &planes() const;
+    [[nodiscard]] const std::vector<PlaneSimple> &planes() const;
     [[nodiscard]] const std::vector<Point> &pointCloud() const;
     [[nodiscard]] const Arrangement::Plane &planeFromFacetHandle(int handle);
     [[nodiscard]] const LabelTensor &labels() const;
@@ -80,9 +86,11 @@ private:
     std::map<int, std::vector<int>> _node2facets;
     FeatTensor _features;
     LabelTensor _labels;
-    std::vector<Plane> _planes;
+    std::vector<PlaneSimple> _planes;
+    std::vector<PlaneSimple> _bboxPlanes;
     std::vector<Point> _pointCloud;
     bool isArrangementComputed;
+    bool areBboxPlanesComputed;
     int _width;
     int _height;
     int _depth;

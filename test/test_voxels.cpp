@@ -22,38 +22,7 @@ TEST(VoxelArrangement, PlaneCreation)
     cerr.clear();
 }
 
-TEST(VoxelArrangement, PointQuery)
-{
-    Epeck_to_Simple e2s;
-    CGAL::Bbox_3 bbox(0., 0., 0., 1., 1., 1.);
-    double voxelSize1 = 0.5;
-    cout.setstate(ios_base::failbit);
-    cerr.setstate(ios_base::failbit);
-    auto voxArr = VoxelArrangement(bbox, voxelSize1);
 
-    Kernel2::Point_3 query1(0., 0., 0.5);
-    auto projQuery1 = voxArr.planeFromFacetHandle(voxArr.closestFacet(e2s(query1))).projection(query1);
-    double projDistance1 = CGAL::to_double((projQuery1 - query1).squared_length());
-    ASSERT_EQ(projDistance1, 0.);
-
-    Kernel2::Point_3 query2(0.6, 0.25, 0.25);
-    auto projQuery2 = voxArr.planeFromFacetHandle(voxArr.closestFacet(e2s(query2))).projection(query2);
-    double projDistance2 = CGAL::to_double((projQuery2 - query2).squared_length());
-    ASSERT_DOUBLE_EQ(projDistance2, pow(0.1, 2));
-
-    Kernel2::Point_3 query3(0.9, 0.25, 0.25);
-    auto projQuery3 = voxArr.planeFromFacetHandle(voxArr.closestFacet(e2s(query3))).projection(query3);
-    double projDistance3 = CGAL::to_double((projQuery3 - query3).squared_length());
-    ASSERT_DOUBLE_EQ(projDistance3, pow(0.1, 2));
-
-    Kernel2::Point_3 query4(0.9, 0.9, 0.25);
-    auto projQuery4 = voxArr.planeFromFacetHandle(voxArr.closestFacet(e2s(query4))).projection(query4);
-    double projDistance4 = CGAL::to_double((projQuery4 - query4).squared_length());
-    ASSERT_DOUBLE_EQ(projDistance4, pow(0.1, 2));
-    cout.clear();
-    cerr.clear();
-
-}
 
 TEST(VoxelArrangement, Labeling)
 {
@@ -90,33 +59,7 @@ TEST(VoxelArrangement, Labeling)
     ASSERT_EQ(labels[0][0][1], partitionIdx);
 }
 
-TEST(VoxelArrangement, Features)
-{
-    CGAL::Bbox_3 bbox(0., 0., 0., 1., 1., 1.);
-    double voxelSize1 = 0.5;
-    cout.setstate(ios_base::failbit);
-    cerr.setstate(ios_base::failbit);
-    auto voxArr = VoxelArrangement(bbox, voxelSize1);
 
-    int nbClasses = 3;
-    vector<Point> points;
-    vector<Point> pointOfViews;
-    vector<int> labels;
-
-    // 1st point
-    points.emplace_back(0.6, 0.25, 0.25);
-    pointOfViews.emplace_back(0.9, 0.6, 0.25);
-    labels.push_back(1);
-
-    voxArr.computeFeatures(points, pointOfViews, labels, nbClasses, false);
-    cout.clear();
-    cerr.clear();
-
-    VoxelArrangement::FeatTensor features = voxArr.features();
-    ASSERT_DOUBLE_EQ(features[0][0][0][1], 1.);
-    ASSERT_DOUBLE_EQ(features[1][1][0][nbClasses], 1.);
-    ASSERT_DOUBLE_EQ(features[1][0][0][nbClasses], 1.);
-}
 
 TEST(VoxelArrangement, FeaturesRegular)
 {
@@ -184,7 +127,7 @@ TEST(VoxelArrangement, VoxelInOut)
     points.emplace_back(0.6, 0.25, 0.25);
     pointOfViews.emplace_back(0.9, 0.6, 0.25);
     pointLabels.push_back(1);
-    voxArr.computeFeatures(points, pointOfViews, pointLabels, nbClasses, false);
+    voxArr.computeFeaturesRegular(points, pointOfViews, pointLabels, nbClasses, false);
 
     // Output
     string outputJsonPath = (string) TEST_DIR + "voxelOutput.json";
@@ -208,7 +151,7 @@ TEST(VoxelArrangement, VoxelInOut)
     cerr.clear();
 
     VoxelArrangement::FeatTensor features = newVoxArr.features();
-    ASSERT_DOUBLE_EQ(features[0][0][0][1], 1.);
+    ASSERT_DOUBLE_EQ(features[1][0][0][1], 1.);
     ASSERT_EQ(voxArr.width(), newVoxArr.width());
     ASSERT_EQ(voxArr.height(), newVoxArr.height());
     ASSERT_EQ(voxArr.depth(), newVoxArr.depth());
@@ -308,4 +251,28 @@ TEST(VoxelArrangement, randomSplit)
                 ASSERT_EQ(arr_line.size(), nbVoxelsAlongAxis) << nbVoxelsAlongAxis;
         }
     }
+}
+
+
+TEST(VoxelArrangement, intersectSegment)
+{
+    CGAL::Bbox_3 bbox(0., 0., 0., 1., 1., 1.);
+    double voxelSide = 0.5;
+    cout.setstate(ios_base::failbit);
+    cerr.setstate(ios_base::failbit);
+
+    // Features
+    vector<Point> points;
+    vector<Point> pointOfViews;
+    vector<int> pointLabels;
+    points.emplace_back(-0.25, 0.25, 0.25);
+    pointOfViews.emplace_back(0.75, 0.25, 0.25);
+    pointLabels.push_back(1);
+
+    auto voxArr = VoxelArrangement(bbox, voxelSide);
+
+    cout.clear();
+    cerr.clear();
+    vector<VoxelArrangement::triplet> intersectedVoxels = voxArr.intersectSegment(pointOfViews[0], points[0]);
+
 }

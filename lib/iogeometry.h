@@ -28,6 +28,7 @@
 #include <CGAL/Orthogonal_incremental_neighbor_search.h>
 #include <CGAL/Search_traits_3.h>
 #include <CGAL/Triangulation_3.h>
+#include <CGAL/intersections.h>
 
 // Boost
 #include <boost/functional/hash.hpp>
@@ -61,6 +62,9 @@ typedef typename Kernel::Segment_3 Segment;
 typedef typename Kernel::Triangle_3 Triangle;
 typedef typename Kernel::Vector_3 Vector;
 typedef typename Kernel::Ray_3 Ray;
+typedef typename Kernel::Plane_3 PlaneCgal;
+typedef typename Kernel::Intersect_3 Intersect;
+typedef typename CGAL::cpp11::result_of<Intersect(PlaneCgal, Segment)>::type PlaneSegmentIntersection;
 
 /* Typedefs for polyhedron meshes */
 typedef CGAL::Polyhedron_3<Kernel, CGAL::Polyhedron_items_with_id_3> Polyhedron;
@@ -131,6 +135,14 @@ struct Plane
 {
     Kernel2::Point_3 inlier;
     Kernel2::Vector_3 normal;
+    std::vector<std::vector<int>> faces;
+    double cumulatedPercentage;
+};
+
+struct PlaneSimple
+{
+    Point inlier;
+    Vector normal;
     std::vector<std::vector<int>> faces;
     double cumulatedPercentage;
 };

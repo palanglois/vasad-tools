@@ -4,7 +4,8 @@ using namespace std;
 using Json = nlohmann::json;
 using namespace HighFive;
 
-VoxelArrangement::VoxelArrangement(const std::string &name) : isArrangementComputed(false), _width(0), _height(0),
+VoxelArrangement::VoxelArrangement(const std::string &name) : isArrangementComputed(false),
+                                                              areBboxPlanesComputed(false), _width(0), _height(0),
                                                               _depth(0) {
     if(name.substr(name.size() - 4) == "json")
         loadJson(name);
@@ -35,15 +36,13 @@ void VoxelArrangement::loadJson(const std::string& name) {
         _depth = _labels[0][0].size();
     }
 
-    // Map
-    _index2node = data["map"].get<map<triplet, int>>();
 
-    // Inverse mapping
-    for(const auto &indexAndNode: _index2node)
-        _node2index[indexAndNode.second] = indexAndNode.first;
 
     // Planes
-    _planes = data["planes"].get<vector<Plane>>();
+    Epeck_to_Simple e2s;
+    vector<Plane> epeckPlanes = data["planes"].get<vector<Plane>>();
+    for(const auto& plane: epeckPlanes)
+        _planes.push_back({e2s(plane.inlier), e2s(plane.normal), plane.faces, plane.cumulatedPercentage});
 
     // Bbox
     _bbox = data["bbox"].get<CGAL::Bbox_3>();
@@ -70,10 +69,6 @@ void VoxelArrangement::loadHdf(const std::string &name) {
         _depth = _labels[0][0].size();
     }
 
-    // Map
-    auto vectorizedMap = H5Easy::load<vector<vector<int>>>(file, "/map");
-    for(auto & mapElem : vectorizedMap)
-        _index2node[make_tuple(mapElem[0], mapElem[1], mapElem[2])] = mapElem[3];
 
     // Planes
     auto inliers = H5Easy::load<vector<vector<double>>>(file, "/planes/inliers");
@@ -82,8 +77,8 @@ void VoxelArrangement::loadHdf(const std::string &name) {
     auto cumulatedPercentages = H5Easy::load<vector<double>>(file, "/planes/cumulatedPercentages");
     for(int i=0; i < inliers.size(); i++)
     {
-        Kernel2::Point_3 inlier(inliers[i][0], inliers[i][1], inliers[i][2]);
-        Kernel2::Vector_3 normal(normals[i][0], normals[i][1], normals[i][2]);
+        Point inlier(inliers[i][0], inliers[i][1], inliers[i][2]);
+        Vector normal(normals[i][0], normals[i][1], normals[i][2]);
         vector<vector<int>> curFaces = faces[i];
         double cumulatedPercentage = cumulatedPercentages[i];
         _planes.push_back({inlier, normal, curFaces, cumulatedPercentage});
@@ -99,7 +94,7 @@ void VoxelArrangement::loadHdf(const std::string &name) {
 }
 
 VoxelArrangement::VoxelArrangement(const CGAL::Bbox_3 &inBbox, double inVoxelSide) : _bbox(inBbox),
-_voxelSide(inVoxelSide), isArrangementComputed(false), _width(0), _height(0), _depth(0)
+_voxelSide(inVoxelSide), isArrangementComputed(false), areBboxPlanesComputed(false), _width(0), _height(0), _depth(0)
 {
     computePlanes();
 }
@@ -111,6 +106,9 @@ void VoxelArrangement::computePlanes()
     vector<double> ranges = {_bbox.xmax() - _bbox.xmin(),
                              _bbox.ymax() - _bbox.ymin(),
                              _bbox.zmax() - _bbox.zmin()};
+    _width = round(ranges[0] / _voxelSide);
+    _height = round(ranges[1] / _voxelSide);
+    _depth = round(ranges[2] / _voxelSide);
     double totalArea = 0.;
     for(int i=0; i < ranges.size(); i++)
         totalArea += (ceil(ranges[i] / _voxelSide) + 1) * ranges[(i + 1) % 3] * ranges[(i + 2) % 3];
@@ -149,13 +147,13 @@ void VoxelArrangement::computePlanes()
             vector<vector<int>> faces = {{faceAccum, faceAccum + 1, faceAccum + 2},
                                          {faceAccum + 1, faceAccum + 2, faceAccum + 3}};
             faceAccum += 4;
-            Plane p = {{lowLeft[0], lowLeft[1], lowLeft[2]}, s2e(normal), faces, area};
+            PlaneSimple p = {{lowLeft[0], lowLeft[1], lowLeft[2]}, normal, faces, area};
             _planes.push_back(p);
         }
     }
     // Sort the planes from the biggest to the smallest
     sort(_planes.begin(), _planes.end(),
-         [](const Plane & a, const Plane & b) -> bool
+         [](const PlaneSimple & a, const PlaneSimple & b) -> bool
          {
              return a.cumulatedPercentage > b.cumulatedPercentage;
          });
@@ -170,29 +168,24 @@ void VoxelArrangement::computePlanes()
 
 void VoxelArrangement::buildArrangement()
 {
+    Simple_to_Epeck s2e;
     if(isArrangementComputed) return;
     isArrangementComputed = true;
     _arr.set_bbox(_bbox);
     auto tqPlanes = tq::tqdm(_planes);
     tqPlanes.set_prefix("Inserting " + to_string(_planes.size()) + " planes: ");
     for (const auto &plane: tqPlanes)
-        _arr.insert(Kernel2::Plane_3(plane.inlier, plane.normal));
+        _arr.insert(Kernel2::Plane_3(s2e(plane.inlier), s2e(plane.normal)));
 
-    _width = -1;
-    _height = -1;
-    _depth = -1;
     for (auto cellIt = _arr.cells_begin(); cellIt != _arr.cells_end(); cellIt++) {
         if (!_arr.is_cell_bounded(*cellIt)) continue;
         const auto &centroid = cellIt->point();
         int idx_x = max(0, (int) floor((CGAL::to_double(centroid.x()) - _bbox.xmin()) / _voxelSide));
         int idx_y = max(0, (int) floor((CGAL::to_double(centroid.y()) - _bbox.ymin()) / _voxelSide));
         int idx_z = max(0, (int) floor((CGAL::to_double(centroid.z()) - _bbox.zmin()) / _voxelSide));
-        if(idx_x + 1 > _width) _width = idx_x + 1;
-        if(idx_y + 1 > _height) _height = idx_y + 1;
-        if(idx_z + 1 > _depth) _depth = idx_z + 1;
 
         _node2index[_arr.cell_handle(*cellIt)] = make_tuple(idx_x, idx_y, idx_z);
-        _index2node[make_tuple(idx_x, idx_y, idx_z)] = _arr.cell_handle(*cellIt);
+//        _index2node[make_tuple(idx_x, idx_y, idx_z)] = _arr.cell_handle(*cellIt);
 
         vector<int> cellFacets;
         for(auto faceIt = cellIt->subfaces_begin(); faceIt != cellIt->subfaces_end(); faceIt++)
@@ -214,6 +207,25 @@ void VoxelArrangement::normalizeFeatures() {
             }
 }
 
+void VoxelArrangement::computeBboxPlanes() {
+    if(areBboxPlanesComputed) return;
+    areBboxPlanesComputed = true;
+
+    Vector normalX(1., 0., 0.);
+    Vector normalY(0., 1., 0.);
+    Vector normalZ(0., 0., 1.);
+    Point pointMin(_bbox.xmin(), _bbox.ymin(), _bbox.zmin());
+    Point pointMax(_bbox.xmax(), _bbox.ymax(), _bbox.zmax());
+    vector<vector<int>> emptyFaces;
+    double nullPercentage(0.);
+    _bboxPlanes.push_back({pointMin, normalX, emptyFaces, nullPercentage});
+    _bboxPlanes.push_back({pointMin, normalY, emptyFaces, nullPercentage});
+    _bboxPlanes.push_back({pointMin, normalZ, emptyFaces, nullPercentage});
+    _bboxPlanes.push_back({pointMax, normalX, emptyFaces, nullPercentage});
+    _bboxPlanes.push_back({pointMax, normalY, emptyFaces, nullPercentage});
+    _bboxPlanes.push_back({pointMax, normalZ, emptyFaces, nullPercentage});
+}
+
 bool VoxelArrangement::isLabelEmpty() const {
     bool empty = true;
     for(int i=0; i < _width; i++) {
@@ -231,61 +243,92 @@ bool VoxelArrangement::isLabelEmpty() const {
     return empty;
 }
 
-int VoxelArrangement::numberOfCells()
+int VoxelArrangement::numberOfCells() const
 {
-    // Make sure that the arrangement has been built
-    buildArrangement();
-    // Compute number of cells
-    int nbCells = 0;
-    for(auto cellIt = _arr.cells_begin(); cellIt != _arr.cells_end(); cellIt++)
-        if(_arr.is_cell_bounded(*cellIt))
-            nbCells++;
-    return nbCells;
+    return _width * _height * _depth;
 }
 
-VoxelArrangement::triplet VoxelArrangement::findVoxel(const Point &query) {
+VoxelArrangement::triplet VoxelArrangement::findVoxel(const Point &query) const {
     int idx_x = floor((CGAL::to_double(query.x()) - _bbox.xmin())/_voxelSide);
     int idx_y = floor((CGAL::to_double(query.y()) - _bbox.ymin())/_voxelSide);
     int idx_z = floor((CGAL::to_double(query.z()) - _bbox.zmin())/_voxelSide);
     return make_tuple(idx_x, idx_y, idx_z);
-
 }
 
-int VoxelArrangement::closestFacet(const Point &query)
+void VoxelArrangement::getIntersections(const vector<PlaneSimple> &planes, const Segment &segment, vector<Point> &points) const
 {
-    Simple_to_Epeck s2e;
-    const vector<int> &cellFacets = _node2facets[_index2node[findVoxel(query)]];
-
-    auto bestDistance = DBL_MAX;
-    int finalFacet = -1;
-    for(const auto facetHandle: cellFacets)
+    for(const auto &plane: planes)
     {
-        double distance = CGAL::to_double((_arr.plane(_arr.facet_plane(facetHandle)).projection(s2e(query)) - s2e(query)).squared_length());
-        if(distance < bestDistance)
-        {
-            bestDistance = distance;
-            finalFacet = facetHandle;
+        PlaneCgal cgalPlane(plane.inlier, plane.normal);
+        PlaneSegmentIntersection result = CGAL::intersection(cgalPlane, segment);
+        if(!result) continue;
+        if(const Point* p = boost::get<Point>(&*result)) {
+            if(CGAL::do_overlap(_bbox, p->bbox())) points.push_back(*p);
         }
     }
-    return finalFacet;
+}
+
+vector<VoxelArrangement::triplet> VoxelArrangement::intersectSegment(const Point& p, const Point& q) const
+{
+    // Intersect the line segment vs all the planes
+    Segment segment(p, q);
+    vector<Point> allPoints;
+    if(CGAL::do_overlap(_bbox, p.bbox())) allPoints.push_back(p);
+    if(CGAL::do_overlap(_bbox, q.bbox())) allPoints.push_back(q);
+    getIntersections(_planes, segment, allPoints);
+    getIntersections(_bboxPlanes, segment, allPoints);
+
+    vector<VoxelArrangement::triplet> validVoxels;
+    if(allPoints.size() < 2) return validVoxels;
+
+    // Finding a non-constant dimension
+    int validDimension = -1;
+    for(int dim = 0; dim < 3; dim++)
+        if(allPoints[0][dim] != allPoints[2][dim])
+        {
+            validDimension = dim;
+            break;
+        }
+    // Sorting the points according to this dimension
+    sort(allPoints.begin(), allPoints.end(),
+         [&](const Point & a, const Point & b) -> bool
+         {
+             return a[validDimension] > b[validDimension];
+         });
+
+    // Querying mid-points
+    for(int i=0; i < allPoints.size() - 1; i++) {
+        Point midPoint = CGAL::ORIGIN + ((allPoints[i + 1] + (allPoints[i] - CGAL::ORIGIN)) - CGAL::ORIGIN) / 2.;
+        validVoxels.push_back(findVoxel(midPoint));
+    }
+    return validVoxels;
+
 }
 
 void VoxelArrangement::assignLabel(vector<facesLabelName> &labeledShapes, int nbClasses, bool verbose)
 {
     Epeck_to_Simple e2s;
-    // Make sure that the arrangement has been built
-    buildArrangement();
     // Gather all the points
     vector<pair<Point, int>> points;
-    for(auto cellIt = _arr.cells_begin(); cellIt != _arr.cells_end(); cellIt++)
-        if(_arr.is_cell_bounded(*cellIt))
-            points.emplace_back(e2s(cellIt->point()), _arr.cell_handle(*cellIt));    
+
+    for(int i=0; i < _width; i++)
+        for(int j=0; j < _height; j++)
+            for(int k=0; k < _depth; k++) {
+                Point cellPoint(_bbox.xmin() + _voxelSide / 2. + i * _voxelSide,
+                                _bbox.ymin() + _voxelSide / 2. + j * _voxelSide,
+                                _bbox.zmin() + _voxelSide / 2. + k * _voxelSide);
+                points.emplace_back(cellPoint, -1);
+            }
+
+
+
     // Label the points
     vector<int> labels = assignLabelToPoints(points, labeledShapes, nbClasses, _bbox);
     // Store them
     _labels = vector<vector<vector<int>>>(_width, vector<vector<int>>(_height, vector<int>(_depth, -1)));
     for (int i = 0; i < points.size(); i++) {
-        tuple<int, int, int> idx = _node2index[points[i].second];
+//        tuple<int, int, int> idx = _node2index[points[i].second];
+        tuple<int, int, int> idx = findVoxel(points[i].first);
         _labels[get<0>(idx)][get<1>(idx)][get<2>(idx)] = labels[i] == nbClasses ? -1: labels[i];
     }
 }
@@ -294,8 +337,8 @@ void VoxelArrangement::computeFeaturesRegular(const std::vector<Point> &points, 
                                               const std::vector<int> &labels, int nbClasses, bool verbose) {
     Simple_to_Epeck s2e;
     Epeck_to_Simple e2s;
-    // Make sure that the arrangement has been built
-    buildArrangement();
+    // Make sure that the bbox planes have been built
+    computeBboxPlanes();
     // Initialize the features
     _features = vector<vector<vector<vector<double>>>>(_width,
                   vector<vector<vector<double>>>(_height,
@@ -322,134 +365,26 @@ void VoxelArrangement::computeFeaturesRegular(const std::vector<Point> &points, 
     vector<int> validIdx = addSegmentIfInBbox(pointOfViews, points, back_inserter(beginPoints), back_inserter(endPoints), _bbox);
 
     // Visibility
-    auto tqPoints = tq::trange(validIdx.size());
-    tqPoints.set_prefix("Computing visibility: ");
-    for (int i : tqPoints) {
+#pragma omp parallel for
+    for(int i=0; i < validIdx.size(); i++) {
         const Point &point = endPoints[i];
         const Point &pov = beginPoints[i];
         const int &label = labels[validIdx[i]];
 
         bool isPointInBbox = CGAL::do_overlap(point.bbox(), _bbox);
-        int frontCellIdx = _arr.cell_handle(*_arr.cells_begin());
-        if(CGAL::do_overlap(point.bbox(), _bbox))
-            frontCellIdx = _index2node[findVoxel(point)];
-        Kernel2::Point_3 originPoint = s2e(point);
-
-        // Intersect the (point_of_view <-> target facet point) segment with the plane arrangement
-        Arrangement::Face_handle begin_cell;
-        Arrangement::Face_handle end_cell;
-        vector<pair<Arrangement::Face_handle, int>> intersectedFacets;
-        vector<pair<Arrangement::Face_handle, double>> intersectedCellsAndDists;
-        segment_search_advanced(_arr, originPoint, s2e(pov), begin_cell, back_inserter(intersectedFacets),
-                                back_inserter(intersectedCellsAndDists), end_cell, frontCellIdx, false);
-
-        // Add visibility information
-        for(const auto& cellAndDist: intersectedCellsAndDists) {
-            if(cellAndDist.first == begin_cell) continue; // Discard the cell that contains the current point
-            if (!_arr.is_cell_bounded(cellAndDist.first)) continue;
-            triplet cellIdx = _node2index[cellAndDist.first];
-            _features[get<0>(cellIdx)][get<1>(cellIdx)][get<2>(cellIdx)][nbClasses]++;
+        vector<triplet> intersectedVoxels = intersectSegment(pov, point);
+        triplet pointVoxel = make_tuple(-1, -1, -1);
+        if(isPointInBbox) pointVoxel = findVoxel(point);
+        for(const auto& voxel: intersectedVoxels) {
+            if (voxel != pointVoxel)
+#pragma omp critical
+                _features[get<0>(voxel)][get<1>(voxel)][get<2>(voxel)][nbClasses]++;
         }
     }
     normalizeFeatures();
 }
 
-void VoxelArrangement::computeFeatures(const vector<Point> &points, const vector<Point> &pointOfViews,
-                                       const vector<int> &labels, int nbClasses, bool verbose) {
-    Simple_to_Epeck s2e;
-    Epeck_to_Simple e2s;
-    // Make sure that the arrangement has been built
-    buildArrangement();
-    // Initialize the features
-    _features = vector<vector<vector<vector<double>>>>(_width,
-                  vector<vector<vector<double>>>(_height,
-                          vector<vector<double>>(_depth,
-                                  vector<double>(nbClasses + 1, 0.))));
 
-    // Histograms
-    for(int i=0; i < points.size(); i++)
-    {
-        const Point &point = points[i];
-        const Point &pov = pointOfViews[i];
-        const int &label = labels[i];
-
-        // Use point only if it is in the current bounding box
-        if(!CGAL::do_overlap(_bbox, point.bbox())) continue;
-
-        // Retrieve the closest facet to the current point
-        int facetHandle = closestFacet(point);
-
-        // Retrieve the index of the opposite cell of the point of view w.r.t the facet
-        Kernel2::Point_3 facetPoint = _arr.facet(facetHandle).point();
-        int cellIdx0 = _arr.facet(facetHandle).superface(0);
-        Kernel2::Point_3 cellPoint0 = _arr.cell(cellIdx0).point();
-        int cellIdx1 = _arr.facet(facetHandle).superface(1);
-        Vector visibilityVector(pov, point);
-        Vector vectorCell0(e2s(facetPoint), e2s(cellPoint0));
-        double scalarProduct = CGAL::scalar_product(visibilityVector, vectorCell0);
-        int validCellIdx = (scalarProduct >= 0) ? cellIdx0 : cellIdx1;
-        triplet coordinates = _node2index[validCellIdx];
-
-        // Update the label distribution
-        _features[get<0>(coordinates)][get<1>(coordinates)][get<2>(coordinates)][label]++;
-
-    }
-
-    // Select the visibility segments that lie in the bounding box
-    vector<Point> beginPoints;
-    vector<Point> endPoints;
-    vector<int> validIdx = addSegmentIfInBbox(pointOfViews, points, back_inserter(beginPoints), back_inserter(endPoints), _bbox);
-
-    // Visibility
-    auto tqPoints = tq::trange(validIdx.size());
-    tqPoints.set_prefix("Computing visibility: ");
-    for (int i : tqPoints)
-    {
-        const Point &point = endPoints[i];
-        const Point &pov = beginPoints[i];
-        const int &label = labels[validIdx[i]];
-
-        bool isPointInBbox = CGAL::do_overlap(point.bbox(), _bbox);
-        int frontCellIdx = _arr.cell_handle(*_arr.cells_begin());
-        Kernel2::Point_3 originPoint = s2e(point);
-        if(isPointInBbox) {
-            // Retrieve the closest facet to the current point
-            int facetHandle = closestFacet(point);
-
-            // If point is in the bounding box, we use the closest facet's center as the origin of the
-            // visibility ray (to avoid boundary effects).
-            Kernel2::Point_3 facetPoint = _arr.facet(facetHandle).point();
-
-            // Retrieve the index of the opposite cell of the point of view w.r.t the facet
-            int cellIdx0 = _arr.facet(facetHandle).superface(0);
-            Kernel2::Point_3 cellPoint0 = _arr.cell(cellIdx0).point();
-            int cellIdx1 = _arr.facet(facetHandle).superface(1);
-            Vector visibilityVector(pov, point);
-            Vector vectorCell0(e2s(facetPoint), e2s(cellPoint0));
-            double scalarProduct = CGAL::scalar_product(visibilityVector, vectorCell0);
-
-            // Retrieving the cell just before the current point and its center
-            frontCellIdx = (scalarProduct >= 0) ? cellIdx1 : cellIdx0;
-            originPoint = _arr.cell(frontCellIdx).point();
-        }
-
-        // Intersect the (point_of_view <-> target facet point) segment with the plane arrangement
-        Arrangement::Face_handle begin_cell;
-        Arrangement::Face_handle end_cell;
-        vector<pair<Arrangement::Face_handle, int>> intersectedFacets;
-        vector<pair<Arrangement::Face_handle, double>> intersectedCellsAndDists;
-        segment_search_advanced(_arr, originPoint, s2e(pov), begin_cell, back_inserter(intersectedFacets),
-                                back_inserter(intersectedCellsAndDists), end_cell, frontCellIdx, false);
-
-        // Add visibility information
-        for(const auto& cellAndDist: intersectedCellsAndDists){
-            if(!_arr.is_cell_bounded(cellAndDist.first)) continue;
-            triplet cellIdx = _node2index[cellAndDist.first];
-            _features[get<0>(cellIdx)][get<1>(cellIdx)][get<2>(cellIdx)][nbClasses]++;
-        }
-    }
-    normalizeFeatures();
-}
 
 void VoxelArrangement::saveAsJson(const string &path)
 {
@@ -459,11 +394,13 @@ void VoxelArrangement::saveAsJson(const string &path)
     // Labels
     Json labels = _labels;
 
-    // Map
-    Json map = _index2node;
 
     // Planes
-    Json planes = _planes;
+    Simple_to_Epeck s2e;
+    vector<Plane> epeckPlanes;
+    for(const auto& plane: _planes)
+        epeckPlanes.push_back({s2e(plane.inlier), s2e(plane.normal), plane.faces, plane.cumulatedPercentage});
+    Json planes = epeckPlanes;
 
     // NbPlanes
     Json nbPlanes = _planes.size();
@@ -475,7 +412,7 @@ void VoxelArrangement::saveAsJson(const string &path)
     Json voxelSide = _voxelSide;
 
     // Compiling the output data
-    Json outputData = {{"features", features}, {"labels", labels}, {"map", map}, {"planes", planes},
+    Json outputData = {{"features", features}, {"labels", labels}/*, {"map", map}*/, {"planes", planes},
                        {"nbPlanes", nbPlanes}, {"bbox", bbox}, {"voxelSide", voxelSide}};
 
     // Output the json file
@@ -493,25 +430,16 @@ void VoxelArrangement::saveAsHdf(const std::string &path) {
     // Labels
     H5Easy::dump(file, "/labels", _labels, options);
 
-    // Map
-    vector<vector<int>> vectorizedMap(_index2node.size(), vector<int>(4, 0));
-    int mapIt=0;
-    for(const auto& mapElem: _index2node) {
-        vectorizedMap[mapIt] = {get<0>(mapElem.first), get<1>(mapElem.first), get<2>(mapElem.first), mapElem.second};
-        mapIt++;
-    }
-    H5Easy::dump(file, "/map", vectorizedMap, options);
 
     // Planes
-    Epeck_to_Simple e2s;
     vector<vector<double>> inliers(_planes.size(), vector<double>(3, 0.));
     vector<vector<double>> normals(_planes.size(), vector<double>(3, 0.));
     vector<vector<vector<int>>> faces;
     vector<double> cumulatedPercentages;
     int planeIt=0;
     for(const auto& pl: _planes) {
-        Point inlier = e2s(pl.inlier);
-        Vector normal = e2s(pl.normal);
+        Point inlier = pl.inlier;
+        Vector normal = pl.normal;
         inliers[planeIt] = {inlier.x(), inlier.y(), inlier.z()};
         normals[planeIt] = {normal.x(), normal.y(), normal.z()};
         faces.push_back(pl.faces);
@@ -535,6 +463,7 @@ void VoxelArrangement::saveAsHdf(const std::string &path) {
 }
 
 void VoxelArrangement::saveAsPly(const string &path, const vector<classKeywordsColor> &classesWithColor) {
+    Epeck_to_Simple e2s;
     // Make sure that the arrangement has been built
     buildArrangement();
     // Making colormap
@@ -556,8 +485,8 @@ void VoxelArrangement::saveAsPly(const string &path, const vector<classKeywordsC
         if(! _arr.is_facet_bounded(f)){continue;}
         Arrangement::Face_handle ch0 = f.superface(0), ch1 = f.superface(1);
         if(!_arr.is_cell_bounded(ch0) || !_arr.is_cell_bounded(ch1)) continue;
-        triplet idxCh0 = _node2index[ch0];
-        triplet idxCh1 = _node2index[ch1];
+        triplet idxCh0 = findVoxel(e2s(_arr.cell(ch0).point()));
+        triplet idxCh1 = findVoxel(e2s(_arr.cell(ch1).point()));
         int label1 = _labels[get<0>(idxCh0)][get<1>(idxCh0)][get<2>(idxCh0)];
         int label2 = _labels[get<0>(idxCh1)][get<1>(idxCh1)][get<2>(idxCh1)];
         if(label1 != label2){
@@ -586,6 +515,7 @@ void VoxelArrangement::saveAsPly(const string &path, const vector<classKeywordsC
 
 void VoxelArrangement::saveFeaturesAsPly(const string &path, const vector<classKeywordsColor> &classesWithColor)
 {
+    Epeck_to_Simple e2s;
     // Make sure that the arrangement has been built
     buildArrangement();
     // Making colormap
@@ -609,8 +539,8 @@ void VoxelArrangement::saveFeaturesAsPly(const string &path, const vector<classK
         if(! _arr.is_facet_bounded(f)){continue;}
         Arrangement::Face_handle ch0 = f.superface(0), ch1 = f.superface(1);
         if(!_arr.is_cell_bounded(ch0) || !_arr.is_cell_bounded(ch1)) continue;
-        triplet idxCh0 = _node2index[ch0];
-        triplet idxCh1 = _node2index[ch1];
+        triplet idxCh0 = findVoxel(e2s(_arr.cell(ch0).point()));
+        triplet idxCh1 = findVoxel(e2s(_arr.cell(ch1).point()));
         vector<double> feature1 = _features[get<0>(idxCh0)][get<1>(idxCh0)][get<2>(idxCh0)];
         vector<double> feature2 = _features[get<0>(idxCh1)][get<1>(idxCh1)][get<2>(idxCh1)];
         int label1 = arg_max(feature1) == voidClass ? -1 : arg_max(feature1);
@@ -672,7 +602,7 @@ void VoxelArrangement::saveArrangementAsPly(const string &path)
     }
 }
 
-const std::vector<Plane> &VoxelArrangement::planes() const
+const std::vector<PlaneSimple> &VoxelArrangement::planes() const
 {
     return _planes;
 }
@@ -758,7 +688,7 @@ int splitArrangementInVoxels(vector<facesLabelName> &labeledShapes,
 
     // Gather all the planes
     VoxelArrangement globalVoxels(initialBbox, voxelSide);
-    const vector<Plane> &planes = globalVoxels.planes();
+    const vector<PlaneSimple> &planes = globalVoxels.planes();
     const vector<Point> &pointCloudPlanes = globalVoxels.pointCloud();
 
     // Max number of plane gets an initial value and will be adjusted during computation
