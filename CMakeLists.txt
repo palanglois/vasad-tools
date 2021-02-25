@@ -111,6 +111,8 @@ add_executable(voxels2ply main_voxels_to_ply.cpp)
 
 add_executable(voxelFeatures2ply main_voxel_features_to_ply.cpp)
 
+add_executable(pc2dense main_pc_to_dense.cpp)
+
 
 target_link_libraries(bim_data ${CGAL_LIBRARIES} io_geometry)
 target_link_libraries(color_classes io_geometry)
@@ -134,6 +136,7 @@ target_link_libraries(voxel_arrangement ${HDF5_LIBRARIES})
 target_link_libraries(splitVoxels ${CGAL_LIBRARIES} io_geometry voxel_arrangement graph_statistics)
 target_link_libraries(voxels2ply ${CGAL_LIBRARIES} io_geometry voxel_arrangement graph_statistics)
 target_link_libraries(voxelFeatures2ply ${CGAL_LIBRARIES} io_geometry voxel_arrangement graph_statistics)
+target_link_libraries(pc2dense ${CGAL_LIBRARIES} io_geometry)
 if(MKL_FOUND)
     target_link_libraries(mesh2plane ${MKL_LIBRARIES})
 endif()
