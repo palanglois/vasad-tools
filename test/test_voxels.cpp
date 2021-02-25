@@ -60,6 +60,42 @@ TEST(VoxelArrangement, Labeling)
 }
 
 
+TEST(VoxelArrangement, RichFeatures) {
+
+    const string testObjPath = (string) TEST_DIR + "simplecube.obj";
+    vector<classKeywordsColor> classesWithColor = loadSemanticClasses((string) TEST_DIR + "semantic_classes.json");
+    auto allTrees =  loadTreesFromObj(testObjPath, classesWithColor);
+
+    CGAL::Bbox_3 bbox(0., 0., -0.25, 1.5, 1.5, 1.25);
+    double voxelSize1 = 1.5;
+    cout.setstate(ios_base::failbit);
+    cerr.setstate(ios_base::failbit);
+    auto voxArr = VoxelArrangement(bbox, voxelSize1);
+    voxArr.computeRichFeatures(allTrees, classesWithColor.size(), false);
+    const int partitionIdx = 5;
+
+    // Out
+    string outputHdfPath = (string) TEST_DIR + "voxelOutputRichFeat.h5";
+    voxArr.saveAsHdf(outputHdfPath, true);
+    cout.clear();
+    cerr.clear();
+
+    // In
+    VoxelArrangement newVoxArr(outputHdfPath);
+
+    // Testing features
+    VoxelArrangement::FeatTensor richFeatures = newVoxArr.richFeatures();
+
+    stringstream outStream;
+    outStream << "Rich feature: ";
+    for(auto bin: richFeatures[0][0][0])
+        outStream << bin << " ";
+
+    ASSERT_EQ(richFeatures[0][0][0][partitionIdx], 3) << outStream.rdbuf();
+    ASSERT_EQ(richFeatures[0][0][0][classesWithColor.size()], 24) << outStream.rdbuf();
+}
+
+
 
 TEST(VoxelArrangement, FeaturesRegular)
 {
@@ -190,10 +226,12 @@ TEST(VoxelArrangement, Split)
     const string outPath = (string) TEST_DIR + "/testSplit_";
     int maxNodes = 8;
     bool verbose = false;
+    bool richFeatures = false;
 
     double nbVoxelsAlongAxis = 2.;
     int nbSplitsRegular = splitArrangementInVoxelsRegular(allTrees, pointOfViews, points, pointLabels, voxelSide,
-                                                          classesWithColor.size(), outPath, nbVoxelsAlongAxis, verbose);
+                                                          classesWithColor.size(), outPath, nbVoxelsAlongAxis,
+                                                          richFeatures, verbose);
 
     int nbSplits = splitArrangementInVoxels(allTrees, pointOfViews, points, pointLabels, voxelSide,
                                             classesWithColor.size(), outPath, maxNodes, verbose);
@@ -253,7 +291,6 @@ TEST(VoxelArrangement, randomSplit)
     }
 }
 
-
 TEST(VoxelArrangement, intersectSegment)
 {
     CGAL::Bbox_3 bbox(0., 0., 0., 1., 1., 1.);
@@ -273,6 +310,30 @@ TEST(VoxelArrangement, intersectSegment)
 
     cout.clear();
     cerr.clear();
+    voxArr.computeBboxPlanes();
     vector<VoxelArrangement::triplet> intersectedVoxels = voxArr.intersectSegment(pointOfViews[0], points[0]);
+    ASSERT_EQ(intersectedVoxels.size(), 2);
+}
 
+
+TEST(VoxelArrangement, areRichFeaturesEmpty)
+{
+    const string testObjPath = (string) TEST_DIR + "simplecube.obj";
+    vector<classKeywordsColor> classesWithColor = loadSemanticClasses((string) TEST_DIR + "semantic_classes.json");
+    vector<facesLabelName> allTrees =  loadTreesFromObj(testObjPath, classesWithColor);
+    vector<facesLabelName> emptyShapes(0);
+    cout.setstate(ios_base::failbit);
+    cerr.setstate(ios_base::failbit);
+
+    CGAL::Bbox_3 bbox1(0., 0., 0., 1., 1., 1.);
+    double voxelSize1 = 0.5;
+    auto voxArr1 = VoxelArrangement(bbox1, voxelSize1);
+    voxArr1.computeRichFeatures(allTrees, classesWithColor.size(), false);
+    ASSERT_FALSE(voxArr1.areRichFeaturesEmpty());
+
+    CGAL::Bbox_3 bbox2(0., 0., 0., 1., 1., 1.);
+    double voxelSize2 = 0.5;
+    auto voxArr2 = VoxelArrangement(bbox1, voxelSize2);
+    voxArr2.computeRichFeatures(emptyShapes, classesWithColor.size(), false);
+    ASSERT_TRUE(voxArr2.areRichFeaturesEmpty());
 }

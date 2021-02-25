@@ -16,6 +16,7 @@ int main(int argc, char *argv[]) {
     opt.add_option("-pt", "--pointCloud", "Path to the input point cloud.", "");
     opt.add_option("-vs", "--voxelSide", "Voxel side size in meters", "0.07");
     opt.add_option("-va", "--nb_voxels_along_axis", "Number of voxels along each axis in each chunk", "48");
+    opt.add_option("-r", "--richFeatures", "Output rich features instead of labels");
     opt.add_option("-v", "--verbose", "Verbosity trigger");
 
     //Parsing options
@@ -53,6 +54,7 @@ int main(int argc, char *argv[]) {
     const string pointCloudPath = opt["-pt"];
     const double voxelSide = op::str2double(opt["-vs"]);
     const double nbVoxelsAlongAxis = op::str2int(opt["-va"]);
+    bool withRichFeatures = op::str2bool(opt["-r"]);
     bool verbose = op::str2bool(opt["-v"]);
 
     // Load semantic_classes
@@ -77,7 +79,7 @@ int main(int argc, char *argv[]) {
     // Make splits
     int nbSplit = splitArrangementInVoxelsRegular(shapesAndClasses, pointOfViews, pointsWithLabel.first,
                                                   pointsWithLabel.second, voxelSide, classesWithColor.size(),
-                                                  outputPath + prefix, nbVoxelsAlongAxis, verbose);
+                                                  outputPath + prefix, nbVoxelsAlongAxis, withRichFeatures, verbose);
 
     cout << endl << "Made " << nbSplit << " chunks out of model " << gtPath << endl;
     return 0;

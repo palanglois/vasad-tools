@@ -25,38 +25,36 @@ public:
     void buildArrangement();
     void normalizeFeatures();
     void computeBboxPlanes();
+    int getLabel(const triplet& voxelIdx);
     void getIntersections(const std::vector<PlaneSimple> &planes,
                           const Segment &segment, std::vector<Point> &points) const;
     [[nodiscard]] bool isLabelEmpty() const;
+    [[nodiscard]] bool areRichFeaturesEmpty() const;
 
     // Count the number of cells
-    int numberOfCells() const;
+    [[nodiscard]] int numberOfCells() const;
 
     // Finding the cell in which a point is
-    triplet findVoxel(const Point &query) const;
+    [[nodiscard]] triplet findVoxel(const Point &query) const;
 
     // Intersecting the segment (p, q) with the voxels
-    std::vector<triplet> intersectSegment(const Point& p, const Point& q) const;
-
-//    // Finding the closest facet to a query point
-//    int closestFacet(const Point &query);
+    [[nodiscard]] std::vector<triplet> intersectSegment(const Point& p, const Point& q) const;
 
     // Labeling the voxels
     void assignLabel(std::vector<facesLabelName> &labeledShapes, int nbClasses, bool verbose);
+
+    // Labeling the voxels
+    void computeRichFeatures(std::vector<facesLabelName> &labeledShapes, int nbClasses, bool verbose);
 
     // Computing the features from labeled points with their point of views (no point snapping on the facets)
     void computeFeaturesRegular(const std::vector<Point> &points, const std::vector<Point> &pointOfViews,
                                 const std::vector<int> &labels, int nbClasses, bool verbose);
 
-//    // Computing the features from labeled points with their point of views (with snapping)
-//    void computeFeatures(const std::vector<Point> &points, const std::vector<Point> &pointOfViews,
-//                         const std::vector<int> &labels, int nbClasses, bool verbose);
-
     // Save as json
     void saveAsJson(const std::string &path);
 
     // Save as hdf5
-    void saveAsHdf(const std::string &path);
+    void saveAsHdf(const std::string &path, bool withRichFeatures=false);
 
     // Save as ply (based on ground truth labels)
     void saveAsPly(const std::string &path, const std::vector<classKeywordsColor> &classesWithColor);
@@ -73,6 +71,7 @@ public:
     [[nodiscard]] const Arrangement::Plane &planeFromFacetHandle(int handle);
     [[nodiscard]] const LabelTensor &labels() const;
     [[nodiscard]] const FeatTensor &features() const;
+    [[nodiscard]] const FeatTensor &richFeatures() const;
     [[nodiscard]] double width() const;
     [[nodiscard]] double height() const;
     [[nodiscard]] double depth() const;
@@ -85,6 +84,7 @@ private:
     std::map<triplet, int> _index2node;
     std::map<int, std::vector<int>> _node2facets;
     FeatTensor _features;
+    FeatTensor _richFeatures;
     LabelTensor _labels;
     std::vector<PlaneSimple> _planes;
     std::vector<PlaneSimple> _bboxPlanes;
@@ -111,7 +111,8 @@ int splitArrangementInVoxelsRegular(std::vector<facesLabelName> &labeledShapes,
                                     const std::vector<Point> &pointCloud,
                                     const std::vector<int> &pointCloudLabels,
                                     double voxelSide,
-                                    int nbClasses, const std::string &path, int nbVoxelsAlongAxis, bool verbose);
+                                    int nbClasses, const std::string &path, int nbVoxelsAlongAxis,
+                                    bool withRichFeatures, bool verbose);
 
 
 #endif //BIM_DATA_VOXELARRANGEMENT_H

@@ -56,10 +56,16 @@ void VoxelArrangement::loadHdf(const std::string &name) {
     H5Easy::File file(name, H5Easy::File::ReadOnly);
 
     // Features
-    _features = H5Easy::load<FeatTensor>(file, "/features");
+    if(file.exist("/features"))
+        _features = H5Easy::load<FeatTensor>(file, "/features");
 
     // Labels
-    _labels = H5Easy::load<LabelTensor>(file, "/labels");
+    if(file.exist("/labels"))
+        _labels = H5Easy::load<LabelTensor>(file, "/labels");
+
+    // Rich features
+    if(file.exist("/richFeatures"))
+        _richFeatures = H5Easy::load<FeatTensor>(file, "/richFeatures");
 
     // width, height, depth
     if(!_labels.empty())
@@ -71,17 +77,18 @@ void VoxelArrangement::loadHdf(const std::string &name) {
 
 
     // Planes
-    auto inliers = H5Easy::load<vector<vector<double>>>(file, "/planes/inliers");
-    auto normals = H5Easy::load<vector<vector<double>>>(file, "/planes/normals");
-    auto faces = H5Easy::load<vector<vector<vector<int>>>>(file, "/planes/faces");
-    auto cumulatedPercentages = H5Easy::load<vector<double>>(file, "/planes/cumulatedPercentages");
-    for(int i=0; i < inliers.size(); i++)
-    {
-        Point inlier(inliers[i][0], inliers[i][1], inliers[i][2]);
-        Vector normal(normals[i][0], normals[i][1], normals[i][2]);
-        vector<vector<int>> curFaces = faces[i];
-        double cumulatedPercentage = cumulatedPercentages[i];
-        _planes.push_back({inlier, normal, curFaces, cumulatedPercentage});
+    if(file.exist("/planes")) {
+        auto inliers = H5Easy::load<vector<vector<double>>>(file, "/planes/inliers");
+        auto normals = H5Easy::load<vector<vector<double>>>(file, "/planes/normals");
+        auto faces = H5Easy::load<vector<vector<vector<int>>>>(file, "/planes/faces");
+        auto cumulatedPercentages = H5Easy::load<vector<double>>(file, "/planes/cumulatedPercentages");
+        for (int i = 0; i < inliers.size(); i++) {
+            Point inlier(inliers[i][0], inliers[i][1], inliers[i][2]);
+            Vector normal(normals[i][0], normals[i][1], normals[i][2]);
+            vector<vector<int>> curFaces = faces[i];
+            double cumulatedPercentage = cumulatedPercentages[i];
+            _planes.push_back({inlier, normal, curFaces, cumulatedPercentage});
+        }
     }
 
     // Bbox
@@ -96,7 +103,13 @@ void VoxelArrangement::loadHdf(const std::string &name) {
 VoxelArrangement::VoxelArrangement(const CGAL::Bbox_3 &inBbox, double inVoxelSide) : _bbox(inBbox),
 _voxelSide(inVoxelSide), isArrangementComputed(false), areBboxPlanesComputed(false), _width(0), _height(0), _depth(0)
 {
+    // Compute the planes
     computePlanes();
+
+    // Init labels, features and rich features
+    _labels = LabelTensor(0);
+    _features = FeatTensor(0);
+    _richFeatures = FeatTensor(0);
 }
 
 void VoxelArrangement::computePlanes()
@@ -226,12 +239,61 @@ void VoxelArrangement::computeBboxPlanes() {
     _bboxPlanes.push_back({pointMax, normalZ, emptyFaces, nullPercentage});
 }
 
+int VoxelArrangement::getLabel(const VoxelArrangement::triplet& voxelIdx){
+
+    // If we have rich features
+    if(!_richFeatures.empty())
+    {
+        const vector<double> &curFeat = _richFeatures[get<0>(voxelIdx)][get<1>(voxelIdx)][get<2>(voxelIdx)];
+        double featSum = 0.;
+        double bestScore = -1.;
+        int bestIdx = -1;
+        for(int i=0; i < curFeat.size() - 1; i++) {
+            if(curFeat[i] > bestScore)
+            {
+                bestScore = curFeat[i];
+                bestIdx = i;
+            }
+            featSum += curFeat[i];
+        }
+        if(featSum == 0.) return -1;
+        return bestIdx;
+    }
+
+    // If we have labels
+    if(!_labels.empty())
+        return _labels[get<0>(voxelIdx)][get<1>(voxelIdx)][get<2>(voxelIdx)];
+
+    cerr << "Warning: no labels are riched features are available!!!" << endl;
+    return -1;
+}
+
 bool VoxelArrangement::isLabelEmpty() const {
     bool empty = true;
     for(int i=0; i < _width; i++) {
         for (int j = 0; j < _height; j++) {
             for (int k = 0; k < _depth; k++) {
                 if (_labels[i][j][k] != -1) {
+                    empty = false;
+                    break;
+                }
+            }
+            if (!empty) break;
+        }
+        if(!empty) break;
+    }
+    return empty;
+}
+
+bool VoxelArrangement::areRichFeaturesEmpty() const {
+    bool empty = true;
+    for(int i=0; i < _width; i++) {
+        for (int j = 0; j < _height; j++) {
+            for (int k = 0; k < _depth; k++) {
+                int curRichFeatureAccum = 0;
+                for(int l=0; l < _richFeatures[i][j][k].size() - 1; l++)
+                    curRichFeatureAccum += _richFeatures[i][j][k][l];
+                if (curRichFeatureAccum != 0) {
                     empty = false;
                     break;
                 }
@@ -327,9 +389,46 @@ void VoxelArrangement::assignLabel(vector<facesLabelName> &labeledShapes, int nb
     // Store them
     _labels = vector<vector<vector<int>>>(_width, vector<vector<int>>(_height, vector<int>(_depth, -1)));
     for (int i = 0; i < points.size(); i++) {
-//        tuple<int, int, int> idx = _node2index[points[i].second];
         tuple<int, int, int> idx = findVoxel(points[i].first);
         _labels[get<0>(idx)][get<1>(idx)][get<2>(idx)] = labels[i] == nbClasses ? -1: labels[i];
+    }
+}
+
+void VoxelArrangement::computeRichFeatures(vector<facesLabelName> &labeledShapes, int nbClasses, bool verbose)
+{
+    Epeck_to_Simple e2s;
+    // Gather all the points
+    vector<pair<Point, int>> points;
+    double offset = _voxelSide / 3.;
+    vector<double> factors = {-1., 0., 1.};
+    for(int i=0; i < _width; i++)
+        for(int j=0; j < _height; j++)
+            for(int k=0; k < _depth; k++) {
+                Point cellPoint(_bbox.xmin() + _voxelSide / 2. + i * _voxelSide,
+                                _bbox.ymin() + _voxelSide / 2. + j * _voxelSide,
+                                _bbox.zmin() + _voxelSide / 2. + k * _voxelSide);
+                for(auto ofX: factors)
+                    for(auto ofY: factors)
+                        for(auto ofZ: factors) {
+                            Vector offsetVector(ofX*offset, ofY*offset, ofZ*offset);
+                            points.emplace_back(cellPoint + offsetVector, -1);
+                        }
+            }
+
+
+
+    // Label the points
+    vector<int> labels = assignLabelToPoints(points, labeledShapes, nbClasses, _bbox);
+    // Store them
+
+    // Initialize the features
+    _richFeatures = vector<vector<vector<vector<double>>>>(_width,
+                      vector<vector<vector<double>>>(_height,
+                              vector<vector<double>>(_depth,
+                                      vector<double>(nbClasses + 1, 0.))));
+    for (int i = 0; i < points.size(); i++) {
+        tuple<int, int, int> idx = findVoxel(points[i].first);
+        _richFeatures[get<0>(idx)][get<1>(idx)][get<2>(idx)][labels[i]]++;
     }
 }
 
@@ -394,7 +493,6 @@ void VoxelArrangement::saveAsJson(const string &path)
     // Labels
     Json labels = _labels;
 
-
     // Planes
     Simple_to_Epeck s2e;
     vector<Plane> epeckPlanes;
@@ -420,36 +518,44 @@ void VoxelArrangement::saveAsJson(const string &path)
     outFile << outputData;
 }
 
-void VoxelArrangement::saveAsHdf(const std::string &path) {
+void VoxelArrangement::saveAsHdf(const std::string &path, bool withRichFeatures) {
     H5Easy::File file(path, H5Easy::File::Overwrite);
     auto options = H5Easy::DumpOptions(H5Easy::Compression(), H5Easy::DumpMode::Overwrite);
 
     //Features
-    H5Easy::dump(file, "/features", _features, options);
+    if(!_features.empty())
+        H5Easy::dump(file, "/features", _features, options);
+    else
+        cerr << "Warning !!! Saving a chunk with empty features!" << endl;
 
-    // Labels
-    H5Easy::dump(file, "/labels", _labels, options);
+    // Labels or rich features
+    if(withRichFeatures)
+        H5Easy::dump(file, "/richFeatures", _richFeatures, options);
+    else
+        H5Easy::dump(file, "/labels", _labels, options);
 
 
     // Planes
-    vector<vector<double>> inliers(_planes.size(), vector<double>(3, 0.));
-    vector<vector<double>> normals(_planes.size(), vector<double>(3, 0.));
-    vector<vector<vector<int>>> faces;
-    vector<double> cumulatedPercentages;
-    int planeIt=0;
-    for(const auto& pl: _planes) {
-        Point inlier = pl.inlier;
-        Vector normal = pl.normal;
-        inliers[planeIt] = {inlier.x(), inlier.y(), inlier.z()};
-        normals[planeIt] = {normal.x(), normal.y(), normal.z()};
-        faces.push_back(pl.faces);
-        cumulatedPercentages.push_back(pl.cumulatedPercentage);
-        planeIt++;
+    if(!_planes.empty()) {
+        vector<vector<double>> inliers(_planes.size(), vector<double>(3, 0.));
+        vector<vector<double>> normals(_planes.size(), vector<double>(3, 0.));
+        vector<vector<vector<int>>> faces;
+        vector<double> cumulatedPercentages;
+        int planeIt = 0;
+        for (const auto &pl: _planes) {
+            Point inlier = pl.inlier;
+            Vector normal = pl.normal;
+            inliers[planeIt] = {inlier.x(), inlier.y(), inlier.z()};
+            normals[planeIt] = {normal.x(), normal.y(), normal.z()};
+            faces.push_back(pl.faces);
+            cumulatedPercentages.push_back(pl.cumulatedPercentage);
+            planeIt++;
+        }
+        H5Easy::dump(file, "/planes/inliers", inliers, options);
+        H5Easy::dump(file, "/planes/normals", normals, options);
+        H5Easy::dump(file, "/planes/faces", faces, options);
+        H5Easy::dump(file, "/planes/cumulatedPercentages", cumulatedPercentages, options);
     }
-    H5Easy::dump(file, "/planes/inliers", inliers, options);
-    H5Easy::dump(file, "/planes/normals", normals, options);
-    H5Easy::dump(file, "/planes/faces", faces, options);
-    H5Easy::dump(file, "/planes/cumulatedPercentages", cumulatedPercentages, options);
 
     // NbPlanes
     H5Easy::dump(file, "/nbPlanes", _planes.size(), options);
@@ -487,8 +593,8 @@ void VoxelArrangement::saveAsPly(const string &path, const vector<classKeywordsC
         if(!_arr.is_cell_bounded(ch0) || !_arr.is_cell_bounded(ch1)) continue;
         triplet idxCh0 = findVoxel(e2s(_arr.cell(ch0).point()));
         triplet idxCh1 = findVoxel(e2s(_arr.cell(ch1).point()));
-        int label1 = _labels[get<0>(idxCh0)][get<1>(idxCh0)][get<2>(idxCh0)];
-        int label2 = _labels[get<0>(idxCh1)][get<1>(idxCh1)][get<2>(idxCh1)];
+        int label1 = getLabel(idxCh0);
+        int label2 = getLabel(idxCh1);
         if(label1 != label2){
             f.to_draw = true;
         }
@@ -627,6 +733,10 @@ const VoxelArrangement::FeatTensor & VoxelArrangement::features() const {
     return _features;
 }
 
+const VoxelArrangement::FeatTensor & VoxelArrangement::richFeatures() const {
+    return _richFeatures;
+}
+
 double VoxelArrangement::width() const {
     return _width;
 }
@@ -751,7 +861,8 @@ int splitArrangementInVoxelsRegular(vector<facesLabelName> &labeledShapes,
                                     const vector<Point> &pointCloud,
                                     const vector<int> &pointCloudLabels,
                                     double voxelSide,
-                                    int nbClasses, const string &path, int nbVoxelsAlongAxis, bool verbose)
+                                    int nbClasses, const string &path, int nbVoxelsAlongAxis,
+                                    bool withRichFeatures, bool verbose)
 {
 
     // Compute initial bounding box
@@ -775,18 +886,29 @@ int splitArrangementInVoxelsRegular(vector<facesLabelName> &labeledShapes,
         // We build the arrangement corresponding to the current bounding box
         auto fullArrangement = VoxelArrangement(curBbox, voxelSide);
 
-        // We compute the labels
-        fullArrangement.assignLabel(labeledShapes, nbClasses, verbose);
+        if(withRichFeatures)
+        {
+            // We compute the rich features
+            fullArrangement.computeRichFeatures(labeledShapes, nbClasses, verbose);
 
-        // If we have an empty chunk, we discard it
-        if(fullArrangement.isLabelEmpty()) continue;
+            // If we have an empty chunk, we discard it
+            if(fullArrangement.areRichFeaturesEmpty()) continue;
+        }
+        else {
+
+            // We compute the labels
+            fullArrangement.assignLabel(labeledShapes, nbClasses, verbose);
+
+            // If we have an empty chunk, we discard it
+            if (fullArrangement.isLabelEmpty()) continue;
+        }
 
         // We compute the features
         fullArrangement.computeFeaturesRegular(pointCloud, pointOfViews, pointCloudLabels, nbClasses, verbose);
 
         // We save the current chunk
         string outPath(path + padTo(to_string(i), 4) + ".h5");
-        fullArrangement.saveAsHdf(outPath);
+        fullArrangement.saveAsHdf(outPath, withRichFeatures);
     }
     return bboxes.size();
 }
