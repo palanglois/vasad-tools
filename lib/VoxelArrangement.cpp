@@ -305,6 +305,26 @@ bool VoxelArrangement::areRichFeaturesEmpty() const {
     return empty;
 }
 
+bool VoxelArrangement::areFeaturesEmpty() const {
+    bool empty = true;
+    for(int i=0; i < _width; i++) {
+        for (int j = 0; j < _height; j++) {
+            for (int k = 0; k < _depth; k++) {
+                int curRichFeatureAccum = 0;
+                for(int l=0; l < _features[i][j][k].size() - 1; l++)
+                    curRichFeatureAccum += _features[i][j][k][l];
+                if (curRichFeatureAccum != 0) {
+                    empty = false;
+                    break;
+                }
+            }
+            if (!empty) break;
+        }
+        if(!empty) break;
+    }
+    return empty;
+}
+
 int VoxelArrangement::numberOfCells() const
 {
     return _width * _height * _depth;
@@ -531,7 +551,7 @@ void VoxelArrangement::saveAsHdf(const std::string &path, bool withRichFeatures)
     // Labels or rich features
     if(withRichFeatures)
         H5Easy::dump(file, "/richFeatures", _richFeatures, options);
-    else
+    else if(!_labels.empty())
         H5Easy::dump(file, "/labels", _labels, options);
 
 
@@ -909,6 +929,45 @@ int splitArrangementInVoxelsRegular(vector<facesLabelName> &labeledShapes,
         // We save the current chunk
         string outPath(path + padTo(to_string(i), 4) + ".h5");
         fullArrangement.saveAsHdf(outPath, withRichFeatures);
+    }
+    return bboxes.size();
+}
+
+
+int splitLabeledPointCloud(const std::vector<Point> &pointOfViews,
+                           const std::vector<Point> &pointCloud,
+                           const std::vector<int> &pointCloudLabels,
+                           double voxelSide, int nbClasses, const std::string &path, int nbVoxelsAlongAxis,
+                           bool verbose)
+{
+    // Compute initial bounding box
+    CGAL::Bbox_3 initialBbox;
+    for (const auto &point: pointCloud)
+        initialBbox += point.bbox();
+
+    // Split it
+    vector<CGAL::Bbox_3> bboxes = splitBigBbox(initialBbox, nbVoxelsAlongAxis, voxelSide);
+
+    // Generate the chunks
+    for(int i=0; i < bboxes.size(); i++) {
+        const CGAL::Bbox_3 &curBbox = bboxes[i];
+        if (verbose) {
+            cout << endl << "Bbox \033[1;31m" << i << "\033[0m out of " << bboxes.size() << endl;
+            cout << "Current bbox: " << curBbox << endl;
+        }
+
+        // We build the arrangement corresponding to the current bounding box
+        auto fullArrangement = VoxelArrangement(curBbox, voxelSide);
+
+        // We compute the features
+        fullArrangement.computeFeaturesRegular(pointCloud, pointOfViews, pointCloudLabels, nbClasses, verbose);
+
+        // If we have an empty chunk, we discard it
+        if(fullArrangement.areFeaturesEmpty()) continue;
+
+        // We save the current chunk
+        string outPath(path + padTo(to_string(i), 4) + ".h5");
+        fullArrangement.saveAsHdf(outPath);
     }
     return bboxes.size();
 }

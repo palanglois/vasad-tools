@@ -30,6 +30,7 @@ public:
                           const Segment &segment, std::vector<Point> &points) const;
     [[nodiscard]] bool isLabelEmpty() const;
     [[nodiscard]] bool areRichFeaturesEmpty() const;
+    [[nodiscard]] bool areFeaturesEmpty() const;
 
     // Count the number of cells
     [[nodiscard]] int numberOfCells() const;
@@ -113,6 +114,12 @@ int splitArrangementInVoxelsRegular(std::vector<facesLabelName> &labeledShapes,
                                     double voxelSide,
                                     int nbClasses, const std::string &path, int nbVoxelsAlongAxis,
                                     bool withRichFeatures, bool verbose);
+
+int splitLabeledPointCloud(const std::vector<Point> &pointOfViews,
+                           const std::vector<Point> &pointCloud,
+                           const std::vector<int> &pointCloudLabels,
+                           double voxelSide, int nbClasses, const std::string &path, int nbVoxelsAlongAxis,
+                           bool verbose);
 
 
 #endif //BIM_DATA_VOXELARRANGEMENT_H
