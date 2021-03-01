@@ -3,6 +3,7 @@ project(bim_data)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON )
 
 #Data folder
 add_definitions(-DTEST_DIR="${CMAKE_CURRENT_SOURCE_DIR}/data/")
@@ -20,7 +21,10 @@ endif (OPENMP_FOUND)
 find_package(HDF5 REQUIRED)
 include_directories(${HDF5_INCLUDE_DIRS})
 
-#Qt
+# Tinyply
+add_library(tinyply external/tinyply/tinyply.cpp)
+
+# Qt
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
@@ -115,6 +119,7 @@ add_executable(pc2dense main_pc_to_dense.cpp)
 
 add_executable(splitLabeledPoints main_split_labeled_points.cpp)
 
+add_executable(mergePly main_merge_ply.cpp)
 
 target_link_libraries(bim_data ${CGAL_LIBRARIES} io_geometry)
 target_link_libraries(color_classes io_geometry)
@@ -140,6 +145,7 @@ target_link_libraries(voxels2ply ${CGAL_LIBRARIES} io_geometry voxel_arrangement
 target_link_libraries(voxelFeatures2ply ${CGAL_LIBRARIES} io_geometry voxel_arrangement graph_statistics)
 target_link_libraries(pc2dense ${CGAL_LIBRARIES} io_geometry)
 target_link_libraries(splitLabeledPoints ${CGAL_LIBRARIES} io_geometry voxel_arrangement graph_statistics)
+target_link_libraries(mergePly tinyply)
 if(MKL_FOUND)
     target_link_libraries(mesh2plane ${MKL_LIBRARIES})
 endif()

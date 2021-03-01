@@ -19,3 +19,4 @@ data/00*json
 /data/voxelFeatures.ply
 /data/voxelOutput.h5
 /data/voxelOutputRichFeat.h5
+compile_commands.json

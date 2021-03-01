@@ -264,7 +264,7 @@ int VoxelArrangement::getLabel(const VoxelArrangement::triplet& voxelIdx){
     if(!_labels.empty())
         return _labels[get<0>(voxelIdx)][get<1>(voxelIdx)][get<2>(voxelIdx)];
 
-    cerr << "Warning: no labels are riched features are available!!!" << endl;
+    cerr << "Warning: no labels or rich features are available!!!" << endl;
     return -1;
 }
 
