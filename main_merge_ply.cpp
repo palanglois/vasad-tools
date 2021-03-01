@@ -5,7 +5,6 @@
 #include <cstring>
 
 // External
-#include "OptionParser/option_parser.h"
 #include "tinyply/tinyply.h"
 
 using namespace std;
