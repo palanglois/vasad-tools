@@ -3,27 +3,45 @@
 
 // Own
 #include "lib/iogeometry.h"
+#include "lib/graphStatsInline.h"
 
 using namespace std;
 
-pair<vector<Point>, vector<int>> loadLightConvPointOutput(const string& path)
+vector<string> splitString(const string& s, const string& sep) {
+    size_t last = 0;
+    size_t next = 0;
+    vector<string> outputSplit;
+    while ((next = s.find(sep, last)) != string::npos) {
+        outputSplit.push_back(s.substr(last, next-last));
+        last = next + 1;
+    }
+    outputSplit.push_back(s.substr(last, next-last));
+    return outputSplit;
+}
+
+pair<vector<Point>, vector<vector<double>>> loadLightConvPointOutput(const string& path)
 {
     //Loading the obj data
     ifstream inputStream(path.c_str());
     if (!inputStream) {
         cerr << "Could not load file located at : " << path << endl;
-        return make_pair(vector<Point>(), vector<int>());
+        return make_pair(vector<Point>(), vector<vector<double>>());
     }
     vector<Point> points;
-    vector<int> labels;
+    vector<vector<double>> labels;
     string currentLine;
     while (getline(inputStream, currentLine)) {
         stringstream ss(currentLine);
-        float vx, vy, vz;
-        int gtLabel, predLabel;
-        ss >> vx >> vy >> vz >> gtLabel >> predLabel;
+        vector<string> split = splitString(currentLine, " ");
+        double vx = stod(split[0]);
+        double vy = stod(split[1]);
+        double vz = stod(split[2]);
+        vector<double> prediction;
+        prediction.reserve(split.size() - 4);
+        for(int i = 4; i < split.size(); i++)
+            prediction.push_back(stod(split[i]));
         points.emplace_back(vx, vy, vz);
-        labels.push_back(predLabel);
+        labels.push_back(prediction);
     }
     return make_pair(points, labels);
 }
@@ -71,7 +89,7 @@ int main(int argc, char *argv[]) {
     vector<classKeywordsColor> classesWithColor = loadSemanticClasses((string) TEST_DIR + "semantic_classes.json");
 
     // Loading Light conv point predictions
-    pair<vector<Point>, vector<int>> lcpData = loadLightConvPointOutput(opt["-i"]);
+    pair<vector<Point>, vector<vector<double>>> lcpData = loadLightConvPointOutput(opt["-i"]);
     cout << "Loaded " << lcpData.first.size() << " points from LightConvPoint." << endl;
 
     // Loading points with label
@@ -92,7 +110,7 @@ int main(int argc, char *argv[]) {
     cout << "KdTree built!" << endl;
 
     //Make the output data
-    map<Point, int> outputPredLabels;
+    map<Point, vector<double>> outputPredLabels;
     vector<Point> outputPointOfViews;
     vector<colorTuple> pointColors;
 
@@ -104,7 +122,8 @@ int main(int argc, char *argv[]) {
         int idx = point2idx.at(search.begin()->first);
         outputPredLabels[lcpData.first[i]] = lcpData.second[i];
         outputPointOfViews.push_back(pointOfViews[idx]);
-        pointColors.push_back(get<2>(classesWithColor[lcpData.second[i]]));
+        int pseudoLabel = lcpData.second[i].size() == 1 ? lcpData.second[i][0] : arg_max(lcpData.second[i]);
+        pointColors.push_back(get<2>(classesWithColor[pseudoLabel]));
     }
     vector<Vector> normals(0);
     vector<double> features(0);

@@ -268,7 +268,7 @@ std::pair<std::vector<Point>, std::vector<int>> loadPointsWithLabel(const std::s
 
 // Output functions
 void savePointsAsObj(const std::vector<Point>& points, const std::string &outPath);
-void savePointsAsObjWithLabel(const std::pair<std::vector<Point>, std::map<Point, int>> &pointsWithLabel,
+void savePointsAsObjWithLabel(const std::pair<std::vector<Point>, std::map<Point, std::vector<double>>> &pointsWithLabel,
                               const std::string &outPath, const std::vector<Vector> &normals=std::vector<Vector>(0),
                               const std::vector<double> &features=std::vector<double>(0));
 void savePointsAsObjWithColors(std::vector<Point> points, std::vector<colorTuple> colors, const std::string &outPath);

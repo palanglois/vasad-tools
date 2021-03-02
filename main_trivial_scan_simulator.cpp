@@ -85,7 +85,13 @@ int main(int argc, char *argv[]) {
     // Sample the mesh
     pair<vector<Point>, map<Point, int>> samplesWithLabel = sampleMesh(trianglesAndClasses, classesWithColor, nbShoot);
 
+    // Adapt the mapping
+    map<Point, vector<double>> adaptedMapping;
+    for(const auto& mapElem: samplesWithLabel.second)
+        adaptedMapping[mapElem.first] = {(double) mapElem.second};
+    pair<vector<Point>, map<Point, vector<double>>> samplesWithAdaptedLabels = make_pair(samplesWithLabel.first, adaptedMapping);
+
     // Save it
-    savePointsAsObjWithLabel(samplesWithLabel, outPath + "samplesWithLabel.obj");
+    savePointsAsObjWithLabel(samplesWithAdaptedLabels, outPath + "samplesWithLabel.obj");
     return 0;
 }

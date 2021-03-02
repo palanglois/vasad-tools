@@ -84,7 +84,7 @@ int main(int argc, char *argv[]) {
     vector<Point> pointOfViews2;
     vector<Vector> normals;
     vector<colorTuple> pointColors;
-    map<Point, int> pointClasses;
+    map<Point, vector<double>> pointClasses;
     pointColors.reserve(nbShoot);
     sampledPoints.reserve(nbShoot);
     pointOfViews.reserve(nbShoot);
@@ -123,7 +123,7 @@ int main(int argc, char *argv[]) {
                         pointColors.push_back(get<2>(classesWithColor[classIdx]));
                         const Point *p = boost::get<Point>(&(intersection->first));
                         sampledPoints.push_back(*p);
-                        pointClasses[*p] = classIdx;
+                        pointClasses[*p] = {(double) classIdx};
                         if(op::str2bool(opt["-pov"]))
                             pointOfViews2.push_back(pov);
                     }
