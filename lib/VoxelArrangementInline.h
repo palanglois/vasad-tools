@@ -12,8 +12,8 @@ inline void updateFeatures(vector<double>& feature, int label)
 
 inline void updateFeatures(vector<double>& feature, const vector<double>& richLabel)
 {
-    assert(feature.size() == richLabel.size());
-    for(int i=0; i < feature.size(); i++)
+    assert(feature.size() - 1 == richLabel.size());
+    for(int i=0; i < richLabel.size(); i++)
         feature[i] += richLabel.at(i);
 }
 
