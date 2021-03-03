@@ -7,45 +7,6 @@
 
 using namespace std;
 
-vector<string> splitString(const string& s, const string& sep) {
-    size_t last = 0;
-    size_t next = 0;
-    vector<string> outputSplit;
-    while ((next = s.find(sep, last)) != string::npos) {
-        outputSplit.push_back(s.substr(last, next-last));
-        last = next + 1;
-    }
-    outputSplit.push_back(s.substr(last, next-last));
-    return outputSplit;
-}
-
-pair<vector<Point>, vector<vector<double>>> loadLightConvPointOutput(const string& path)
-{
-    //Loading the obj data
-    ifstream inputStream(path.c_str());
-    if (!inputStream) {
-        cerr << "Could not load file located at : " << path << endl;
-        return make_pair(vector<Point>(), vector<vector<double>>());
-    }
-    vector<Point> points;
-    vector<vector<double>> labels;
-    string currentLine;
-    while (getline(inputStream, currentLine)) {
-        stringstream ss(currentLine);
-        vector<string> split = splitString(currentLine, " ");
-        double vx = stod(split[0]);
-        double vy = stod(split[1]);
-        double vz = stod(split[2]);
-        vector<double> prediction;
-        prediction.reserve(split.size() - 4);
-        for(int i = 4; i < split.size(); i++)
-            prediction.push_back(stod(split[i]));
-        points.emplace_back(vx, vy, vz);
-        labels.push_back(prediction);
-    }
-    return make_pair(points, labels);
-}
-
 int main(int argc, char *argv[]) {
     op::OptionParser opt;
     opt.add_option("-h", "--help", "show option help");

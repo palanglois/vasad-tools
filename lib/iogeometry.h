@@ -257,6 +257,9 @@ private:
 
 };
 
+// Utilities
+std::vector<std::string> splitString(const std::string& s, const std::string& sep);
+
 // Input functions
 std::pair<std::vector<Triangle>, TriangleClassMap> loadTrianglesFromObj(const std::string &objFile,
                                                                         const std::vector<classKeywordsColor> &classes);
@@ -265,6 +268,8 @@ std::vector<Point> loadPointCloudObj(const std::string &inFile);
 std::vector<facesLabelName> loadTreesFromObj(const std::string &inFile,
         const std::vector<classKeywordsColor> &classes);
 std::pair<std::vector<Point>, std::vector<int>> loadPointsWithLabel(const std::string &inFile);
+std::pair<std::vector<Point>, std::vector<std::vector<double>>> loadPointsWithRichFeatures(const std::string &inFile);
+std::pair<std::vector<Point>, std::vector<std::vector<double>>> loadLightConvPointOutput(const std::string& path);
 
 // Output functions
 void savePointsAsObj(const std::vector<Point>& points, const std::string &outPath);

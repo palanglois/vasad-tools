@@ -48,8 +48,9 @@ public:
     void computeRichFeatures(std::vector<facesLabelName> &labeledShapes, int nbClasses, bool verbose);
 
     // Computing the features from labeled points with their point of views (no point snapping on the facets)
+    template <typename T>
     void computeFeaturesRegular(const std::vector<Point> &points, const std::vector<Point> &pointOfViews,
-                                const std::vector<int> &labels, int nbClasses, bool verbose);
+                                const std::vector<T> &labels, int nbClasses, bool verbose);
 
     // Save as json
     void saveAsJson(const std::string &path);
@@ -106,14 +107,6 @@ int splitArrangementInVoxels(std::vector<facesLabelName> &labeledShapes,
                              const std::vector<int> &pointCloudLabels,
                              double voxelSide,
                              int nbClasses, const std::string &path, int maxNodes, bool verbose);
-
-int splitArrangementInVoxelsRegular(std::vector<facesLabelName> &labeledShapes,
-                                    const std::vector<Point> &pointOfViews,
-                                    const std::vector<Point> &pointCloud,
-                                    const std::vector<int> &pointCloudLabels,
-                                    double voxelSide,
-                                    int nbClasses, const std::string &path, int nbVoxelsAlongAxis,
-                                    bool withRichFeatures, bool verbose);
 
 int splitLabeledPointCloud(const std::vector<Point> &pointOfViews,
                            const std::vector<Point> &pointCloud,

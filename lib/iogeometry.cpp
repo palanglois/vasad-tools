@@ -3,6 +3,46 @@
 using namespace std;
 using Json = nlohmann::json;
 
+
+vector<string> splitString(const string& s, const string& sep) {
+    size_t last = 0;
+    size_t next = 0;
+    vector<string> outputSplit;
+    while ((next = s.find(sep, last)) != string::npos) {
+        outputSplit.push_back(s.substr(last, next-last));
+        last = next + 1;
+    }
+    outputSplit.push_back(s.substr(last, next-last));
+    return outputSplit;
+}
+
+pair<vector<Point>, vector<vector<double>>> loadLightConvPointOutput(const string& path)
+{
+    //Loading the obj data
+    ifstream inputStream(path.c_str());
+    if (!inputStream) {
+        cerr << "Could not load file located at : " << path << endl;
+        return make_pair(vector<Point>(), vector<vector<double>>());
+    }
+    vector<Point> points;
+    vector<vector<double>> labels;
+    string currentLine;
+    while (getline(inputStream, currentLine)) {
+        stringstream ss(currentLine);
+        vector<string> split = splitString(currentLine, " ");
+        double vx = stod(split[0]);
+        double vy = stod(split[1]);
+        double vz = stod(split[2]);
+        vector<double> prediction;
+        prediction.reserve(split.size() - 4);
+        for(int i = 4; i < split.size(); i++)
+            prediction.push_back(stod(split[i]));
+        points.emplace_back(vx, vy, vz);
+        labels.push_back(prediction);
+    }
+    return make_pair(points, labels);
+}
+
 /* Load points from an obj files */
 pair<vector<Triangle>, TriangleClassMap>
 loadTrianglesFromObj(const string &objFile, const vector<classKeywordsColor> &classes) {
@@ -145,7 +185,39 @@ pair<vector<Point>, vector<int>> loadPointsWithLabel(const string &inFile)
         }
     }
     return make_pair(points, labels);
+}
 
+pair<vector<Point>, vector<vector<double>>> loadPointsWithRichFeatures(const string &inFile)
+{
+    //Loading the obj data
+    ifstream inputStream(inFile.c_str());
+    if (!inputStream) {
+        cerr << "Could not load file located at : " << inFile << endl;
+        return make_pair(vector<Point>(), vector<vector<double>>());
+    }
+    vector<Point> points;
+    vector<vector<double>> richFeatures;
+    string currentLine;
+    while (getline(inputStream, currentLine)) {
+        stringstream ss(currentLine);
+        string firstCaracter;
+        float vx, vy, vz, idx;
+        ss >> firstCaracter;
+        if (firstCaracter == "v") {
+            ss >> vx >> vy >> vz;
+            points.emplace_back(vx, vy, vz);
+        }
+        else if(firstCaracter == "vla") {
+
+            vector<double> richFeature;
+            vector<string> split = splitString(currentLine, " ");
+            for(int i=1; i < split.size(); i++)
+                if(!split[i].empty())
+                    richFeature.push_back(stod(split[i]));
+            richFeatures.push_back(richFeature);
+        }
+    }
+    return make_pair(points, richFeatures);
 }
 
 vector<facesLabelName> loadTreesFromObj(const string &inFile, const vector<classKeywordsColor> &classes)

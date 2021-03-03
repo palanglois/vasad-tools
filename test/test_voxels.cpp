@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
 
-#include "VoxelArrangement.h"
+#include "VoxelArrangementInline.h"
 
 using namespace std;
 
@@ -97,7 +97,7 @@ TEST(VoxelArrangement, RichFeatures) {
 
 
 
-TEST(VoxelArrangement, FeaturesRegular)
+TEST(VoxelArrangement, FeaturesRegularFromPointsWithLabels)
 {
     CGAL::Bbox_3 bbox(0., 0., 0., 1., 1., 1.);
     double voxelSize1 = 0.5;
@@ -134,6 +134,51 @@ TEST(VoxelArrangement, FeaturesRegular)
     for(int feat: features[1][1][1])
         ASSERT_DOUBLE_EQ(feat, 0.);
     ASSERT_DOUBLE_EQ(features[1][0][0][0], 1./2.);
+    ASSERT_DOUBLE_EQ(features[1][0][0][1], 1./2.);
+    ASSERT_DOUBLE_EQ(features[1][1][0][nbClasses], 1.);
+    ASSERT_DOUBLE_EQ(features[0][0][1][nbClasses], 1.);
+    ASSERT_DOUBLE_EQ(features[1][0][1][nbClasses], 1.);
+}
+
+
+
+TEST(VoxelArrangement, FeaturesRegularFromPointsWithFeatures)
+{
+    CGAL::Bbox_3 bbox(0., 0., 0., 1., 1., 1.);
+    double voxelSize1 = 0.5;
+    cout.setstate(ios_base::failbit);
+    cerr.setstate(ios_base::failbit);
+    auto voxArr = VoxelArrangement(bbox, voxelSize1);
+
+    int nbClasses = 3;
+    vector<Point> points;
+    vector<Point> pointOfViews;
+    vector<vector<double>> labels;
+
+    // 1st point
+    points.emplace_back(0.6, 0.25, 0.25);
+    pointOfViews.emplace_back(0.9, 0.6, 0.25);
+    labels.push_back({0., 0.5, 0., 0.});
+
+    // 1st point
+    points.emplace_back(0.7, 0.25, 0.25);
+    pointOfViews.emplace_back(0.4, 0.25, 1.1);
+    labels.push_back({0.5, 0., 0., 0.});
+
+    voxArr.computeFeaturesRegular(points, pointOfViews, labels, nbClasses, false);
+    cout.clear();
+    cerr.clear();
+
+    VoxelArrangement::FeatTensor features = voxArr.features();
+    for(int feat: features[0][0][0])
+        ASSERT_DOUBLE_EQ(feat, 0.);
+    for(int feat: features[0][1][0])
+        ASSERT_DOUBLE_EQ(feat, 0.);
+    for(int feat: features[0][1][1])
+        ASSERT_DOUBLE_EQ(feat, 0.);
+    for(int feat: features[1][1][1])
+        ASSERT_DOUBLE_EQ(feat, 0.);
+    ASSERT_DOUBLE_EQ(features[1][0][0][0], 0.5);
     ASSERT_DOUBLE_EQ(features[1][0][0][1], 1./2.);
     ASSERT_DOUBLE_EQ(features[1][1][0][nbClasses], 1.);
     ASSERT_DOUBLE_EQ(features[0][0][1][nbClasses], 1.);
