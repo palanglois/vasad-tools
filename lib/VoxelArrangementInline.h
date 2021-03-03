@@ -88,6 +88,9 @@ void VoxelArrangement::computeFeaturesRegular(const std::vector<Point> &points, 
                  vector<vector<vector<double>>>(_height,
                          vector<vector<double>>(_depth,
                                  vector<double>(nbClasses + 1, 0.))));
+    vector<vector<vector<int>>> nbHits = vector<vector<vector<int>>>(_width,
+                                                 vector<vector<int>>(_height,
+                                                         vector<int>(_depth, 0)));
 
     // Histograms
     for(int i=0; i < points.size(); i++) {
@@ -100,6 +103,7 @@ void VoxelArrangement::computeFeaturesRegular(const std::vector<Point> &points, 
 
         triplet cellIdx = findVoxel(point);
         updateFeatures(_features[get<0>(cellIdx)][get<1>(cellIdx)][get<2>(cellIdx)], label);
+        nbHits[get<0>(cellIdx)][get<1>(cellIdx)][get<2>(cellIdx)]++;
     }
 
 
@@ -121,10 +125,16 @@ void VoxelArrangement::computeFeaturesRegular(const std::vector<Point> &points, 
         for(const auto& voxel: intersectedVoxels) {
             if (voxel != pointVoxel)
 #pragma omp critical
+            {
                 _features[get<0>(voxel)][get<1>(voxel)][get<2>(voxel)][nbClasses]++;
+                nbHits[get<0>(voxel)][get<1>(voxel)][get<2>(voxel)]++;
+            }
         }
     }
-    normalizeFeatures();
+    if (typeid(T) == typeid(int))
+        normalizeFeatures();
+    else
+        normalizeFeatures(nbHits);
 }
 
 #endif //BIM_DATA_VOXELARRANGEMENTINLIER_H

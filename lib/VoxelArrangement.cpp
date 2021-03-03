@@ -220,6 +220,15 @@ void VoxelArrangement::normalizeFeatures() {
             }
 }
 
+void VoxelArrangement::normalizeFeatures(const vector<vector<vector<int>>> &nbHits) {
+    for(int i=0; i < _width; i++)
+        for(int j=0; j < _height; j++)
+            for(int k=0; k < _depth; k++)
+                if(nbHits[i][j][k] != 0)
+                    for (int l = 0; l < _features[i][j][k].size(); l++)
+                        _features[i][j][k][l] /= (double) nbHits[i][j][k];
+}
+
 void VoxelArrangement::computeBboxPlanes() {
     if(areBboxPlanesComputed) return;
     areBboxPlanesComputed = true;

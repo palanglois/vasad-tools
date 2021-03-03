@@ -24,6 +24,7 @@ public:
     void computePlanes();
     void buildArrangement();
     void normalizeFeatures();
+    void normalizeFeatures(const std::vector<std::vector<std::vector<int>>> &nbHits);
     void computeBboxPlanes();
     int getLabel(const triplet& voxelIdx);
     void getIntersections(const std::vector<PlaneSimple> &planes,
