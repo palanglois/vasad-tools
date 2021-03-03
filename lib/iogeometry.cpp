@@ -217,6 +217,14 @@ pair<vector<Point>, vector<vector<double>>> loadPointsWithRichFeatures(const str
             richFeatures.push_back(richFeature);
         }
     }
+    // Check that features are cogent
+    if (!richFeatures.empty()) {
+        size_t featuresSize = richFeatures[0].size();
+        for(const auto& feature: richFeatures)
+            if(feature.size() != featuresSize)
+                cerr << "WARNING: the point features don't have a congent size: " << featuresSize
+                     << " vs " << feature.size() << endl;
+    }
     return make_pair(points, richFeatures);
 }
 
