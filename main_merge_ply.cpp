@@ -1,6 +1,7 @@
 // STD
 #include <iostream>
 #include <fstream>
+#include <memory>
 #include <string>
 #include <cstring>
 
@@ -74,14 +75,12 @@ void loadMesh(const string& path, vector<float3> &_points, vector<uint3> &_faces
     {
         // Preload into memory
         byte_buffer = read_file_binary(path);
-        file_stream.reset(new memory_stream((char*)byte_buffer.data(), byte_buffer.size()));
+        file_stream = make_unique<memory_stream>((char*)byte_buffer.data(), byte_buffer.size());
 
         // Check if the stream was correctly open
         if (!file_stream || file_stream->fail()) throw std::runtime_error("file_stream failed to open " + path);
 
-        // Compute file size
-        file_stream->seekg(0, std::ios::end);
-        const float size_mb = file_stream->tellg() * float(1e-6);
+        // Set the cursor at the beginning of the file
         file_stream->seekg(0, std::ios::beg);
 
         // Parse the PLY file's header
@@ -95,7 +94,10 @@ void loadMesh(const string& path, vector<float3> &_points, vector<uint3> &_faces
         try { vertices = file.request_properties_from_element("vertex", { "x", "y", "z" }); }
         catch (const exception & e) { cerr << "tinyply exception: " << e.what() << endl; }
         try { faces = file.request_properties_from_element("face", { "vertex_indices" }, 3); }
-        catch (const exception & e) { cerr << "tinyply exception: " << e.what() << endl; }
+        catch (const exception & e) {
+            try { faces = file.request_properties_from_element("face", { "vertex_index" }, 3); }
+            catch (const exception & e) {cerr << "tinyply exception: " << e.what() << endl;}
+        }
         try { colors = file.request_properties_from_element("face", { "red", "green", "blue", "alpha" }); }
         catch (const exception & e) { cerr << "tinyply exception: " << e.what() << endl; }
 
@@ -178,10 +180,10 @@ int main(int argc, char *argv[])
 
     // Merge the faces
     totalFaces.reserve(totalFaces.size() + faces.size());
-    for(int j=0; j < faces.size(); j++)
-      totalFaces.push_back({faces[j].x + faceCursor, 
-                            faces[j].y + faceCursor, 
-                            faces[j].z + faceCursor});
+    for(auto & face : faces)
+      totalFaces.push_back({face.x + faceCursor,
+                            face.y + faceCursor,
+                            face.z + faceCursor});
     faceCursor += points.size();
 
     // Merge the colors
