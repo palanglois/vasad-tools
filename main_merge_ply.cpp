@@ -13,6 +13,7 @@ using namespace tinyply;
 
 struct float3 { float x, y, z; };
 struct uint3 { uint32_t x, y, z; };
+struct uint3c { uint8_t x, y, z; };
 struct uint4 { uint8_t x, y, z, w; };
 
 struct memory_buffer : public std::streambuf
@@ -70,6 +71,7 @@ void loadMesh(const string& path, vector<float3> &_points, vector<uint3> &_faces
 
     unique_ptr<istream> file_stream;
     vector<uint8_t> byte_buffer;
+    bool threeChannels = false;
 
     try
     {
@@ -99,7 +101,10 @@ void loadMesh(const string& path, vector<float3> &_points, vector<uint3> &_faces
             catch (const exception & e) {cerr << "tinyply exception: " << e.what() << endl;}
         }
         try { colors = file.request_properties_from_element("face", { "red", "green", "blue", "alpha" }); }
-        catch (const exception & e) { cerr << "tinyply exception: " << e.what() << endl; }
+        catch (const exception & e) {
+            try { colors = file.request_properties_from_element("face", { "red", "green", "blue"}); threeChannels=true;}
+            catch (const exception & e) {cerr << "tinyply exception: " << e.what() << endl;}
+        }
 
         // Actual parsing
         file.read(*file_stream);
@@ -117,7 +122,20 @@ void loadMesh(const string& path, vector<float3> &_points, vector<uint3> &_faces
         // Processing the colors
         const size_t numColorsBytes = colors->buffer.size_bytes();
         _colors = vector<uint4>(colors->count);
-        memcpy(_colors.data(), colors->buffer.get(), numColorsBytes);
+        if(threeChannels)
+        {
+            vector<uint3c> rawColors(colors->count);
+            memcpy(rawColors.data(), colors->buffer.get(), numColorsBytes);
+            for(int i=0; i < rawColors.size(); i++)
+            {
+                _colors[i].x = rawColors[i].x;
+                _colors[i].y = rawColors[i].y;
+                _colors[i].z = rawColors[i].z;
+                _colors[i].w = 255;
+            }
+        }
+        else
+            memcpy(_colors.data(), colors->buffer.get(), numColorsBytes);
     }
     catch (const exception & e)
     {
