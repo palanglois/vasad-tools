@@ -159,6 +159,30 @@ vector<Point> loadPointCloudObj(const string &inFile)
     return points;
 }
 
+/*
+ * Returns true if the file has hard labels associated to the points and false if it has features instead
+ * */
+bool hasLabels(const string &inFile)
+{
+
+    // Test if we have labels or rich features
+    ifstream inputStream(inFile.c_str());
+    if (!inputStream) {
+        cerr << "Could not load file located at : " << inFile << endl;
+        return 1;
+    }
+    string currentLine, tag;
+    while(getline(inputStream, currentLine)) {
+        stringstream ss(currentLine);
+        ss >> tag;
+        if (tag == "vla")
+            break;
+    }
+    vector<string> firstLine = splitString(currentLine, " ");
+    return (firstLine.size() == 2);
+
+}
+
 pair<vector<Point>, vector<int>> loadPointsWithLabel(const string &inFile)
 {
     //Loading the obj data
