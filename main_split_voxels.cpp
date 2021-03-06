@@ -69,22 +69,8 @@ int main(int argc, char *argv[]) {
     cout << "Ground truth loaded." << endl;
 
     // Test if we have labels or rich features
-    ifstream inputStream(pointCloudPath.c_str());
-    if (!inputStream) {
-        cerr << "Could not load file located at : " << pointCloudPath << endl;
-        return 1;
-    }
-    string currentLine, tag;
-    while(getline(inputStream, currentLine)) {
-        stringstream ss(currentLine);
-        ss >> tag;
-        if (tag == "vla")
-            break;
-    }
-    vector<string> firstLine = splitString(currentLine, " ");
-    bool isLabel = (firstLine.size() == 2);
+    bool isLabel = hasLabels(pointCloudPath);
     cout << "Using " << ((isLabel) ? "labels" : "richFeatures") << endl;
-
 
     // Loading points with either labels or rich features
     pair<vector<Point>, vector<int>> pointsWithLabel;

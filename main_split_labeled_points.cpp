@@ -2,7 +2,7 @@
 #include "OptionParser/option_parser.h"
 
 // Own
-#include "lib/VoxelArrangement.h"
+#include "lib/VoxelArrangementInline.h"
 
 using namespace std;
 
@@ -59,15 +59,32 @@ int main(int argc, char *argv[]) {
         for(int i=0; i < classesWithColor.size(); i++)
             cout << "Class " << i << " is " << get<0>(classesWithColor[i]) << endl;
 
-    // Loading points with label
-    pair<vector<Point>, vector<int>> pointsWithLabel = loadPointsWithLabel(pointCloudPath);
+    bool isLabel = hasLabels(pointCloudPath);
+
+    // Loading points with either labels or rich features
+    pair<vector<Point>, vector<int>> pointsWithLabel;
+    pair<vector<Point>, vector<vector<double>>> pointsWithRichFeatures;
+    if(isLabel)
+        pointsWithLabel = loadPointsWithLabel(pointCloudPath);
+    else
+        pointsWithRichFeatures = loadPointsWithRichFeatures(pointCloudPath);
 
     // Point of views
     vector<Point> pointOfViews = loadPointCloudObj(pointOfViewPath);
 
     // Make splits
-    int nbSplit = splitLabeledPointCloud(pointOfViews, pointsWithLabel.first, pointsWithLabel.second, voxelSide,
+    int nbSplit(0);
+    if(isLabel) {
+        cout << "Loaded " << pointsWithLabel.first.size() << " points" << endl;
+        nbSplit = splitLabeledPointCloud(pointOfViews, pointsWithLabel.first, pointsWithLabel.second, voxelSide,
                                          classesWithColor.size(), outputPath + prefix, nbVoxelsAlongAxis, verbose);
+    }
+    else {
+        cout << "Loaded " << pointsWithRichFeatures.first.size() << " points" << endl;
+        nbSplit = splitLabeledPointCloud(pointOfViews, pointsWithRichFeatures.first, pointsWithRichFeatures.second,
+                                         voxelSide, classesWithColor.size(), outputPath + prefix, nbVoxelsAlongAxis,
+                                         verbose);
+    }
 
     cout << endl << "Made " << nbSplit << " chunks out of point cloud " << pointCloudPath << endl;
     return 0;
