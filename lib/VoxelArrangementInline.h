@@ -69,7 +69,7 @@ int splitArrangementInVoxelsRegular(vector<facesLabelName> &labeledShapes,
         fullArrangement.computeFeaturesRegular(pointCloud, pointOfViews, pointCloudLabels, nbClasses, verbose);
 
         // We save the current chunk
-        string outPath(path + padTo(to_string(i), 4) + ".h5");
+        string outPath(path + padTo(to_string(i), 5) + ".h5");
         fullArrangement.saveAsHdf(outPath, withRichFeatures);
     }
     return bboxes.size();
