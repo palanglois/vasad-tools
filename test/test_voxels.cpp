@@ -158,12 +158,12 @@ TEST(VoxelArrangement, FeaturesRegularFromPointsWithFeatures)
     // 1st point
     points.emplace_back(0.6, 0.25, 0.25);
     pointOfViews.emplace_back(0.9, 0.6, 0.25);
-    labels.push_back({0., 0.5, 0., 0.});
+    labels.push_back({0., 0.5, 0.});
 
     // 2nd point
     points.emplace_back(0.7, 0.25, 0.25);
     pointOfViews.emplace_back(0.4, 0.25, 1.1);
-    labels.push_back({0.5, 0., 0., 0.});
+    labels.push_back({0.5, 0., 0.});
 
     voxArr.computeFeaturesRegular(points, pointOfViews, labels, nbClasses, false);
     cout.clear();
