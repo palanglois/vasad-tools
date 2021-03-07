@@ -53,6 +53,9 @@ public:
     void computeFeaturesRegular(const std::vector<Point> &points, const std::vector<Point> &pointOfViews,
                                 const std::vector<T> &labels, int nbClasses, bool verbose);
 
+    // Computing the visibility only
+    void computeVisibility(const std::vector<Point> &points, const std::vector<Point> &pointOfViews, bool verbose);
+
     // Save as json
     void saveAsJson(const std::string &path);
 
@@ -75,6 +78,7 @@ public:
     [[nodiscard]] const LabelTensor &labels() const;
     [[nodiscard]] const FeatTensor &features() const;
     [[nodiscard]] const FeatTensor &richFeatures() const;
+    [[nodiscard]] const FeatTensor &visibility() const;
     [[nodiscard]] double width() const;
     [[nodiscard]] double height() const;
     [[nodiscard]] double depth() const;
@@ -88,6 +92,7 @@ private:
     std::map<int, std::vector<int>> _node2facets;
     FeatTensor _features;
     FeatTensor _richFeatures;
+    FeatTensor _visibility;
     LabelTensor _labels;
     std::vector<PlaneSimple> _planes;
     std::vector<PlaneSimple> _bboxPlanes;

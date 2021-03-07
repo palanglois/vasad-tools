@@ -1,4 +1,6 @@
 #include "VoxelArrangementInline.h"
+#include "VoxelArrangement.h"
+
 
 using namespace std;
 using Json = nlohmann::json;
@@ -110,6 +112,7 @@ _voxelSide(inVoxelSide), isArrangementComputed(false), areBboxPlanesComputed(fal
     _labels = LabelTensor(0);
     _features = FeatTensor(0);
     _richFeatures = FeatTensor(0);
+    _visibility = FeatTensor(0);
 }
 
 void VoxelArrangement::computePlanes()
@@ -461,6 +464,39 @@ void VoxelArrangement::computeRichFeatures(vector<facesLabelName> &labeledShapes
     }
 }
 
+void VoxelArrangement::computeVisibility(const vector<Point> &points, const vector<Point> &pointOfViews, bool verbose)
+{
+    // Make sure that the bbox planes have been built
+    computeBboxPlanes();
+    // Initialize the visibility
+    _visibility = vector<vector<vector<vector<double>>>>(_width,
+                    vector<vector<vector<double>>>(_height,
+                            vector<vector<double>>(_depth,
+                                    vector<double>(1, 0.))));
+
+    // Select the visibility segments that lie in the bounding box
+    vector<Point> beginPoints;
+    vector<Point> endPoints;
+    vector<int> validIdx = addSegmentIfInBbox(pointOfViews, points, back_inserter(beginPoints), back_inserter(endPoints), _bbox);
+
+    // Visibility
+#pragma omp parallel for
+    for(int i=0; i < validIdx.size(); i++) {
+        const Point &point = endPoints[i];
+        const Point &pov = beginPoints[i];
+
+        bool isPointInBbox = CGAL::do_overlap(point.bbox(), _bbox);
+        vector<triplet> intersectedVoxels = intersectSegment(pov, point);
+        triplet pointVoxel = make_tuple(-1, -1, -1);
+        if(isPointInBbox) pointVoxel = findVoxel(point);
+        for(const auto& voxel: intersectedVoxels) {
+            if (voxel != pointVoxel)
+#pragma omp critical
+                _visibility[get<0>(voxel)][get<1>(voxel)][get<2>(voxel)][0] = 1.;
+        }
+    }
+}
+
 
 void VoxelArrangement::saveAsJson(const string &path)
 {
@@ -728,6 +764,10 @@ double VoxelArrangement::depth() const {
 
 CGAL::Bbox_3 VoxelArrangement::bbox() const {
     return _bbox;
+}
+
+const VoxelArrangement::FeatTensor &VoxelArrangement::visibility() const {
+    return _visibility;
 }
 
 vector<CGAL::Bbox_3> splitBigBbox(const CGAL::Bbox_3 &bigBbox, int nbVoxelsAlongAxis, double voxelSide)

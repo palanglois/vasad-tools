@@ -378,7 +378,37 @@ TEST(VoxelArrangement, areRichFeaturesEmpty)
 
     CGAL::Bbox_3 bbox2(0., 0., 0., 1., 1., 1.);
     double voxelSize2 = 0.5;
-    auto voxArr2 = VoxelArrangement(bbox1, voxelSize2);
+    auto voxArr2 = VoxelArrangement(bbox2, voxelSize2);
     voxArr2.computeRichFeatures(emptyShapes, classesWithColor.size(), false);
     ASSERT_TRUE(voxArr2.areRichFeaturesEmpty());
+}
+
+
+TEST(VoxelArrangement, Visibility)
+{
+    CGAL::Bbox_3 bbox(0., 0., 0., 1., 1., 1.);
+    double voxelSize = 0.5;
+    auto voxArr = VoxelArrangement(bbox, voxelSize);
+
+    //Preparing vectors
+    vector<Point> points;
+    vector<Point> pointOfViews;
+
+    // 1st visibility ray
+    pointOfViews.emplace_back(0.25, 0.25, 0.25);
+    points.emplace_back(1.25, 0.25, 0.25);
+
+    // 2nd visibility ray
+    pointOfViews.emplace_back(0.25, 0.25, 0.25);
+    points.emplace_back(0.25, 0.75, 0.25);
+
+    voxArr.computeVisibility(points, pointOfViews, true);
+
+    VoxelArrangement::FeatTensor visibility = voxArr.visibility();
+
+    ASSERT_EQ(visibility[0][0][0][0], 1.);
+    ASSERT_EQ(visibility[1][0][0][0], 1.);
+    ASSERT_EQ(visibility[0][1][0][0], 0.);
+    ASSERT_EQ(visibility[1][1][0][0], 0.);
+
 }
