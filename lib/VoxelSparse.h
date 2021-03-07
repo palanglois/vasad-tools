@@ -6,7 +6,7 @@
 class VoxelSparse {
 public:
     typedef std::tuple<int, int, int> triplet;
-    typedef std::vector<triplet> Coord;
+    typedef std::vector<std::vector<int>> Coord;
     typedef std::vector<std::vector<double>> SparseVal;
     typedef std::map<triplet, int> CoordIdx;
 
@@ -28,12 +28,14 @@ public:
     [[nodiscard]] const SparseVal& values() const;
     [[nodiscard]] SparseVal normalizedValues() const;
     [[nodiscard]] const CoordIdx &coord2idx() const;
+    [[nodiscard]] const std::vector<Point> &pointCloud() const;
 
 private:
     Coord _coord;
     SparseVal _values;
     std::vector<int> nbHits;
     CoordIdx _coord2idx;
+    std::vector<Point> _pointCloud;
     CGAL::Bbox_3 _bbox;
     double _voxelSide;
     int _width;
