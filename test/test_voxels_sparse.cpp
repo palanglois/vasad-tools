@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
 
-#include "VoxelSparse.h"
+#include "sparseToDense.h"
 
 using namespace std;
 
@@ -40,4 +40,22 @@ TEST(VoxelSparse, construction)
     ASSERT_DOUBLE_EQ(features[1][0], 0.);
     ASSERT_DOUBLE_EQ(features[1][1], 0.);
     ASSERT_DOUBLE_EQ(features[1][2], 1.);
+}
+
+TEST(SparseToDense, sparseBbox)
+{
+    CGAL::Bbox_3 denseBbox(0., 0., 0., 1., 1., 1.);
+    double voxelSide = 0.5;
+    int nbSparseVoxelSide = 4;
+
+    SparseToDense stdStructure(denseBbox, voxelSide, nbSparseVoxelSide);
+
+    CGAL::Bbox_3 sparseBbox = stdStructure.sparseBbox();
+
+    ASSERT_DOUBLE_EQ(sparseBbox.xmin(), -0.5);
+    ASSERT_DOUBLE_EQ(sparseBbox.ymin(), -0.5);
+    ASSERT_DOUBLE_EQ(sparseBbox.zmin(), -0.5);
+    ASSERT_DOUBLE_EQ(sparseBbox.xmax(), 1.5);
+    ASSERT_DOUBLE_EQ(sparseBbox.ymax(), 1.5);
+    ASSERT_DOUBLE_EQ(sparseBbox.zmax(), 1.5);
 }
