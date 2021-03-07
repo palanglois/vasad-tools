@@ -64,6 +64,9 @@ add_library(graph_statistics STATIC lib/graphStats.cpp lib/graphStats.h lib/grap
 # VoxelArrangement
 add_library(voxel_arrangement STATIC lib/VoxelArrangement.cpp lib/VoxelArrangement.h)
 
+# VoxelSparse
+add_library(voxel_sparse STATIC lib/VoxelSparse.cpp lib/VoxelSparse.h)
+
 add_executable(bim_data main.cpp)
 
 add_executable(color_classes main_color_classes.cpp)
@@ -160,6 +163,7 @@ set_target_properties(GTest_in PROPERTIES LINK_FLAGS "-pthread")
 enable_testing()
 include_directories(test)
 add_executable(runUnitTests test/mainTest.cpp test/test_graph.cpp test/graph_fixture.h
-        test/test_region_growing.cpp test/test_voxels.cpp lib/RegionGrowing.cpp)
-target_link_libraries(runUnitTests GTest_in pthread ${CGAL_LIBRARIES} io_geometry graph_statistics voxel_arrangement)
+        test/test_region_growing.cpp test/test_voxels.cpp lib/RegionGrowing.cpp test/test_voxels_sparse.cpp)
+target_link_libraries(runUnitTests GTest_in pthread ${CGAL_LIBRARIES} io_geometry graph_statistics voxel_arrangement
+        voxel_sparse)
 add_test(runUnitTests runUnitTests)
