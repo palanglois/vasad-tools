@@ -183,8 +183,7 @@ bool hasLabels(const string &inFile)
 
 }
 
-pair<vector<Point>, vector<int>> loadPointsWithLabel(const string &inFile)
-{
+pair<vector<Point>, vector<int>> loadPointsWithLabel(const string &inFile) {
     //Loading the obj data
     ifstream inputStream(inFile.c_str());
     if (!inputStream) {
@@ -202,13 +201,40 @@ pair<vector<Point>, vector<int>> loadPointsWithLabel(const string &inFile)
         if (firstCaracter == "v") {
             ss >> vx >> vy >> vz;
             points.emplace_back(vx, vy, vz);
-        }
-        else if(firstCaracter == "vla") {
+        } else if (firstCaracter == "vla") {
             ss >> idx;
             labels.push_back(idx);
         }
     }
     return make_pair(points, labels);
+}
+
+pair<vector<Point>, vector<Vector>> loadPointsWithNormals(const string &inFile)
+{
+    //Loading the obj data
+    ifstream inputStream(inFile.c_str());
+    if (!inputStream) {
+        cerr << "Could not load file located at : " << inFile << endl;
+        return make_pair(vector<Point>(), vector<Vector>());
+    }
+    vector<Point> points;
+    vector<Vector> normals;
+    string currentLine;
+    while (getline(inputStream, currentLine)) {
+        stringstream ss(currentLine);
+        string firstCaracter;
+        float vx, vy, vz, nx, ny, nz;
+        ss >> firstCaracter;
+        if (firstCaracter == "v") {
+            ss >> vx >> vy >> vz;
+            points.emplace_back(vx, vy, vz);
+        }
+        else if(firstCaracter == "vn") {
+            ss >> nx >> ny >> nz;
+            normals.emplace_back(nx, ny, nz);
+        }
+    }
+    return make_pair(points, normals);
 }
 
 pair<vector<Point>, vector<vector<double>>> loadPointsWithRichFeatures(const string &inFile)
