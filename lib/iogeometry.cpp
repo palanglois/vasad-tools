@@ -234,6 +234,8 @@ pair<vector<Point>, vector<Vector>> loadPointsWithNormals(const string &inFile)
             normals.emplace_back(nx, ny, nz);
         }
     }
+    if(points.size() != normals.size())
+        cerr << "Warning: Loaded " << points.size() << " points and " << normals.size() << " normals." << endl;
     return make_pair(points, normals);
 }
 
