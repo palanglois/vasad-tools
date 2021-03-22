@@ -129,6 +129,8 @@ add_executable(mergePly main_merge_ply.cpp)
 
 add_executable(splitSparseToDense main_split_sparse_to_dense.cpp)
 
+add_executable(computeThickness main_compute_thickness.cpp)
+
 target_link_libraries(bim_data ${CGAL_LIBRARIES} io_geometry)
 target_link_libraries(color_classes io_geometry)
 target_link_libraries(plane_arrangement io_geometry)
@@ -153,6 +155,7 @@ target_link_libraries(voxels2ply ${CGAL_LIBRARIES} io_geometry voxel_arrangement
 target_link_libraries(voxelFeatures2ply ${CGAL_LIBRARIES} io_geometry voxel_arrangement graph_statistics)
 target_link_libraries(pc2dense ${CGAL_LIBRARIES} io_geometry)
 target_link_libraries(splitLabeledPoints ${CGAL_LIBRARIES} io_geometry voxel_arrangement graph_statistics)
+target_link_libraries(computeThickness ${CGAL_LIBRARIES} io_geometry)
 target_link_libraries(mergePly tinyply)
 target_link_libraries(splitSparseToDense sparse_to_dense io_geometry voxel_arrangement graph_statistics voxel_sparse)
 if(MKL_FOUND)
