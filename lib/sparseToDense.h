@@ -24,6 +24,7 @@ public:
     // Getters
     [[nodiscard]] const CGAL::Bbox_3 &sparseBbox() const;
     bool areSparseFeaturesEmpty() const;
+    bool areRichFeaturesEmpty() const;
 private:
     double voxelSide;
     CGAL::Bbox_3 denseBbox;

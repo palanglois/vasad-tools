@@ -104,6 +104,10 @@ bool SparseToDense::areSparseFeaturesEmpty() const {
     return sparseVoxels.coord().empty();
 }
 
+bool SparseToDense::areRichFeaturesEmpty() const {
+    return denseVoxels.areRichFeaturesEmpty();
+}
+
 int splitArrangementInVoxelsDts(vector<facesLabelName> &labeledShapes,
                                 const vector<Point> &pointOfViews,
                                 const vector<Point> &pointCloud,
@@ -136,6 +140,7 @@ int splitArrangementInVoxelsDts(vector<facesLabelName> &labeledShapes,
         if(stdStructure.areSparseFeaturesEmpty()) continue;
         stdStructure.computeVisibility(pointCloud, pointOfViews, verbose);
         stdStructure.computeRichFeatures(labeledShapes, nbClasses, verbose);
+        if(stdStructure.areRichFeaturesEmpty()) continue;
 
         // We save the current chunk
         string outPath(path + padTo(to_string(i), 5) + ".h5");
