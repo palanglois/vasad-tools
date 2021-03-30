@@ -4,8 +4,7 @@
 
 using namespace std;
 
-TEST(VoxelSparse, construction)
-{
+TEST(VoxelSparse, construction) {
     CGAL::Bbox_3 bbox(0., 0., 0., 1., 1., 1.);
     double voxelSide = 0.5;
 
@@ -37,16 +36,31 @@ TEST(VoxelSparse, construction)
     ASSERT_EQ(sparseTensor.coord()[1][0], 1);
     ASSERT_EQ(sparseTensor.coord()[1][1], 0);
     ASSERT_EQ(sparseTensor.coord()[1][2], 1);
-    ASSERT_DOUBLE_EQ(features[0][0], 1./sqrt(2.));
-    ASSERT_DOUBLE_EQ(features[0][1], 1./sqrt(2.));
+    ASSERT_DOUBLE_EQ(features[0][0], 1. / sqrt(2.));
+    ASSERT_DOUBLE_EQ(features[0][1], 1. / sqrt(2.));
     ASSERT_DOUBLE_EQ(features[0][2], 0.);
     ASSERT_DOUBLE_EQ(features[1][0], 0.);
     ASSERT_DOUBLE_EQ(features[1][1], 0.);
     ASSERT_DOUBLE_EQ(features[1][2], 1.);
 }
 
-TEST(SparseToDense, sparseBbox)
-{
+TEST(VoxelSparse, OppositeNormals) {
+    CGAL::Bbox_3 bbox(0., 0., 0., 1., 1., 1.);
+    double voxelSide = 0.5;
+
+    VoxelSparse sparseTensor(bbox, voxelSide);
+
+    sparseTensor.updateNormalFeature(Point(0.1, 0.1, 0.1), Vector(1., 0., 0.));
+    sparseTensor.updateNormalFeature(Point(0.1, 0.1, 0.1), Vector(-1., 0., 0.));
+
+    VoxelSparse::SparseVal values = sparseTensor.normalizedValues();
+
+    ASSERT_DOUBLE_EQ(values[0][0], 0.);
+    ASSERT_DOUBLE_EQ(values[0][1], 0.);
+    ASSERT_DOUBLE_EQ(values[0][2], 0.);
+}
+
+TEST(SparseToDense, sparseBbox) {
     CGAL::Bbox_3 denseBbox(0., 0., 0., 1., 1., 1.);
     double voxelSide = 0.5;
     int nbSparseVoxelSide = 4;
@@ -63,8 +77,7 @@ TEST(SparseToDense, sparseBbox)
     ASSERT_DOUBLE_EQ(sparseBbox.zmax(), 1.5);
 }
 
-TEST(SparseToDense, Split)
-{
+TEST(SparseToDense, Split) {
     CGAL::Bbox_3 bbox(0., 0., 0., 1., 1., 1.);
     double voxelSide = 0.25;
     cout.setstate(ios_base::failbit);
@@ -81,7 +94,7 @@ TEST(SparseToDense, Split)
     // Labels
     const string testObjPath = (string) TEST_DIR + "simplecube.obj";
     vector<classKeywordsColor> classesWithColor = loadSemanticClasses((string) TEST_DIR + "semantic_classes.json");
-    auto allTrees =  loadTreesFromObj(testObjPath, classesWithColor);
+    auto allTrees = loadTreesFromObj(testObjPath, classesWithColor);
 
     const string outPath = (string) TEST_DIR + "/testSplit_";
     int nbVoxelsAlongAxisDense = 2;

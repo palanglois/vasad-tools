@@ -70,9 +70,11 @@ VoxelSparse::SparseVal VoxelSparse::normalizedValues() const {
     for(int i = 0; i < _values.size(); i++)
     {
         double norm = sqrt(pow(_values[i][0], 2) + pow(_values[i][1], 2) + pow(_values[i][2], 2));
-        outVal[i][0] = _values[i][0] / norm;
-        outVal[i][1] = _values[i][1] / norm;
-        outVal[i][2] = _values[i][2] / norm;
+        if(norm != 0.) {
+            outVal[i][0] = _values[i][0] / norm;
+            outVal[i][1] = _values[i][1] / norm;
+            outVal[i][2] = _values[i][2] / norm;
+        }
     }
     return outVal;
 }
