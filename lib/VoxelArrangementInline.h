@@ -36,7 +36,7 @@ int splitArrangementInVoxelsRegular(vector<facesLabelName> &labeledShapes,
             initialBbox += triangle.bbox();
 
     // Split it
-    vector<CGAL::Bbox_3> bboxes = splitBigBbox(initialBbox, nbVoxelsAlongAxis, voxelSide);
+    vector<CGAL::Bbox_3> bboxes = splitBigBbox(initialBbox, nbVoxelsAlongAxis * voxelSide);
 
     // Generate the chunks
     for(int i=0; i < bboxes.size(); i++)
@@ -153,7 +153,7 @@ int splitLabeledPointCloud(const std::vector<Point> &pointOfViews,
         initialBbox += point.bbox();
 
     // Split it
-    vector<CGAL::Bbox_3> bboxes = splitBigBbox(initialBbox, nbVoxelsAlongAxis, voxelSide);
+    vector<CGAL::Bbox_3> bboxes = splitBigBbox(initialBbox, nbVoxelsAlongAxis * voxelSide);
 
     // Generate the chunks
     for(int i=0; i < bboxes.size(); i++) {

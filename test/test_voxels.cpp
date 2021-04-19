@@ -293,7 +293,7 @@ TEST(VoxelArrangement, SplitBbox)
     CGAL::Bbox_3 bbox(0., 0., 0., 10., 10., 10.);
     int nbVoxelsAlongAxis = 4;
     double voxelSide = 1.;
-    vector<CGAL::Bbox_3> bboxes = splitBigBbox(bbox, nbVoxelsAlongAxis, voxelSide);
+    vector<CGAL::Bbox_3> bboxes = splitBigBbox(bbox, nbVoxelsAlongAxis * voxelSide);
     ASSERT_EQ((int) bboxes.size(), 27);
     ASSERT_EQ(bboxes[0].xmin(), -1.);
     ASSERT_EQ(bboxes[0].xmax(), 3.);
@@ -318,7 +318,7 @@ TEST(VoxelArrangement, randomSplit)
     double voxelSide = 0.0435;
     cout.clear();
     cerr.clear();
-    vector<CGAL::Bbox_3> bboxes = splitBigBbox(bboxGlobal, nbVoxelsAlongAxis, voxelSide);
+    vector<CGAL::Bbox_3> bboxes = splitBigBbox(bboxGlobal, nbVoxelsAlongAxis * voxelSide);
     for (const auto &bbox: bboxes) {
         cout.setstate(ios_base::failbit);
         cerr.setstate(ios_base::failbit);

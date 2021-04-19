@@ -105,7 +105,7 @@ private:
 };
 
 
-std::vector<CGAL::Bbox_3> splitBigBbox(const CGAL::Bbox_3 &bigBbox, int nbVoxelsAlongAxis, double voxelSide);
+std::vector<CGAL::Bbox_3> splitBigBbox(const CGAL::Bbox_3 &bigBbox, double bboxSide);
 
 int splitArrangementInVoxels(std::vector<facesLabelName> &labeledShapes,
                              const std::vector<Point> &pointOfViews,

@@ -770,10 +770,9 @@ const VoxelArrangement::FeatTensor &VoxelArrangement::visibility() const {
     return _visibility;
 }
 
-vector<CGAL::Bbox_3> splitBigBbox(const CGAL::Bbox_3 &bigBbox, int nbVoxelsAlongAxis, double voxelSide)
+vector<CGAL::Bbox_3> splitBigBbox(const CGAL::Bbox_3 &bigBbox, double bboxSide)
 {
     vector<CGAL::Bbox_3> bboxes;
-    double bboxSide = nbVoxelsAlongAxis*voxelSide;
     int nbSplitX = ceil(double(bigBbox.xmax() - bigBbox.xmin()) / bboxSide);
     int nbSplitY = ceil(double(bigBbox.ymax() - bigBbox.ymin()) / bboxSide);
     int nbSplitZ = ceil(double(bigBbox.zmax() - bigBbox.zmin()) / bboxSide);

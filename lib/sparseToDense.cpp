@@ -122,7 +122,7 @@ int splitArrangementInVoxelsDts(vector<facesLabelName> &labeledShapes,
             initialBbox += triangle.bbox();
 
     // Split it into dense bboxes
-    vector<CGAL::Bbox_3> denseBboxes = splitBigBbox(initialBbox, nbDenseVoxelsAlongAxis, voxelSide);
+    vector<CGAL::Bbox_3> denseBboxes = splitBigBbox(initialBbox, nbDenseVoxelsAlongAxis * voxelSide);
 
     // Generate the chunks
     for(int i=0; i < denseBboxes.size(); i++) {
