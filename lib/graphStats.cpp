@@ -118,7 +118,20 @@ pair<Nodes, Edges> computeGraphStatistics(const vector<bool> &labels, const map<
     return make_pair(nodes, edges);
 }
 
-vector<int> assignLabelToPoints(const vector<pair<Point, int>>& queryPoints, vector<facesLabelName> &labeledShapes,
+template <class T>
+const Point &getPoint(const T &elem)
+{
+    return elem;
+}
+
+template <>
+const Point &getPoint<pair<Point, int>>(const pair<Point, int> &elem)
+{
+    return elem.first;
+}
+
+template <typename T>
+vector<int> assignLabelToPoints(const vector<T>& queryPoints, vector<facesLabelName> &labeledShapes,
                                 int nbClasses, const CGAL::Bbox_3 &bbox)
 {
 
@@ -148,7 +161,8 @@ vector<int> assignLabelToPoints(const vector<pair<Point, int>>& queryPoints, vec
         for(int i=0; i < queryPoints.size(); i++)
         {
 
-            auto &point = queryPoints[i].first;
+//            auto &point = queryPoints[i].first;
+            auto &point = getPoint<T>(queryPoints[i]);
             //if(point.x() < 0.5 && point.z() < 0.6) // DEBUG
             //    cout << "debug" << endl;
 //            int label = voidClass;
@@ -228,6 +242,16 @@ vector<int> assignLabelToPoints(const vector<pair<Point, int>>& queryPoints, vec
     }
     return pointsLabel;
 }
+
+template
+vector<int> assignLabelToPoints<Point>(const vector<Point> &queryPoints,
+                                       vector<facesLabelName> &labeledShapes, int nbClasses,
+                                       const CGAL::Bbox_3 &bbox);
+
+template
+vector<int> assignLabelToPoints<pair<Point, int>>(const vector<pair<Point, int>> &queryPoints,
+                                                  vector<facesLabelName> &labeledShapes, int nbClasses,
+                                                  const CGAL::Bbox_3 &bbox);
 
 //vector<int> assignLabel(const Arrangement &arr, const map<int, int> &cell2label, CGAL::Bbox_3 bbox,
 //                        vector<facesLabelName> &labeledShapes, int nbClasses,

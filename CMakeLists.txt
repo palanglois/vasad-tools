@@ -24,6 +24,9 @@ include_directories(${HDF5_INCLUDE_DIRS})
 # Tinyply
 add_library(tinyply external/tinyply/tinyply.cpp)
 
+# Cnpy
+add_library(cnpy external/cnpy/cnpy.cpp)
+
 # Qt
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
@@ -69,6 +72,9 @@ add_library(voxel_sparse STATIC lib/VoxelSparse.cpp lib/VoxelSparse.h)
 
 # Sparse to dense
 add_library(sparse_to_dense STATIC lib/sparseToDense.cpp lib/sparseToDense.h)
+
+# Implicit representation
+add_library(implicit_representation STATIC lib/ImplicitRepresentation.cpp)
 
 add_executable(bim_data main.cpp)
 
@@ -172,7 +178,8 @@ set_target_properties(GTest_in PROPERTIES LINK_FLAGS "-pthread")
 enable_testing()
 include_directories(test)
 add_executable(runUnitTests test/mainTest.cpp test/test_graph.cpp test/graph_fixture.h
-        test/test_region_growing.cpp test/test_voxels.cpp lib/RegionGrowing.cpp test/test_voxels_sparse.cpp)
+        test/test_region_growing.cpp test/test_voxels.cpp lib/RegionGrowing.cpp test/test_voxels_sparse.cpp
+        test/test_implicit_representation.cpp)
 target_link_libraries(runUnitTests GTest_in pthread ${CGAL_LIBRARIES} io_geometry graph_statistics voxel_arrangement
-        voxel_sparse sparse_to_dense)
+        voxel_sparse sparse_to_dense implicit_representation)
 add_test(runUnitTests runUnitTests)
