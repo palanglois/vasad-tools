@@ -8,7 +8,11 @@ TEST(ImplicitRepresentation, computeSurfacicFromPointCloud)
 {
     CGAL::Bbox_3 bbox(0., 0., 0., 1., 1., 1.);
 
-    ImplicitRepresentation impRep(bbox);
+    const int nbFiles = 10;
+    const int nbSurfacicPerFiles = 76000;
+    const int nbVolumicPointsPerFile = 100000;
+
+    ImplicitRepresentation impRep(bbox, nbFiles, nbSurfacicPerFiles, nbVolumicPointsPerFile);
 
     vector<Point> pointCloud;
     vector<Vector> normals;
@@ -22,13 +26,26 @@ TEST(ImplicitRepresentation, computeSurfacicFromPointCloud)
 
     ASSERT_EQ(impRep.getSurfacicPoints().size(), 1);
     ASSERT_EQ(impRep.getSurfacicNormals().size(), 1);
+
+    // Test with empty cloud
+    vector<Point> emptyPointCloud;
+    vector<Vector> emptyNormals;
+
+    ImplicitRepresentation impRep2(bbox, nbFiles, nbSurfacicPerFiles, nbVolumicPointsPerFile);
+    impRep2.computeSurfacicFromPointCloud(emptyPointCloud, emptyNormals);
+    const string impRepPath = (string) TEST_DIR + "impRep/";
+    impRep2.save(impRepPath);
 }
 
 TEST(ImplicitRepresentation, computeVolumicPoints)
 {
     CGAL::Bbox_3 bbox(0., 0., 0., 1., 1., 1.);
 
-    ImplicitRepresentation impRep(bbox);
+    const int nbFiles = 10;
+    const int nbSurfacicPerFiles = 76000;
+    const int nbVolumicPointsPerFile = 100000;
+
+    ImplicitRepresentation impRep(bbox, nbFiles, nbSurfacicPerFiles, nbVolumicPointsPerFile);
     const string testObjPath = (string) TEST_DIR + "simplecube.obj";
     vector<classKeywordsColor> classesWithColor = loadSemanticClasses((string) TEST_DIR + "semantic_classes.json");
     auto allTrees = loadTreesFromObj(testObjPath, classesWithColor);
@@ -52,4 +69,40 @@ TEST(ImplicitRepresentation, computeVolumicPoints)
     ASSERT_EQ(occupancies.size(), 2);
     ASSERT_EQ(occupancies[0], partitionIdx);
     ASSERT_EQ(occupancies[1], voidIdx);
+}
+
+
+
+TEST(ImplicitRepresentation, save)
+{
+    CGAL::Bbox_3 bbox(0., 0., 0., 1., 1., 1.);
+
+    const int nbFiles = 10;
+    const int nbSurfacicPerFiles = 76000;
+    const int nbVolumicPointsPerFile = 100000;
+
+    ImplicitRepresentation impRep(bbox, nbFiles, nbSurfacicPerFiles, nbVolumicPointsPerFile);
+    const string testObjPath = (string) TEST_DIR + "simplecube.obj";
+    vector<classKeywordsColor> classesWithColor = loadSemanticClasses((string) TEST_DIR + "semantic_classes.json");
+    auto allTrees = loadTreesFromObj(testObjPath, classesWithColor);
+
+    vector<Point> pointCloud;
+    vector<Vector> normals;
+
+    pointCloud.emplace_back(0.5, 0.5, 0.5);
+    normals.emplace_back(1., 0., 0.);
+    pointCloud.emplace_back(0.8, 0.5, 0.6);
+    normals.emplace_back(1., 0., 0.);
+    pointCloud.emplace_back(1.5, 0.5, 0.5);
+    normals.emplace_back(1., 0., 0.);
+
+    impRep.computeSurfacicFromPointCloud(pointCloud, normals);
+
+    cout.setstate(ios_base::failbit);
+    cerr.setstate(ios_base::failbit);
+    impRep.generateRandomVolumicPoints(allTrees, classesWithColor.size(), false);
+    cout.clear();
+    cerr.clear();
+
+    impRep.save((string) TEST_DIR + "implicitChunk");
 }

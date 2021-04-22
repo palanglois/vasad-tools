@@ -75,6 +75,7 @@ add_library(sparse_to_dense STATIC lib/sparseToDense.cpp lib/sparseToDense.h)
 
 # Implicit representation
 add_library(implicit_representation STATIC lib/ImplicitRepresentation.cpp)
+target_link_libraries(implicit_representation "-lstdc++fs" cnpy voxel_arrangement graph_statistics)
 
 add_executable(bim_data main.cpp)
 
@@ -137,6 +138,8 @@ add_executable(splitSparseToDense main_split_sparse_to_dense.cpp)
 
 add_executable(computeThickness main_compute_thickness.cpp)
 
+add_executable(splitImplicit main_split_implicit.cpp)
+
 target_link_libraries(bim_data ${CGAL_LIBRARIES} io_geometry)
 target_link_libraries(color_classes io_geometry)
 target_link_libraries(plane_arrangement io_geometry)
@@ -164,6 +167,7 @@ target_link_libraries(splitLabeledPoints ${CGAL_LIBRARIES} io_geometry voxel_arr
 target_link_libraries(computeThickness ${CGAL_LIBRARIES} io_geometry)
 target_link_libraries(mergePly tinyply)
 target_link_libraries(splitSparseToDense sparse_to_dense io_geometry voxel_arrangement graph_statistics voxel_sparse)
+target_link_libraries(splitImplicit io_geometry voxel_arrangement graph_statistics implicit_representation)
 if(MKL_FOUND)
     target_link_libraries(mesh2plane ${MKL_LIBRARIES})
 endif()
