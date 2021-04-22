@@ -34,7 +34,12 @@ TEST(ImplicitRepresentation, computeSurfacicFromPointCloud)
     ImplicitRepresentation impRep2(bbox, nbFiles, nbSurfacicPerFiles, nbVolumicPointsPerFile);
     impRep2.computeSurfacicFromPointCloud(emptyPointCloud, emptyNormals);
     const string impRepPath = (string) TEST_DIR + "impRep/";
+
+    cout.setstate(ios_base::failbit);
+    cerr.setstate(ios_base::failbit);
     impRep2.save(impRepPath);
+    cout.clear();
+    cerr.clear();
 }
 
 TEST(ImplicitRepresentation, computeVolumicPoints)
@@ -64,7 +69,7 @@ TEST(ImplicitRepresentation, computeVolumicPoints)
     const auto &occupancies = impRep.getOccupancies();
 
     const int partitionIdx = 5;
-    const int voidIdx = classesWithColor.size();
+    const int voidIdx = -1;
 
     ASSERT_EQ(occupancies.size(), 2);
     ASSERT_EQ(occupancies[0], partitionIdx);
@@ -103,6 +108,12 @@ TEST(ImplicitRepresentation, save)
     impRep.generateRandomVolumicPoints(allTrees, classesWithColor.size(), false);
     cout.clear();
     cerr.clear();
+
+    // Test normalization
+    impRep.normalizeClouds();
+    auto surfacicPoints = impRep.getSurfacicPoints();
+    ASSERT_DOUBLE_EQ(surfacicPoints[0][0], 0.);
+    ASSERT_DOUBLE_EQ(surfacicPoints[1][0], 0.6);
 
     impRep.save((string) TEST_DIR + "implicitChunk");
 }

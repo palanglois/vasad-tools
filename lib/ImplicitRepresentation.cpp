@@ -50,7 +50,6 @@ void ImplicitRepresentation::computeVolumicPoints(vector<facesLabelName> &labele
         volumicPoints.push_back({sampledPoints[i].x(), sampledPoints[i].y(), sampledPoints[i].z()});
     for(int i=0; i < labels.size(); i++)
         occupancies.push_back(labels[i] == nbClasses ? -1 : labels[i]);
-    occupancies.insert(occupancies.end(), labels.begin(), labels.end());
 
 }
 
@@ -87,6 +86,24 @@ void sampleWithReplacement(It b, It e, OutIt o, size_t n)
     }
 }
 
+void ImplicitRepresentation::normalizeClouds() {
+    auto normalize = [](double x, double minBbox, double maxBbox) {
+        return (2.*x - maxBbox - minBbox) / (maxBbox - minBbox);
+    };
+    for(auto &point: surfacicPoints)
+    {
+        point[0] = normalize(point[0], bbox.xmin(), bbox.xmax());
+        point[1] = normalize(point[1], bbox.ymin(), bbox.ymax());
+        point[2] = normalize(point[2], bbox.zmin(), bbox.zmax());
+    }
+    for(auto &point: volumicPoints)
+    {
+        point[0] = normalize(point[0], bbox.xmin(), bbox.xmax());
+        point[1] = normalize(point[1], bbox.ymin(), bbox.ymax());
+        point[2] = normalize(point[2], bbox.zmin(), bbox.zmax());
+    }
+}
+
 
 void ImplicitRepresentation::save(const string &path) const {
 
@@ -98,6 +115,11 @@ void ImplicitRepresentation::save(const string &path) const {
 
     // Make the current directory
     fs::create_directories(path);
+
+    // Parameters of the current chunk
+    string paramsPath = path + "/item_dict.npz";
+    vector<double> curBbox = {bbox.xmin(), bbox.ymin(), bbox.zmin(), bbox.xmax(), bbox.ymax(), bbox.zmax()};
+    npz_save(paramsPath, "bbox", &curBbox[0], {6}, "w");
 
     // Surfacic Point Cloud
     string surfacicPcPath = path + "/pointcloud";
@@ -240,6 +262,9 @@ int splitBimInImplicit(vector<facesLabelName> &labeledShapes, const vector<Point
 
         // Compute the volumic points
         implicitRep.generateRandomVolumicPoints(labeledShapes, nbClasses, verbose);
+
+        // Normalize the points
+        implicitRep.normalizeClouds();
 
         // Save current chunk
         string currentChunk = padTo(to_string(i), 8);

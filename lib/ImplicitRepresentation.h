@@ -28,6 +28,9 @@ public:
 
     void generateRandomVolumicPoints(std::vector<facesLabelName> &labeledShapes, int nbClasses, bool verbose);
 
+    // Normalization
+    void normalizeClouds();
+
     // Save current chunk
     void save(const std::string& path) const;
 

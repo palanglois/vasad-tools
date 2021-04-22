@@ -20,3 +20,4 @@ data/00*json
 /data/voxelOutput.h5
 /data/voxelOutputRichFeat.h5
 compile_commands.json
+/data/implicitChunk/
