@@ -179,6 +179,32 @@ const std::vector<int> &ImplicitRepresentation::getOccupancies() const {
     return occupancies;
 }
 
+void saveLists(const vector<string> &allChunks, const string &outputPath)
+{
+    size_t firstThreshold = size_t(allChunks.size() * 0.75);
+    size_t secondThreshold = size_t(allChunks.size() * 0.80);
+
+    vector<string> trainSet, valSet, testSet;
+    for(int i=0; i < allChunks.size(); i++)
+    {
+        if(i < firstThreshold)
+            trainSet.push_back(allChunks[i]);
+        if(firstThreshold <= i && i < secondThreshold)
+            valSet.push_back(allChunks[i]);
+        if(secondThreshold <= i)
+            testSet.push_back(allChunks[i]);
+    }
+    ofstream trainStream(outputPath + "train.lst");
+    for(const auto& chunk: trainSet)
+        trainStream << chunk << endl;
+    ofstream valStream(outputPath + "val.lst");
+    for(const auto& chunk: valSet)
+        valStream << chunk << endl;
+    ofstream testStream(outputPath + "test.lst");
+    for(const auto& chunk: testSet)
+        testStream << chunk << endl;
+}
+
 int splitBimInImplicit(vector<facesLabelName> &labeledShapes, const vector<Point> &pointOfViews,
                        const vector<Point> &pointCloud, const vector<Vector> &pointCloudNormals,
                        int nbClasses, double bboxSize, int nbFilesToGenerate, int nbSurfacicPerFiles,
@@ -194,6 +220,7 @@ int splitBimInImplicit(vector<facesLabelName> &labeledShapes, const vector<Point
     vector<CGAL::Bbox_3> allBboxes = splitBigBbox(initialBbox, bboxSize);
 
     // Generate the chunks
+    vector<string> allChunks;
     for(int i=0; i < allBboxes.size(); i++) {
         const CGAL::Bbox_3 &curBbox = allBboxes[i];
         if (verbose) {
@@ -215,8 +242,11 @@ int splitBimInImplicit(vector<facesLabelName> &labeledShapes, const vector<Point
         implicitRep.generateRandomVolumicPoints(labeledShapes, nbClasses, verbose);
 
         // Save current chunk
-        string outPath(path + padTo(to_string(i), 5));
+        string currentChunk = padTo(to_string(i), 8);
+        allChunks.push_back(currentChunk);
+        string outPath(path + currentChunk);
         implicitRep.save(outPath);
     }
+    saveLists(allChunks, path);
     return allBboxes.size();
 }

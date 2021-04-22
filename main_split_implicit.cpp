@@ -80,9 +80,10 @@ int main(int argc, char *argv[]) {
     vector<Point> pointOfViews = loadPointCloudObj(pointOfViewPath);
 
     // Make splits
+    const string outputDirectory = outputPath + (prefix[prefix.size() - 1] == '/' ? prefix : prefix + '/');
     int nbSplits = splitBimInImplicit(shapesAndClasses, pointOfViews, pointsWithNormals.first,
                                       pointsWithNormals.second, classesWithColor.size(), bboxSize, numberOfFiles,
-                                      numberOfSurfacicPoints, numberOfVolumicPoints, outputPath + prefix, verbose);
+                                      numberOfSurfacicPoints, numberOfVolumicPoints, outputDirectory, verbose);
 
     cout << endl << "Made " << nbSplits << " chunks out of model " << gtPath << endl;
     return 0;
