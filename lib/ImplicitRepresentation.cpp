@@ -39,6 +39,12 @@ void ImplicitRepresentation::computeSurfacicFromPointCloud(const vector<Point> &
     }
 }
 
+void ImplicitRepresentation::computeBoxes(const vector<facesLabelName> &labeledShapes, int nbClasses,
+                                          const vector<Point> &sampledPoints, const vector<int> &labels, int nbShoots) {
+
+
+}
+
 void ImplicitRepresentation::computeVolumicPoints(vector<facesLabelName> &labeledShapes, int nbClasses,
                                                   const vector<Point> &sampledPoints, bool verbose) {
 

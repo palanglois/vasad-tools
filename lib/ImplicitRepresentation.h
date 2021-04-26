@@ -22,6 +22,10 @@ public:
     // Surfacic points
     void computeSurfacicFromPointCloud(const std::vector<Point> &pointCloud, const std::vector<Vector> &normals);
 
+    // Volumic boxes
+    void computeBoxes(const std::vector<facesLabelName> &labeledShapes, int nbClasses,
+            const std::vector<Point> &sampledPoints, const std::vector<int> &labels, int nbShoots);
+
     // Volumic points
     void computeVolumicPoints(std::vector<facesLabelName> &labeledShapes, int nbClasses,
                               const std::vector<Point> &sampledPoints, bool verbose);
