@@ -347,6 +347,9 @@ void ImplicitRepresentation::normalizeClouds() {
     // Boxes
     for(auto &box: boxes)
     {
+        // Discard empty box
+        if(box[0] == -1) continue;
+
         // Scaling (be careful, this may not work if the scaling is anisotropic)
         box[0] = box[0] / (bbox.xmax() - bbox.xmin());
         box[1] = box[1] / (bbox.ymax() - bbox.ymin());
@@ -367,6 +370,9 @@ void ImplicitRepresentation::save(const string &path) const {
         cout << "Not saving chunk " << path << " because there is no surfacic point in it." << endl;
         return;
     }
+
+    // Check whether we need to store the boxes or not
+    bool saveBoxes = !boxes.empty();
 
     // Make the current directory
     fs::create_directories(path);
@@ -410,13 +416,29 @@ void ImplicitRepresentation::save(const string &path) const {
         // Current file path
         string fileOutPath = volumicPcPath + "/points_iou_" + padTo(to_string(i), 2) + ".npz";
 
+        int nbValidPoints = 0;
         vector<double> curPoints;
         vector<unsigned char> curOccupancies;
         string runningBits;
         vector<double> semantic;
+        vector<double> curBoxes;
         for(int j=0; j < nbVolumicPerFiles; j++)
         {
+            // Current label
+            const int& currentLabel = occupancies[nbVolumicPerFiles * i + j];
+
+            // If full and invalid bounding box, we discard this point
+            if(saveBoxes) {
+                if (currentLabel != -1 && boxes[nbVolumicPerFiles * i + j][0] == -1) {
+                    cerr << "Problem with point " << nbVolumicPerFiles * i + j << endl;
+                    continue;
+                }
+                for(const auto& boxElem: boxes[nbVolumicPerFiles * i + j])
+                    curBoxes.push_back(boxElem);
+            }
+
             // Use the points that have been generated
+            nbValidPoints++;
             for(int k=0; k < 3; k++)
                 curPoints.push_back(volumicPoints[nbVolumicPerFiles * i + j][k]);
 
@@ -428,15 +450,18 @@ void ImplicitRepresentation::save(const string &path) const {
                 curOccupancies.push_back(b.to_ulong());
                 runningBits = "";
             }
-            runningBits += to_string(int(occupancies[nbVolumicPerFiles * i + j] != -1));
+            runningBits += to_string(int(currentLabel != -1));
         }
         auto x = runningBits.c_str();
         bitset<8> b(x);
         curOccupancies.push_back(b.to_ulong());
-        npz_save(fileOutPath, "points", &curPoints[0], {(size_t) nbVolumicPerFiles, 3}, "w");
+        npz_save(fileOutPath, "points", &curPoints[0], {(size_t) nbValidPoints, 3}, "w");
         npz_save(fileOutPath, "occupancies", &curOccupancies[0], {curOccupancies.size()}, "a");
         npz_save(fileOutPath, "z_scale", &zscale[0], {1}, "a");
         npz_save(fileOutPath, "semantic", &occupancies[0], {occupancies.size()}, "a");
+        if(saveBoxes) {
+            npz_save(fileOutPath, "boxes", &curBoxes[0], {(size_t) nbValidPoints, 10}, "a");
+        }
     }
 }
 
