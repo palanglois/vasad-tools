@@ -23,10 +23,11 @@ public:
     void computeSurfacicFromPointCloud(const std::vector<Point> &pointCloud, const std::vector<Vector> &normals);
 
     // Volumic boxes
-    void computeBoxes(const std::vector<facesLabelName> &labeledShapes, int nbClasses,
-            const std::vector<Point> &sampledPoints, const std::vector<int> &labels, int nbShoots);
+    void computeBoxes(std::vector<facesLabelName> &labeledShapes, int nbClasses,
+            const std::vector<Point> &sampledPoints, int nbShoots);
 
     // Volumic points
+    void storeVolumicPoints(const std::vector<Point> &sampledPoints, const std::vector<int> &labels, int nbClasses);
     void computeVolumicPoints(std::vector<facesLabelName> &labeledShapes, int nbClasses,
                               const std::vector<Point> &sampledPoints, bool verbose);
 
@@ -47,6 +48,8 @@ public:
 
     [[nodiscard]] const std::vector<int> &getOccupancies() const;
 
+    [[nodiscard]] const std::vector<std::vector<double>> &getBoxes() const;
+
 private:
     // Bounding box
     CGAL::Bbox_3 bbox;
@@ -65,6 +68,8 @@ private:
     // Volumic data
     std::vector<std::vector<double>> volumicPoints;
     std::vector<int> occupancies;
+    std::vector<std::vector<double>> boxes;
+    bool areVolumicDataComputed;
 
 };
 

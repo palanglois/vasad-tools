@@ -35,6 +35,14 @@ EdgeFeatures computeFeaturesFromLabeledPoints(PlaneArrangement &planeArr, const 
                                               const std::vector<Point> &pointOfViews = std::vector<Point>(0),
                                               bool verbose = false);
 
+std::vector<CGAL::Bbox_3> computeShapeBboxes(std::vector<facesLabelName> &labeledShapes);
+
+template <typename T>
+std::vector<int> assignLabelToPointsWithBboxes(const std::vector<T> &queryPoints,
+                                               std::vector<facesLabelName> &labeledShapes, int nbClasses,
+                                               const CGAL::Bbox_3 &bbox,
+                                               const std::vector<CGAL::Bbox_3> &bboxes);
+
 template <typename T>
 std::vector<int> assignLabelToPoints(const std::vector<T>& queryPoints,
                                      std::vector<facesLabelName> &labeledShapes, int nbClasses,

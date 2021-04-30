@@ -19,7 +19,6 @@ typedef CGAL::AABB_triangle_primitive<Kernel, Iterator> Primitive;
 typedef CGAL::AABB_traits<Kernel, Primitive> Traits;
 typedef CGAL::AABB_tree<Traits> Tree;
 typedef boost::optional<Tree::Intersection_and_primitive_id<Ray>::Type> Ray_intersection;
-typedef Tree::Primitive_id Primitive_id;
 
 // External
 #include "OptionParser/option_parser.h"

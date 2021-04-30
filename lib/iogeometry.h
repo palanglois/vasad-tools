@@ -43,6 +43,7 @@
 // External
 #include "json/json.hpp"
 #include "tqdm/tqdm.hpp"
+#include <Eigen/Dense>
 
 // Ours
 #include "Colormap.h"
@@ -62,6 +63,7 @@ typedef typename Kernel::Segment_3 Segment;
 typedef typename Kernel::Triangle_3 Triangle;
 typedef typename Kernel::Vector_3 Vector;
 typedef typename Kernel::Ray_3 Ray;
+typedef typename Kernel::Line_3 Line;
 typedef typename Kernel::Plane_3 PlaneCgal;
 typedef typename Kernel::Intersect_3 Intersect;
 typedef typename CGAL::cpp11::result_of<Intersect(PlaneCgal, Segment)>::type PlaneSegmentIntersection;
@@ -84,6 +86,7 @@ typedef CGAL::AABB_traits<Kernel, Primitive> AABB_triangle_traits;
 typedef CGAL::AABB_tree<AABB_triangle_traits> Tree;
 typedef boost::optional< Tree::Intersection_and_primitive_id<Segment>::Type > Segment_intersection;
 typedef boost::optional<Tree::Intersection_and_primitive_id<Ray>::Type> Ray_intersection;
+typedef Tree::Primitive_id Primitive_id;
 
 /* Typedef for plane arrangement */
 typedef Polyhedral_complex_3::Arrangement_3<Kernel2> Arrangement;

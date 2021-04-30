@@ -130,15 +130,20 @@ const Point &getPoint<pair<Point, int>>(const pair<Point, int> &elem)
     return elem.first;
 }
 
-template <typename T>
-vector<int> assignLabelToPoints(const vector<T>& queryPoints, vector<facesLabelName> &labeledShapes,
-                                int nbClasses, const CGAL::Bbox_3 &bbox)
-{
+vector<CGAL::Bbox_3> computeShapeBboxes(vector<facesLabelName> &labeledShapes) {
 
     //Build bbox for each shape
     vector<CGAL::Bbox_3> bboxes;
-    for(const auto& labeledShape: labeledShapes)
+    for (const auto &labeledShape: labeledShapes)
         bboxes.push_back(CGAL::bbox_3(get<0>(labeledShape).begin(), get<0>(labeledShape).end()));
+
+    return bboxes;
+}
+
+template <typename T>
+vector<int> assignLabelToPointsWithBboxes(const vector<T>& queryPoints, vector<facesLabelName> &labeledShapes,
+                                int nbClasses, const CGAL::Bbox_3 &bbox, const vector<CGAL::Bbox_3> &bboxes)
+{
 
     int voidClass = nbClasses;
     // For every point, test it for every shape
@@ -207,6 +212,16 @@ vector<int> assignLabelToPoints(const vector<T>& queryPoints, vector<facesLabelN
         }
     }
     return pointsLabel;
+}
+
+template <typename T>
+vector<int> assignLabelToPoints(const vector<T>& queryPoints, vector<facesLabelName> &labeledShapes,
+                                int nbClasses, const CGAL::Bbox_3 &bbox) {
+
+    vector<CGAL::Bbox_3> bboxes = computeShapeBboxes(labeledShapes);
+
+    return assignLabelToPointsWithBboxes(queryPoints, labeledShapes, nbClasses, bbox, bboxes);
+
 }
 
 template
