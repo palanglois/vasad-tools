@@ -442,6 +442,9 @@ void ImplicitRepresentation::save(const string &path) const {
             for(int k=0; k < 3; k++)
                 curPoints.push_back(volumicPoints[nbVolumicPerFiles * i + j][k]);
 
+            // Semantic
+            semantic.push_back(currentLabel);
+
             // Occupancies
             if(j % 8 == 0 && j != 0)
             {
@@ -458,7 +461,7 @@ void ImplicitRepresentation::save(const string &path) const {
         npz_save(fileOutPath, "points", &curPoints[0], {(size_t) nbValidPoints, 3}, "w");
         npz_save(fileOutPath, "occupancies", &curOccupancies[0], {curOccupancies.size()}, "a");
         npz_save(fileOutPath, "z_scale", &zscale[0], {1}, "a");
-        npz_save(fileOutPath, "semantic", &occupancies[0], {occupancies.size()}, "a");
+        npz_save(fileOutPath, "semantic", &semantic[0], {semantic.size()}, "a");
         if(saveBoxes) {
             npz_save(fileOutPath, "boxes", &curBoxes[0], {(size_t) nbValidPoints, 10}, "a");
         }

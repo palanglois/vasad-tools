@@ -140,6 +140,8 @@ add_executable(computeThickness main_compute_thickness.cpp)
 
 add_executable(splitImplicit main_split_implicit.cpp)
 
+add_executable(readBoxes main_read_boxes.cpp)
+
 target_link_libraries(bim_data ${CGAL_LIBRARIES} io_geometry)
 target_link_libraries(color_classes io_geometry)
 target_link_libraries(plane_arrangement io_geometry)
@@ -168,6 +170,7 @@ target_link_libraries(computeThickness ${CGAL_LIBRARIES} io_geometry)
 target_link_libraries(mergePly tinyply)
 target_link_libraries(splitSparseToDense sparse_to_dense io_geometry voxel_arrangement graph_statistics voxel_sparse)
 target_link_libraries(splitImplicit io_geometry voxel_arrangement graph_statistics implicit_representation)
+target_link_libraries(readBoxes io_geometry implicit_representation)
 if(MKL_FOUND)
     target_link_libraries(mesh2plane ${MKL_LIBRARIES})
 endif()
