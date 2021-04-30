@@ -11,8 +11,9 @@ TEST(ImplicitRepresentation, computeSurfacicFromPointCloud)
     const int nbFiles = 10;
     const int nbSurfacicPerFiles = 76000;
     const int nbVolumicPointsPerFile = 100000;
+    const int nbClasses = 5;
 
-    ImplicitRepresentation impRep(bbox, nbFiles, nbSurfacicPerFiles, nbVolumicPointsPerFile);
+    ImplicitRepresentation impRep(bbox, nbFiles, nbSurfacicPerFiles, nbVolumicPointsPerFile, nbClasses);
 
     vector<Point> pointCloud;
     vector<Vector> normals;
@@ -31,7 +32,7 @@ TEST(ImplicitRepresentation, computeSurfacicFromPointCloud)
     vector<Point> emptyPointCloud;
     vector<Vector> emptyNormals;
 
-    ImplicitRepresentation impRep2(bbox, nbFiles, nbSurfacicPerFiles, nbVolumicPointsPerFile);
+    ImplicitRepresentation impRep2(bbox, nbFiles, nbSurfacicPerFiles, nbVolumicPointsPerFile, nbClasses);
     impRep2.computeSurfacicFromPointCloud(emptyPointCloud, emptyNormals);
     const string impRepPath = (string) TEST_DIR + "impRep/";
 
@@ -50,10 +51,10 @@ TEST(ImplicitRepresentation, computeVolumicPoints)
     const int nbSurfacicPerFiles = 76000;
     const int nbVolumicPointsPerFile = 100000;
 
-    ImplicitRepresentation impRep(bbox, nbFiles, nbSurfacicPerFiles, nbVolumicPointsPerFile);
     const string testObjPath = (string) TEST_DIR + "simplecube.obj";
     vector<classKeywordsColor> classesWithColor = loadSemanticClasses((string) TEST_DIR + "semantic_classes.json");
     auto allTrees = loadTreesFromObj(testObjPath, classesWithColor);
+    ImplicitRepresentation impRep(bbox, nbFiles, nbSurfacicPerFiles, nbVolumicPointsPerFile, classesWithColor.size());
 
     vector<Point> sampledPoints;
     sampledPoints.emplace_back(0.25, 0.25, 0.25);
@@ -61,7 +62,7 @@ TEST(ImplicitRepresentation, computeVolumicPoints)
 
     cout.setstate(ios_base::failbit);
     cerr.setstate(ios_base::failbit);
-    impRep.computeVolumicPoints(allTrees, classesWithColor.size(), sampledPoints, false);
+    impRep.computeVolumicPoints(allTrees, sampledPoints, false);
     cout.clear();
     cerr.clear();
 
@@ -84,10 +85,10 @@ TEST(ImplicitRepresentation, save) {
     const int nbSurfacicPerFiles = 76000;
     const int nbVolumicPointsPerFile = 100000;
 
-    ImplicitRepresentation impRep(bbox, nbFiles, nbSurfacicPerFiles, nbVolumicPointsPerFile);
     const string testObjPath = (string) TEST_DIR + "simplecube.obj";
     vector<classKeywordsColor> classesWithColor = loadSemanticClasses((string) TEST_DIR + "semantic_classes.json");
     auto allTrees = loadTreesFromObj(testObjPath, classesWithColor);
+    ImplicitRepresentation impRep(bbox, nbFiles, nbSurfacicPerFiles, nbVolumicPointsPerFile, classesWithColor.size());
 
     vector<Point> pointCloud;
     vector<Vector> normals;
@@ -103,7 +104,7 @@ TEST(ImplicitRepresentation, save) {
 
     cout.setstate(ios_base::failbit);
     cerr.setstate(ios_base::failbit);
-    impRep.generateRandomVolumicPoints(allTrees, classesWithColor.size(), -1, false);
+    impRep.generateRandomVolumicPoints(allTrees, -1, false);
     cout.clear();
     cerr.clear();
 
@@ -124,10 +125,10 @@ TEST(ImplicitRepresentation, computeBoxes)
     const int nbSurfacicPerFiles = 76000;
     const int nbVolumicPointsPerFile = 100000;
 
-    ImplicitRepresentation impRep(bbox, nbFiles, nbSurfacicPerFiles, nbVolumicPointsPerFile);
     const string testObjPath = (string) TEST_DIR + "simplecube2.obj";
     vector<classKeywordsColor> classesWithColor = loadSemanticClasses((string) TEST_DIR + "semantic_classes.json");
     auto allTrees = loadTreesFromObj(testObjPath, classesWithColor);
+    ImplicitRepresentation impRep(bbox, nbFiles, nbSurfacicPerFiles, nbVolumicPointsPerFile, classesWithColor.size());
 
     const int nbShoots = 50;
 
@@ -139,7 +140,7 @@ TEST(ImplicitRepresentation, computeBoxes)
 
     cout.setstate(ios_base::failbit);
     cerr.setstate(ios_base::failbit);
-    impRep.computeBoxes(allTrees, classesWithColor.size(), sampledPoints, nbShoots);
+    impRep.computeBoxes(allTrees, sampledPoints, nbShoots);
     cout.clear();
     cerr.clear();
     impRep.normalizeClouds();

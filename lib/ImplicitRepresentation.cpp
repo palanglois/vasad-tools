@@ -20,9 +20,10 @@ vector<Point> sampleInBbox(const CGAL::Bbox_3 &bbox, int nbSamples)
 }
 
 ImplicitRepresentation::ImplicitRepresentation(const CGAL::Bbox_3 &inBbox, int inNbFilesToGenerate,
-                                               int inNbSurfacicPerFiles, int inNbVolumicPerFiles) :
-        bbox(inBbox), nbFilesToGenerate(inNbFilesToGenerate), nbSurfacicPerFiles(inNbSurfacicPerFiles),
-        nbVolumicPerFiles(inNbVolumicPerFiles), areVolumicDataComputed(false) {
+                                               int inNbSurfacicPerFiles, int inNbVolumicPerFiles, int inNbClasses) :
+        bbox(inBbox), nbFilesToGenerate(inNbFilesToGenerate), nbClasses(inNbClasses),
+        nbSurfacicPerFiles(inNbSurfacicPerFiles), nbVolumicPerFiles(inNbVolumicPerFiles),
+        areVolumicDataComputed(false) {
 
 }
 
@@ -118,7 +119,7 @@ void axisOrientation(Vector &axis, const double epsilon)
     }
 }
 
-void ImplicitRepresentation::computeBoxes(vector<facesLabelName> &labeledShapes, int nbClasses,
+void ImplicitRepresentation::computeBoxes(vector<facesLabelName> &labeledShapes,
                                           const vector<Point> &sampledPoints, int nbShoots) {
     if(areVolumicDataComputed) {
         cerr << "Error: the volumic data have already been computed!" << endl;
@@ -269,7 +270,7 @@ void ImplicitRepresentation::storeVolumicPoints(const vector<Point> &sampledPoin
         occupancies.push_back(labels[i] == nbClasses ? -1 : labels[i]);
 }
 
-void ImplicitRepresentation::computeVolumicPoints(vector<facesLabelName> &labeledShapes, int nbClasses,
+void ImplicitRepresentation::computeVolumicPoints(vector<facesLabelName> &labeledShapes,
                                                   const vector<Point> &sampledPoints, bool verbose) {
     if(areVolumicDataComputed) {
         cerr << "Error: the volumic data have already been computed!" << endl;
@@ -286,13 +287,13 @@ void ImplicitRepresentation::computeVolumicPoints(vector<facesLabelName> &labele
 
 }
 
-void ImplicitRepresentation::generateRandomVolumicPoints(vector<facesLabelName> &labeledShapes, int nbClasses,
+void ImplicitRepresentation::generateRandomVolumicPoints(vector<facesLabelName> &labeledShapes,
                                                          int nbBoxShoots, bool verbose) {
     vector<Point> sampledPoints = sampleInBbox(bbox, nbVolumicPerFiles * nbFilesToGenerate);
     if(nbBoxShoots != -1)
-        computeBoxes(labeledShapes, nbClasses, sampledPoints, nbBoxShoots);
+        computeBoxes(labeledShapes, sampledPoints, nbBoxShoots);
     else
-        computeVolumicPoints(labeledShapes, nbClasses, sampledPoints, verbose);
+        computeVolumicPoints(labeledShapes, sampledPoints, verbose);
 }
 
 int random_num_in_range(int range) {
@@ -510,7 +511,7 @@ int splitBimInImplicit(vector<facesLabelName> &labeledShapes, const vector<Point
 
         // Make an implicit representation structure
         auto implicitRep = ImplicitRepresentation(curBbox, nbFilesToGenerate, nbSurfacicPerFiles,
-                                                  nbVolumicPerFiles);
+                                                  nbVolumicPerFiles, nbClasses);
 
         // Compute the surfacic points
         implicitRep.computeSurfacicFromPointCloud(pointCloud, pointCloudNormals);
@@ -519,7 +520,7 @@ int splitBimInImplicit(vector<facesLabelName> &labeledShapes, const vector<Point
         if(implicitRep.getSurfacicPoints().empty()) continue;
 
         // Compute the volumic points
-        implicitRep.generateRandomVolumicPoints(labeledShapes, nbClasses, nbBoxShoots, verbose);
+        implicitRep.generateRandomVolumicPoints(labeledShapes, nbBoxShoots, verbose);
 
         // Normalize the points
         implicitRep.normalizeClouds();

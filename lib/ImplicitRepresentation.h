@@ -17,21 +17,21 @@ class ImplicitRepresentation {
 public:
     // Constructor
     explicit ImplicitRepresentation(const CGAL::Bbox_3 &inBbox, int inNbFilesToGenerate, int inNbSurfacicPerFiles,
-                                    int inNbVolumicPerFile);
+                                    int inNbVolumicPerFile, int inNbClasses);
 
     // Surfacic points
     void computeSurfacicFromPointCloud(const std::vector<Point> &pointCloud, const std::vector<Vector> &normals);
 
     // Volumic boxes
-    void computeBoxes(std::vector<facesLabelName> &labeledShapes, int nbClasses,
-            const std::vector<Point> &sampledPoints, int nbShoots);
+    void computeBoxes(std::vector<facesLabelName> &labeledShapes, const std::vector<Point> &sampledPoints,
+            int nbShoots);
 
     // Volumic points
     void storeVolumicPoints(const std::vector<Point> &sampledPoints, const std::vector<int> &labels, int nbClasses);
-    void computeVolumicPoints(std::vector<facesLabelName> &labeledShapes, int nbClasses,
+    void computeVolumicPoints(std::vector<facesLabelName> &labeledShapes,
                               const std::vector<Point> &sampledPoints, bool verbose);
 
-    void generateRandomVolumicPoints(std::vector<facesLabelName> &labeledShapes, int nbClasses,  int nbBoxShoots=-1,
+    void generateRandomVolumicPoints(std::vector<facesLabelName> &labeledShapes,  int nbBoxShoots=-1,
             bool verbose=false);
 
     // Normalization
@@ -57,6 +57,7 @@ private:
 
     // Number of files to generate
     int nbFilesToGenerate;
+    int nbClasses;
 
     // Number of points per file
     int nbSurfacicPerFiles;
