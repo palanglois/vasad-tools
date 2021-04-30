@@ -139,11 +139,14 @@ void ImplicitRepresentation::computeBoxes(vector<facesLabelName> &labeledShapes,
     normal_distribution<double> normalDist(0., 1.);
     default_random_engine generator(random_device{}());
 
+    Tree tree;
     auto tqLabeledShapes = tq::trange(labeledShapes.size());
-    tqLabeledShapes.set_prefix("Labeling each point: ");
+    tqLabeledShapes.set_prefix("Computing box for each point: ");
     for (int j : tqLabeledShapes)
     {
-        Tree tree(get<0>(labeledShapes[j]).begin(), get<0>(labeledShapes[j]).end());
+        if(!CGAL::do_overlap(bboxes[j], bbox)) continue;
+        tree.rebuild(get<0>(labeledShapes[j]).begin(), get<0>(labeledShapes[j]).end());
+#pragma omp parallel for schedule(static)
         for(int i=0; i < sampledPoints.size(); i++) {
             const Point& point = sampledPoints[i];
             if(!CGAL::do_overlap(point.bbox(), bboxes[j])) continue;
@@ -151,18 +154,20 @@ void ImplicitRepresentation::computeBoxes(vector<facesLabelName> &labeledShapes,
             // 1 - Find smallest dimension axisOne of the current box
             // 1a - Shoot in random directions
             auto bestSquaredDistance = DBL_MAX;
-            Point bestPointOne, bestPointTwo;
-            Vector bestNormalOne, bestNormalTwo;
+            Point bestPointOne, bestPointTwo = Point(0., 0., 0.);
+            Vector bestNormalOne, bestNormalTwo = Vector(0., 0., 0.);
+            bool isSpaceIntersectValid = false;
             for(int k=0; k < nbShoots; k++) {
                 Vector direction1(normalDist(generator), normalDist(generator), normalDist(generator));
-                processDirection(tree, point, direction1, bestSquaredDistance, bestPointOne, bestPointTwo,
-                                 bestNormalOne, bestNormalTwo);
+                if(processDirection(tree, point, direction1, bestSquaredDistance, bestPointOne, bestPointTwo,
+                                 bestNormalOne, bestNormalTwo) == 0) isSpaceIntersectValid = true;
             }
             // 1b - Refinement thanks to the obtained normals;
             vector<Vector> additionalDirections = {bestNormalOne, bestNormalTwo};
             for (const auto &direction: additionalDirections)
-                processDirection(tree, point, direction, bestSquaredDistance, bestPointOne, bestPointTwo,
-                                 bestNormalOne, bestNormalTwo);
+                if(processDirection(tree, point, direction, bestSquaredDistance, bestPointOne, bestPointTwo,
+                                 bestNormalOne, bestNormalTwo) == 0) isSpaceIntersectValid = true;
+            if(!isSpaceIntersectValid) continue;
             Vector axisOne = bestPointTwo - bestPointOne;
             axisOne = axisOne / sqrt(axisOne.squared_length());
             axisOrientation(axisOne, epsilon);
@@ -171,33 +176,42 @@ void ImplicitRepresentation::computeBoxes(vector<facesLabelName> &labeledShapes,
             // 2a - Shoot in random directions in the plane
             PlaneCgal orthogonalPlane(point, axisOne);
             auto bestSquaredDistancePlane = DBL_MAX;
-            Point bestPointOnePlane, bestPointTwoPlane;
-            Vector bestNormalOnePlane, bestNormalTwoPlane;
+            Point bestPointOnePlane, bestPointTwoPlane = Point(0., 0., 0.);
+            Vector bestNormalOnePlane, bestNormalTwoPlane = Vector(0., 0., 0.);
+            bool isPlaneIntersectValid = false;
             for(int k=0; k < nbShoots; k++) {
                 Vector direction1(normalDist(generator), normalDist(generator), normalDist(generator));
                 // Project direction1 on the plane
                 Vector projectedDirection = orthogonalPlane.projection(point + direction1) - point;
-                processDirection(tree, point, projectedDirection, bestSquaredDistancePlane,
+                if(projectedDirection.squared_length() < 0.001) continue;
+                if(processDirection(tree, point, projectedDirection, bestSquaredDistancePlane,
                                  bestPointOnePlane, bestPointTwoPlane,
-                                 bestNormalOnePlane, bestNormalTwoPlane);
+                                 bestNormalOnePlane, bestNormalTwoPlane) == 0)
+                    isPlaneIntersectValid = true;
             }
             // 2b - Refinement thanks to the obtained normals;
             vector<Vector> additionalDirectionsPlane = {bestNormalOnePlane, bestNormalTwoPlane};
-            for (const auto &direction: additionalDirectionsPlane)
-                processDirection(tree, point, direction, bestSquaredDistancePlane,
-                        bestPointOnePlane, bestPointTwoPlane,
-                                 bestNormalOnePlane, bestNormalTwoPlane);
+            for (const auto &direction: additionalDirectionsPlane) {
+                Vector projectedDirection = orthogonalPlane.projection(point + direction) - point;
+                if(projectedDirection.squared_length() < 0.001) continue;
+                if(processDirection(tree, point, projectedDirection, bestSquaredDistancePlane,
+                                 bestPointOnePlane, bestPointTwoPlane,
+                                 bestNormalOnePlane, bestNormalTwoPlane) == 0)
+                    isPlaneIntersectValid = true;
+            }
+            if(!isPlaneIntersectValid) continue;
             Vector axisTwo = bestPointTwoPlane - bestPointOnePlane;
             axisTwo = axisTwo / sqrt(axisTwo.squared_length());
             axisOrientation(axisTwo, epsilon);
             // 3 - The last direction is obtained thanks to the cross product
             Vector axisThree = CGAL::cross_product(axisOne, axisTwo);
             auto bestSquaredDistanceLine = DBL_MAX;
-            Point bestPointOneLine, bestPointTwoLine;
-            Vector bestNormalOneLine, bestNormalTwoLine;
-            processDirection(tree, point, axisThree, bestSquaredDistanceLine,
-                             bestPointOneLine, bestPointTwoLine,
-                             bestNormalOneLine, bestNormalTwoLine);
+            Point bestPointOneLine, bestPointTwoLine = Point(0., 0., 0.);
+            Vector bestNormalOneLine, bestNormalTwoLine = Vector(0., 0., 0.);
+            if (processDirection(tree, point, axisThree, bestSquaredDistanceLine,
+                                 bestPointOneLine, bestPointTwoLine,
+                                 bestNormalOneLine, bestNormalTwoLine) != 0) continue;
+
 
             // 4 - Encode the box
             vector<double> &currentBox = boxes[i];
@@ -207,17 +221,21 @@ void ImplicitRepresentation::computeBoxes(vector<facesLabelName> &labeledShapes,
             currentBox[2] = sqrt(bestSquaredDistanceLine);
             // Translation (intersection of 3 planes)
             PlaneCgal planeOne(CGAL::ORIGIN + ((bestPointOne + (bestPointTwo - CGAL::ORIGIN)) - CGAL::ORIGIN) / 2,
-                    bestPointTwo - bestPointOne);
-            PlaneCgal planeTwo(CGAL::ORIGIN + ((bestPointOnePlane + (bestPointTwoPlane - CGAL::ORIGIN)) - CGAL::ORIGIN) / 2,
+                               bestPointTwo - bestPointOne);
+            PlaneCgal planeTwo(
+                    CGAL::ORIGIN + ((bestPointOnePlane + (bestPointTwoPlane - CGAL::ORIGIN)) - CGAL::ORIGIN) / 2,
                     bestPointTwoPlane - bestPointOnePlane);
-            PlaneCgal planeThree(CGAL::ORIGIN + ((bestPointOneLine + (bestPointTwoLine - CGAL::ORIGIN)) - CGAL::ORIGIN) / 2,
+            PlaneCgal planeThree(
+                    CGAL::ORIGIN + ((bestPointOneLine + (bestPointTwoLine - CGAL::ORIGIN)) - CGAL::ORIGIN) / 2,
                     bestPointTwoLine - bestPointOneLine);
-            CGAL::cpp11::result_of<Intersect(PlaneCgal, PlaneCgal)>::type firstIntersect = intersection(planeOne, planeTwo);
+            CGAL::cpp11::result_of<Intersect(PlaneCgal, PlaneCgal)>::type firstIntersect = intersection(planeOne,
+                                                                                                        planeTwo);
             assert(firstIntersect);
-            const Line* interLine = boost::get<Line>(&*firstIntersect);
-            CGAL::cpp11::result_of<Intersect(Line, PlaneCgal)>::type secondIntersect = intersection(*interLine, planeThree);
+            const Line *interLine = boost::get<Line>(&*firstIntersect);
+            CGAL::cpp11::result_of<Intersect(Line, PlaneCgal)>::type secondIntersect = intersection(*interLine,
+                                                                                                    planeThree);
             assert(secondIntersect);
-            const Point* center = boost::get<Point>(&*secondIntersect);
+            const Point *center = boost::get<Point>(&*secondIntersect);
             currentBox[7] = center->x();
             currentBox[8] = center->y();
             currentBox[9] = center->z();
@@ -269,9 +287,12 @@ void ImplicitRepresentation::computeVolumicPoints(vector<facesLabelName> &labele
 }
 
 void ImplicitRepresentation::generateRandomVolumicPoints(vector<facesLabelName> &labeledShapes, int nbClasses,
-                                                         bool verbose) {
+                                                         int nbBoxShoots, bool verbose) {
     vector<Point> sampledPoints = sampleInBbox(bbox, nbVolumicPerFiles * nbFilesToGenerate);
-    computeVolumicPoints(labeledShapes, nbClasses, sampledPoints, verbose);
+    if(nbBoxShoots != -1)
+        computeBoxes(labeledShapes, nbClasses, sampledPoints, nbBoxShoots);
+    else
+        computeVolumicPoints(labeledShapes, nbClasses, sampledPoints, verbose);
 }
 
 int random_num_in_range(int range) {
@@ -467,7 +488,7 @@ void saveLists(const vector<string> &allChunks, const string &outputPath)
 int splitBimInImplicit(vector<facesLabelName> &labeledShapes, const vector<Point> &pointOfViews,
                        const vector<Point> &pointCloud, const vector<Vector> &pointCloudNormals,
                        int nbClasses, double bboxSize, int nbFilesToGenerate, int nbSurfacicPerFiles,
-                       int nbVolumicPerFiles, const string &path, bool verbose)
+                       int nbVolumicPerFiles, const string &path, int nbBoxShoots, bool verbose)
 {
     // Compute initial bounding box
     CGAL::Bbox_3 initialBbox;
@@ -498,7 +519,7 @@ int splitBimInImplicit(vector<facesLabelName> &labeledShapes, const vector<Point
         if(implicitRep.getSurfacicPoints().empty()) continue;
 
         // Compute the volumic points
-        implicitRep.generateRandomVolumicPoints(labeledShapes, nbClasses, verbose);
+        implicitRep.generateRandomVolumicPoints(labeledShapes, nbClasses, nbBoxShoots, verbose);
 
         // Normalize the points
         implicitRep.normalizeClouds();

@@ -18,6 +18,7 @@ int main(int argc, char *argv[]) {
     opt.add_option("-ns", "--number_surfacic", "Number of surfacic points per file", "76000");
     opt.add_option("-nv", "--number_volumic", "Number of volumic points per file", "100000");
     opt.add_option("-bs", "--bbox_size", "Bounding box size", "4");
+    opt.add_option("-box", "--generate_boxes", "Generate volumic boxes");
     opt.add_option("-v", "--verbose", "Verbosity trigger");
 
     //Parsing options
@@ -62,6 +63,10 @@ int main(int argc, char *argv[]) {
     const double bboxSize = op::str2double(opt["-bs"]);
     bool verbose = op::str2bool(opt["-v"]);
 
+    int nbBoxShoots = -1;
+    if(op::str2bool(opt["-box"]))
+        nbBoxShoots = 50;
+
     // Load semantic_classes
     vector<classKeywordsColor> classesWithColor = loadSemanticClasses((string) TEST_DIR + "semantic_classes.json");
     if(verbose)
@@ -83,7 +88,8 @@ int main(int argc, char *argv[]) {
     const string outputDirectory = outputPath + (prefix[prefix.size() - 1] == '/' ? prefix : prefix + '/');
     int nbSplits = splitBimInImplicit(shapesAndClasses, pointOfViews, pointsWithNormals.first,
                                       pointsWithNormals.second, classesWithColor.size(), bboxSize, numberOfFiles,
-                                      numberOfSurfacicPoints, numberOfVolumicPoints, outputDirectory, verbose);
+                                      numberOfSurfacicPoints, numberOfVolumicPoints, outputDirectory, nbBoxShoots,
+                                      verbose);
 
     cout << endl << "Made " << nbSplits << " chunks out of model " << gtPath << endl;
     return 0;

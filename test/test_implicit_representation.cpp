@@ -103,7 +103,7 @@ TEST(ImplicitRepresentation, save) {
 
     cout.setstate(ios_base::failbit);
     cerr.setstate(ios_base::failbit);
-    impRep.generateRandomVolumicPoints(allTrees, classesWithColor.size(), false);
+    impRep.generateRandomVolumicPoints(allTrees, classesWithColor.size(), -1, false);
     cout.clear();
     cerr.clear();
 
