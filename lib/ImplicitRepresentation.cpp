@@ -222,13 +222,13 @@ void ImplicitRepresentation::computeBoxes(vector<facesLabelName> &labeledShapes,
             currentBox[2] = sqrt(bestSquaredDistanceLine);
             // Translation (intersection of 3 planes)
             PlaneCgal planeOne(CGAL::ORIGIN + ((bestPointOne + (bestPointTwo - CGAL::ORIGIN)) - CGAL::ORIGIN) / 2,
-                               bestPointTwo - bestPointOne);
+                               axisOne);
             PlaneCgal planeTwo(
                     CGAL::ORIGIN + ((bestPointOnePlane + (bestPointTwoPlane - CGAL::ORIGIN)) - CGAL::ORIGIN) / 2,
-                    bestPointTwoPlane - bestPointOnePlane);
+                    axisTwo);
             PlaneCgal planeThree(
                     CGAL::ORIGIN + ((bestPointOneLine + (bestPointTwoLine - CGAL::ORIGIN)) - CGAL::ORIGIN) / 2,
-                    bestPointTwoLine - bestPointOneLine);
+                    axisThree);
             CGAL::cpp11::result_of<Intersect(PlaneCgal, PlaneCgal)>::type firstIntersect = intersection(planeOne,
                                                                                                         planeTwo);
             assert(firstIntersect);
@@ -240,6 +240,15 @@ void ImplicitRepresentation::computeBoxes(vector<facesLabelName> &labeledShapes,
             currentBox[7] = center->x();
             currentBox[8] = center->y();
             currentBox[9] = center->z();
+            if(fabs(center->x() > 1000.) || fabs(center->y() > 1000.) || fabs(center->z() > 1000.))
+            {
+                cout << "Debug Center: " << *center << endl;
+                cout << "Debug plane1: " << planeOne << endl;
+                cout << "Debug plane2: " << planeTwo << endl;
+                cout << "Debug plane3: " << planeThree << endl;
+                cout << "Debug interline: " << *interLine << endl;
+                cout << endl;
+            }
             // Rotation
             Eigen::Matrix3f mat;
             mat(0, 0) = axisOne.x();
