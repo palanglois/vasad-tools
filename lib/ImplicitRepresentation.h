@@ -80,7 +80,8 @@ std::vector<Point> sampleInBbox(const CGAL::Bbox_3 &bbox, int nbSamples);
 int splitBimInImplicit(std::vector<facesLabelName> &labeledShapes, const std::vector<Point> &pointOfViews,
                        const std::vector<Point> &pointCloud, const std::vector<Vector> &pointCloudNormals,
                        int nbClasses, double bboxSize, int nbFilesToGenerate, int nbSurfacicPerFiles,
-                       int nbVolumicPerFiles, const std::string &path, int nbBoxShoots=-1, bool verbose=false);
+                       int nbVolumicPerFiles, const std::string &path, int nbBoxShoots=-1, int randomChunks=-1,
+                       bool verbose=false);
 
 
 #endif //BIM_DATA_IMPLICITREPRESENTATION_H

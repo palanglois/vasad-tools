@@ -30,6 +30,10 @@
 #include <CGAL/Triangulation_3.h>
 #include <CGAL/intersections.h>
 
+// Eigen
+#include "Eigen/Core"
+#include "Eigen/Geometry"
+
 // Boost
 #include <boost/functional/hash.hpp>
 

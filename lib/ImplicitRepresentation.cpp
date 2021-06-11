@@ -526,7 +526,7 @@ void saveLists(const vector<string> &allChunks, const string &outputPath)
 int splitBimInImplicit(vector<facesLabelName> &labeledShapes, const vector<Point> &pointOfViews,
                        const vector<Point> &pointCloud, const vector<Vector> &pointCloudNormals,
                        int nbClasses, double bboxSize, int nbFilesToGenerate, int nbSurfacicPerFiles,
-                       int nbVolumicPerFiles, const string &path, int nbBoxShoots, bool verbose)
+                       int nbVolumicPerFiles, const string &path, int nbBoxShoots, int randomChunks, bool verbose)
 {
     // Compute initial bounding box
     CGAL::Bbox_3 initialBbox;
@@ -534,8 +534,26 @@ int splitBimInImplicit(vector<facesLabelName> &labeledShapes, const vector<Point
         for(const auto& triangle: get<0>(shape))
             initialBbox += triangle.bbox();
 
-    // Split it into dense bboxes
-    vector<CGAL::Bbox_3> allBboxes = splitBigBbox(initialBbox, bboxSize);
+    vector<CGAL::Bbox_3> allBboxes;
+    if(randomChunks != -1)
+    {
+        for(int i = 0; i < randomChunks; i++) {
+            // Compute the model centroid
+            Point centroid(initialBbox.xmax() - initialBbox.xmin(), initialBbox.ymax() - initialBbox.ymin(),
+                           initialBbox.zmax() - initialBbox.zmin());
+
+            // Compute random rotations
+            default_random_engine generator(random_device{}());
+            normal_distribution<double> normalDist(0., 1.);
+            Eigen::Quaterniond quat(normalDist(generator), normalDist(generator), normalDist(generator),
+                                    normalDist(generator));
+            quat.normalize();
+        }
+    }
+    else {
+        // Split it into dense bboxes
+        allBboxes = splitBigBbox(initialBbox, bboxSize);
+    }
 
     // Generate the chunks
     vector<string> allChunks;

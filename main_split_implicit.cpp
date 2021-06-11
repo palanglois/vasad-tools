@@ -19,6 +19,7 @@ int main(int argc, char *argv[]) {
     opt.add_option("-nv", "--number_volumic", "Number of volumic points per file", "100000");
     opt.add_option("-bs", "--bbox_size", "Bounding box size", "4");
     opt.add_option("-box", "--generate_boxes", "Generate volumic boxes");
+    opt.add_option("-r", "--random", "If set, nb of random chunks. Otherwise, chunks are created along a regular grid.", "-1");
     opt.add_option("-v", "--verbose", "Verbosity trigger");
 
     //Parsing options
@@ -61,6 +62,7 @@ int main(int argc, char *argv[]) {
     const int numberOfSurfacicPoints = op::str2int(opt["-ns"]);
     const int numberOfVolumicPoints = op::str2int(opt["-nv"]);
     const double bboxSize = op::str2double(opt["-bs"]);
+    const int randomChunks = op::str2int(opt["-r"]);
     bool verbose = op::str2bool(opt["-v"]);
 
     int nbBoxShoots = -1;
@@ -89,7 +91,7 @@ int main(int argc, char *argv[]) {
     int nbSplits = splitBimInImplicit(shapesAndClasses, pointOfViews, pointsWithNormals.first,
                                       pointsWithNormals.second, classesWithColor.size(), bboxSize, numberOfFiles,
                                       numberOfSurfacicPoints, numberOfVolumicPoints, outputDirectory, nbBoxShoots,
-                                      verbose);
+                                      randomChunks, verbose);
 
     cout << endl << "Made " << nbSplits << " chunks out of model " << gtPath << endl;
     return 0;
