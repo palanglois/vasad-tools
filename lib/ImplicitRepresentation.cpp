@@ -523,6 +523,20 @@ void saveLists(const vector<string> &allChunks, const string &outputPath)
         testStream << chunk << endl;
 }
 
+Triangle transformTriangle(const Triangle& triangle, const Eigen::Matrix3d &rotation,
+                           const Eigen::Vector3d &translation)
+{
+    vector<Point> newPoints;
+    for(int i=0; i < 3; i++)
+    {
+        Eigen::Vector3d eigPt(triangle[i].x(), triangle[i].y(), triangle[i].z());
+        Eigen::Vector3d eigTransformedPoint = rotation*(eigPt - translation);
+        Point transformedPoint(eigTransformedPoint.x(), eigTransformedPoint.y(), eigTransformedPoint.z());
+        newPoints.push_back(transformedPoint);
+    }
+    return Triangle(newPoints[0], newPoints[1], newPoints[2]);
+}
+
 int splitBimInImplicit(vector<facesLabelName> &labeledShapes, const vector<Point> &pointOfViews,
                        const vector<Point> &pointCloud, const vector<Vector> &pointCloudNormals,
                        int nbClasses, double bboxSize, int nbFilesToGenerate, int nbSurfacicPerFiles,
@@ -535,19 +549,29 @@ int splitBimInImplicit(vector<facesLabelName> &labeledShapes, const vector<Point
             initialBbox += triangle.bbox();
 
     vector<CGAL::Bbox_3> allBboxes;
+    vector<Eigen::Matrix3d> rotations;
+    vector<Eigen::Vector3d> translations;
     if(randomChunks != -1)
     {
+        default_random_engine generator(random_device{}());
+        normal_distribution<double> normalDist(0., 1.);
+        uniform_real_distribution<double> distX(initialBbox.xmin(), initialBbox.xmax());
+        uniform_real_distribution<double> distY(initialBbox.ymin(), initialBbox.ymax());
+        uniform_real_distribution<double> distZ(initialBbox.zmin(), initialBbox.zmax());
         for(int i = 0; i < randomChunks; i++) {
-            // Compute the model centroid
-            Point centroid(initialBbox.xmax() - initialBbox.xmin(), initialBbox.ymax() - initialBbox.ymin(),
-                           initialBbox.zmax() - initialBbox.zmin());
+
+            // Compute centroids
+            translations.emplace_back(distX(generator), distY(generator), distZ(generator));
 
             // Compute random rotations
-            default_random_engine generator(random_device{}());
-            normal_distribution<double> normalDist(0., 1.);
             Eigen::Quaterniond quat(normalDist(generator), normalDist(generator), normalDist(generator),
                                     normalDist(generator));
             quat.normalize();
+            rotations.push_back(quat.toRotationMatrix());
+
+            // In this case we use a centered bbox (placement is managed by the rigid transformation)
+            allBboxes.emplace_back(-bboxSize/2., -bboxSize/2., -bboxSize/2.,
+                                   bboxSize/2., bboxSize/2., bboxSize/2.);
         }
     }
     else {
@@ -564,18 +588,63 @@ int splitBimInImplicit(vector<facesLabelName> &labeledShapes, const vector<Point
             cout << "Current bbox: " << curBbox << endl;
         }
 
+        vector<Point> selectedCloud;
+        vector<Vector> selectedNormals;
+        vector<facesLabelName> selectedLabeledShapes;
+        if(randomChunks != -1)
+        {
+            // We transform the pointCloud, pointCloudNormals
+            for(int j=0; j < pointCloud.size(); j++)
+            {
+                const Point& point = pointCloud[j];
+                Eigen::Vector3d eigPt(point.x(), point.y(), point.z());
+                Eigen::Vector3d eigTransformedPoint = rotations[i]*(eigPt - translations[i]);
+                Point transformedPoint(eigTransformedPoint.x(), eigTransformedPoint.y(), eigTransformedPoint.z());
+                if(CGAL::do_overlap(transformedPoint.bbox(), curBbox)) {
+                    selectedCloud.push_back(transformedPoint);
+                    const Vector& normal = pointCloudNormals[j];
+                    Eigen::Vector3d eigNormal(normal.x(), normal.y(), normal.z());
+                    Eigen::Vector3d eigTransformNormal = rotations[i]*(eigNormal - translations[i]);
+                    Vector transformedNormal(eigTransformNormal.x(), eigTransformNormal.y(), eigTransformNormal.z());
+                    selectedNormals.push_back(transformedNormal);
+                }
+            }
+            // We transform labeledShapes
+            for(const auto& shape: labeledShapes)
+            {
+                const vector<Triangle> &triangles = get<0>(shape);
+                CGAL::Bbox_3 shapeBbox;
+                vector<Triangle> selectedTriangles;
+                for(const auto &triangle: triangles)
+                {
+                    Triangle curTriangle = transformTriangle(triangle, rotations[i], translations[i]);
+                    shapeBbox += curTriangle.bbox();
+                    selectedTriangles.push_back(curTriangle);
+                }
+                if(CGAL::do_overlap(shapeBbox, curBbox))
+                    selectedLabeledShapes.emplace_back(selectedTriangles, get<1>(shape), get<2>(shape));
+            }
+        }
+
         // Make an implicit representation structure
         auto implicitRep = ImplicitRepresentation(curBbox, nbFilesToGenerate, nbSurfacicPerFiles,
                                                   nbVolumicPerFiles, nbClasses);
 
         // Compute the surfacic points
-        implicitRep.computeSurfacicFromPointCloud(pointCloud, pointCloudNormals);
+
+        if(randomChunks != -1)
+            implicitRep.computeSurfacicFromPointCloud(selectedCloud, selectedNormals);
+        else
+            implicitRep.computeSurfacicFromPointCloud(pointCloud, pointCloudNormals);
 
         // Discard if we have no surfacic point
         if(implicitRep.getSurfacicPoints().empty()) continue;
 
         // Compute the volumic points
-        implicitRep.generateRandomVolumicPoints(labeledShapes, nbBoxShoots, verbose);
+        if(randomChunks != -1)
+            implicitRep.generateRandomVolumicPoints(selectedLabeledShapes, nbBoxShoots, verbose);
+        else
+            implicitRep.generateRandomVolumicPoints(labeledShapes, nbBoxShoots, verbose);
 
         // Normalize the points
         implicitRep.normalizeClouds();
