@@ -555,6 +555,7 @@ int splitBimInImplicit(vector<facesLabelName> &labeledShapes, const vector<Point
     {
         default_random_engine generator(random_device{}());
         normal_distribution<double> normalDist(0., 1.);
+        uniform_real_distribution<double> angle(0, 2*M_PI);
         uniform_real_distribution<double> distX(initialBbox.xmin(), initialBbox.xmax());
         uniform_real_distribution<double> distY(initialBbox.ymin(), initialBbox.ymax());
         uniform_real_distribution<double> distZ(initialBbox.zmin(), initialBbox.zmax());
@@ -564,10 +565,8 @@ int splitBimInImplicit(vector<facesLabelName> &labeledShapes, const vector<Point
             translations.emplace_back(distX(generator), distY(generator), distZ(generator));
 
             // Compute random rotations
-            Eigen::Quaterniond quat(normalDist(generator), normalDist(generator), normalDist(generator),
-                                    normalDist(generator));
-            quat.normalize();
-            rotations.push_back(quat.toRotationMatrix());
+            Eigen::Matrix3d rotation = Eigen::AngleAxisd(angle(generator), Eigen::Vector3d::UnitZ()).toRotationMatrix();
+            rotations.push_back(rotation);
 
             // In this case we use a centered bbox (placement is managed by the rigid transformation)
             allBboxes.emplace_back(-bboxSize/2., -bboxSize/2., -bboxSize/2.,
