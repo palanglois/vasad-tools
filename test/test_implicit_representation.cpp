@@ -70,7 +70,7 @@ TEST(ImplicitRepresentation, computeVolumicPoints)
     const auto &occupancies = impRep.getOccupancies();
 
     const int partitionIdx = 5;
-    const int voidIdx = -1;
+    const int voidIdx = classesWithColor.size();
 
     ASSERT_EQ(occupancies.size(), 2);
     ASSERT_EQ(occupancies[0], partitionIdx);

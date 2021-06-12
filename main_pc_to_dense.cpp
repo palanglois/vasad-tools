@@ -54,7 +54,7 @@ int main(int argc, char *argv[]) {
     cout << "Loaded " << lcpData.first.size() << " points from LightConvPoint." << endl;
 
     // Loading points with label
-    pair<vector<Point>, vector<int>> originalData = loadPointsWithLabel(opt["-s"]);
+    pair<vector<Point>, vector<Vector>> originalData = loadPointsWithNormals(opt["-s"]);
     cout << "Loaded " << originalData.first.size() << " points from the original scan." << endl;
 
     // Point of views
@@ -73,6 +73,7 @@ int main(int argc, char *argv[]) {
     //Make the output data
     map<Point, vector<double>> outputPredLabels;
     vector<Point> outputPointOfViews;
+    vector<Vector> normals;
     vector<colorTuple> pointColors;
 
     //Fill the data
@@ -83,10 +84,10 @@ int main(int argc, char *argv[]) {
         int idx = point2idx.at(search.begin()->first);
         outputPredLabels[lcpData.first[i]] = lcpData.second[i];
         outputPointOfViews.push_back(pointOfViews[idx]);
+        normals.push_back(originalData.second[idx]);
         int pseudoLabel = lcpData.second[i].size() == 1 ? lcpData.second[i][0] : arg_max(lcpData.second[i]);
         pointColors.push_back(get<2>(classesWithColor[pseudoLabel]));
     }
-    vector<Vector> normals(0);
     vector<double> features(0);
     savePointsAsObjWithColors(lcpData.first, pointColors, outputPath + "goodVis.obj");
     savePointsAsObjWithLabel(make_pair(lcpData.first, outputPredLabels),

@@ -239,6 +239,52 @@ pair<vector<Point>, vector<Vector>> loadPointsWithNormals(const string &inFile)
     return make_pair(points, normals);
 }
 
+tuple<vector<Point>, vector<Vector>, vector<vector<double>>> loadPointsWithNormalsAndRichFeatures(const string &inFile)
+{
+    //Loading the obj data
+    ifstream inputStream(inFile.c_str());
+    if (!inputStream) {
+        cerr << "Could not load file located at : " << inFile << endl;
+        return make_tuple(vector<Point>(), vector<Vector>(), vector<vector<double>>());
+    }
+    vector<Point> points;
+    vector<Vector> normals;
+    vector<vector<double>> richFeatures;
+    string currentLine;
+    while (getline(inputStream, currentLine)) {
+        stringstream ss(currentLine);
+        string firstCaracter;
+        float vx, vy, vz, idx, nx, ny, nz;
+        ss >> firstCaracter;
+        if (firstCaracter == "v") {
+            ss >> vx >> vy >> vz;
+            points.emplace_back(vx, vy, vz);
+        }
+        else if(firstCaracter == "vn") {
+            ss >> nx >> ny >> nz;
+            normals.emplace_back(nx, ny, nz);
+        }
+        else if(firstCaracter == "vla") {
+
+            vector<double> richFeature;
+            vector<string> split = splitString(currentLine, " ");
+            for(int i=1; i < split.size(); i++)
+                if(!split[i].empty())
+                    richFeature.push_back(stod(split[i]));
+            richFeatures.push_back(richFeature);
+        }
+    }
+    // Check that features are cogent
+    if (!richFeatures.empty()) {
+        size_t featuresSize = richFeatures[0].size();
+        for(const auto& feature: richFeatures)
+            if(feature.size() != featuresSize)
+                cerr << "WARNING: the point features don't have a cogent size: " << featuresSize
+                     << " vs " << feature.size() << endl;
+    }
+    return make_tuple(points, normals, richFeatures);
+}
+
 pair<vector<Point>, vector<vector<double>>> loadPointsWithRichFeatures(const string &inFile)
 {
     //Loading the obj data

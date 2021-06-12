@@ -28,7 +28,8 @@ ImplicitRepresentation::ImplicitRepresentation(const CGAL::Bbox_3 &inBbox, int i
 }
 
 void ImplicitRepresentation::computeSurfacicFromPointCloud(const vector<Point> &pointCloud,
-                                                           const vector<Vector> &normals) {
+                                                           const vector<Vector> &normals,
+                                                           const std::vector<std::vector<double>> &richFeatures) {
 
     for(int i=0; i < pointCloud.size(); i++)
     {
@@ -36,6 +37,8 @@ void ImplicitRepresentation::computeSurfacicFromPointCloud(const vector<Point> &
         {
             surfacicPoints.push_back({pointCloud[i].x(), pointCloud[i].y(), pointCloud[i].z()});
             surfacicNormals.push_back({normals[i].x(), normals[i].y(), normals[i].z()});
+            if(!richFeatures.empty())
+                surfacicLabels.push_back(arg_max(richFeatures[i]));
         }
     }
 }
@@ -276,7 +279,7 @@ void ImplicitRepresentation::storeVolumicPoints(const vector<Point> &sampledPoin
     for(int i=0; i < sampledPoints.size(); i++)
         volumicPoints.push_back({sampledPoints[i].x(), sampledPoints[i].y(), sampledPoints[i].z()});
     for(int i=0; i < labels.size(); i++)
-        occupancies.push_back(labels[i] == nbClasses ? -1 : labels[i]);
+        occupancies.push_back(labels[i]);
 }
 
 void ImplicitRepresentation::computeVolumicPoints(vector<facesLabelName> &labeledShapes,
@@ -407,13 +410,19 @@ void ImplicitRepresentation::save(const string &path) const {
                nbSurfacicPerFiles);
         vector<double> curPoints;
         vector<double> curNormals;
-        for(int j=0; j < subIdx.size(); j++)
-            for(int k=0; k < 3; k++) {
+        vector<double> curLabels;
+        for(int j=0; j < subIdx.size(); j++) {
+            for (int k = 0; k < 3; k++) {
                 curPoints.push_back(surfacicPoints[subIdx[j]][k]);
                 curNormals.push_back(surfacicNormals[subIdx[j]][k]);
             }
+            if(!surfacicLabels.empty())
+                curLabels.push_back(surfacicLabels[subIdx[j]]);
+        }
         npz_save(fileOutPath, "points", &curPoints[0], {(size_t) nbSurfacicPerFiles, 3}, "w");
         npz_save(fileOutPath, "normals", &curNormals[0], {(size_t) nbSurfacicPerFiles, 3}, "a");
+        if(!surfacicLabels.empty())
+            npz_save(fileOutPath, "semantics", &curLabels[0], {(size_t) nbSurfacicPerFiles}, "a");
     }
 
     // Volumic Point Cloud
@@ -539,8 +548,9 @@ Triangle transformTriangle(const Triangle& triangle, const Eigen::Matrix3d &rota
 
 int splitBimInImplicit(vector<facesLabelName> &labeledShapes, const vector<Point> &pointOfViews,
                        const vector<Point> &pointCloud, const vector<Vector> &pointCloudNormals,
-                       int nbClasses, double bboxSize, int nbFilesToGenerate, int nbSurfacicPerFiles,
-                       int nbVolumicPerFiles, const string &path, int nbBoxShoots, int randomChunks, bool verbose)
+                       const vector<vector<double>> &richFeatures, int nbClasses, double bboxSize,
+                       int nbFilesToGenerate, int nbSurfacicPerFiles, int nbVolumicPerFiles, const string &path,
+                       int nbBoxShoots, int randomChunks, bool verbose)
 {
     // Compute initial bounding box
     CGAL::Bbox_3 initialBbox;
@@ -589,6 +599,7 @@ int splitBimInImplicit(vector<facesLabelName> &labeledShapes, const vector<Point
 
         vector<Point> selectedCloud;
         vector<Vector> selectedNormals;
+        vector<vector<double>> selectedRichFeatures;
         vector<facesLabelName> selectedLabeledShapes;
         if(randomChunks != -1)
         {
@@ -606,6 +617,7 @@ int splitBimInImplicit(vector<facesLabelName> &labeledShapes, const vector<Point
                     Eigen::Vector3d eigTransformNormal = rotations[i]*(eigNormal - translations[i]);
                     Vector transformedNormal(eigTransformNormal.x(), eigTransformNormal.y(), eigTransformNormal.z());
                     selectedNormals.push_back(transformedNormal);
+                    selectedRichFeatures.push_back(richFeatures[j]);
                 }
             }
             // We transform labeledShapes
@@ -632,9 +644,9 @@ int splitBimInImplicit(vector<facesLabelName> &labeledShapes, const vector<Point
         // Compute the surfacic points
 
         if(randomChunks != -1)
-            implicitRep.computeSurfacicFromPointCloud(selectedCloud, selectedNormals);
+            implicitRep.computeSurfacicFromPointCloud(selectedCloud, selectedNormals, selectedRichFeatures);
         else
-            implicitRep.computeSurfacicFromPointCloud(pointCloud, pointCloudNormals);
+            implicitRep.computeSurfacicFromPointCloud(pointCloud, pointCloudNormals, richFeatures);
 
         // Discard if we have no surfacic point
         if(implicitRep.getSurfacicPoints().empty()) continue;

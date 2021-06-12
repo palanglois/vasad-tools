@@ -20,7 +20,8 @@ public:
                                     int inNbVolumicPerFile, int inNbClasses);
 
     // Surfacic points
-    void computeSurfacicFromPointCloud(const std::vector<Point> &pointCloud, const std::vector<Vector> &normals);
+    void computeSurfacicFromPointCloud(const std::vector<Point> &pointCloud, const std::vector<Vector> &normals,
+                                       const std::vector<std::vector<double>> &richFeatures = std::vector<std::vector<double>>(0));
 
     // Volumic boxes
     void computeBoxes(std::vector<facesLabelName> &labeledShapes, const std::vector<Point> &sampledPoints,
@@ -66,6 +67,7 @@ private:
     // Surface data
     std::vector<std::vector<double>> surfacicPoints;
     std::vector<std::vector<double>> surfacicNormals;
+    std::vector<double> surfacicLabels;
 
     // Volumic data
     std::vector<std::vector<double>> volumicPoints;
@@ -79,6 +81,7 @@ std::vector<Point> sampleInBbox(const CGAL::Bbox_3 &bbox, int nbSamples);
 
 int splitBimInImplicit(std::vector<facesLabelName> &labeledShapes, const std::vector<Point> &pointOfViews,
                        const std::vector<Point> &pointCloud, const std::vector<Vector> &pointCloudNormals,
+                       const std::vector<std::vector<double>> &richFeatures,
                        int nbClasses, double bboxSize, int nbFilesToGenerate, int nbSurfacicPerFiles,
                        int nbVolumicPerFiles, const std::string &path, int nbBoxShoots=-1, int randomChunks=-1,
                        bool verbose=false);

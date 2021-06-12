@@ -81,15 +81,17 @@ int main(int argc, char *argv[]) {
     cout << "Ground truth loaded." << endl;
 
     // Load the virtual scan
-    pair<vector<Point>, vector<Vector>> pointsWithNormals = loadPointsWithNormals(pointCloudPath);
+    tuple<vector<Point>, vector<Vector>, vector<vector<double>>> pointsWithNormalsAndFeatures =
+            loadPointsWithNormalsAndRichFeatures(pointCloudPath);
 
     // Point of views
     vector<Point> pointOfViews = loadPointCloudObj(pointOfViewPath);
 
     // Make splits
     const string outputDirectory = outputPath + (prefix[prefix.size() - 1] == '/' ? prefix : prefix + '/');
-    int nbSplits = splitBimInImplicit(shapesAndClasses, pointOfViews, pointsWithNormals.first,
-                                      pointsWithNormals.second, classesWithColor.size(), bboxSize, numberOfFiles,
+    int nbSplits = splitBimInImplicit(shapesAndClasses, pointOfViews, get<0>(pointsWithNormalsAndFeatures),
+                                      get<1>(pointsWithNormalsAndFeatures),
+                                      get<2>(pointsWithNormalsAndFeatures), classesWithColor.size(), bboxSize, numberOfFiles,
                                       numberOfSurfacicPoints, numberOfVolumicPoints, outputDirectory, nbBoxShoots,
                                       randomChunks, verbose);
 

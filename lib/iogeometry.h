@@ -277,6 +277,8 @@ std::vector<facesLabelName> loadTreesFromObj(const std::string &inFile,
 bool hasLabels (const std::string &inFile);
 std::pair<std::vector<Point>, std::vector<int>> loadPointsWithLabel(const std::string &inFile);
 std::pair<std::vector<Point>, std::vector<Vector>> loadPointsWithNormals(const std::string &inFile);
+std::tuple<std::vector<Point>, std::vector<Vector>, std::vector<std::vector<double>>>
+        loadPointsWithNormalsAndRichFeatures(const std::string &inFile);
 std::pair<std::vector<Point>, std::vector<std::vector<double>>> loadPointsWithRichFeatures(const std::string &inFile);
 std::pair<std::vector<Point>, std::vector<std::vector<double>>> loadLightConvPointOutput(const std::string& path);
 
