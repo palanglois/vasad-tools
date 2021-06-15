@@ -408,9 +408,9 @@ void ImplicitRepresentation::save(const string &path) const {
             wholeIdx.push_back(j);
         sampleWithReplacement(wholeIdx.begin(), wholeIdx.end(), back_inserter(subIdx),
                nbSurfacicPerFiles);
-        vector<double> curPoints;
-        vector<double> curNormals;
-        vector<double> curLabels;
+        vector<float> curPoints;
+        vector<float> curNormals;
+        vector<unsigned char> curLabels;
         for(int j=0; j < subIdx.size(); j++) {
             for (int k = 0; k < 3; k++) {
                 curPoints.push_back(surfacicPoints[subIdx[j]][k]);
@@ -435,10 +435,10 @@ void ImplicitRepresentation::save(const string &path) const {
         string fileOutPath = volumicPcPath + "/points_iou_" + padTo(to_string(i), 2) + ".npz";
 
         int nbValidPoints = 0;
-        vector<double> curPoints;
+        vector<float> curPoints;
         vector<unsigned char> curOccupancies;
         string runningBits;
-        vector<double> semantic;
+        vector<unsigned char> semantic;
         vector<double> curBoxes;
         for(int j=0; j < nbVolumicPerFiles; j++)
         {
@@ -471,7 +471,7 @@ void ImplicitRepresentation::save(const string &path) const {
                 curOccupancies.push_back(b.to_ulong());
                 runningBits = "";
             }
-            runningBits += to_string(int(currentLabel != -1));
+            runningBits += to_string(int(currentLabel != nbClasses));
         }
         auto x = runningBits.c_str();
         bitset<8> b(x);
