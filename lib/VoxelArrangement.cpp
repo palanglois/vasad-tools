@@ -632,6 +632,63 @@ void VoxelArrangement::saveAsPly(const string &path, const vector<classKeywordsC
     }
 }
 
+void VoxelArrangement::saveAllLabelsAsPly(const string &path, const vector<classKeywordsColor> &classesWithColor) {
+    Epeck_to_Simple e2s;
+    // Make sure that the arrangement has been built
+    buildArrangement();
+    // Making colormap
+    std::map<int, Colormap::Color> map;
+    for(int i = 0; i < classesWithColor.size(); i++)
+    {
+        const auto& classColor = get<2>(classesWithColor[i]);
+        map[i] = Colormap::Color(static_cast<unsigned char>(get<0>(classColor)),
+                                 static_cast<unsigned char>(get<1>(classColor)),
+                                 static_cast<unsigned char>(get<2>(classColor)));
+    }
+    Colormap colormap(map);
+
+    for(int i=0; i < classesWithColor.size(); i++) {
+        bool toDraw = false;
+        // Label each facet which needs to be drawn
+        for (auto itf = _arr.facets_begin(); itf != _arr.facets_end(); itf++) {
+            Arrangement::Face &f = *itf;
+            f._info = -1;
+            itf->to_draw = false;
+            if (!_arr.is_facet_bounded(f)) { continue; }
+            Arrangement::Face_handle ch0 = f.superface(0), ch1 = f.superface(1);
+            triplet idxCh0 = findVoxel(e2s(_arr.cell(ch0).point()));
+            triplet idxCh1 = findVoxel(e2s(_arr.cell(ch1).point()));
+            int label1 = _arr.is_cell_bounded(ch0) ? getLabel(idxCh0) : -1;
+            int label2 = _arr.is_cell_bounded(ch1) ? getLabel(idxCh1) : -1;
+
+            if((label1 == i && label2 != i) || (label1 != i && label2 == i))
+            {
+                toDraw = true;
+                f.to_draw = true;
+                f._info = i;
+            }
+        }
+
+        if(!toDraw) continue;
+
+        string curName = path + "_" + to_string(i) + ".ply";
+
+        // Standard polyhedral complex output procedure
+        typedef Polyhedral_complex_3::Mesh_3<> Mesh;
+        typedef Polyhedral_complex_3::Mesh_extractor_3<Arrangement, Mesh> Extractor;
+        Mesh meshGC;
+        Extractor extractorGC(_arr);
+        extractorGC.extract(meshGC, true);
+        {
+            std::ofstream stream(curName.c_str());
+            if (!stream.is_open())
+                return;
+            Polyhedral_complex_3::print_mesh_with_facet_color_PLY(stream, meshGC, colormap);
+            stream.close();
+        }
+    }
+}
+
 void VoxelArrangement::saveFeaturesAsPly(const string &path, const vector<classKeywordsColor> &classesWithColor)
 {
     Epeck_to_Simple e2s;

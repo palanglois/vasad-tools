@@ -149,6 +149,8 @@ add_executable(readBoxes main_read_boxes.cpp)
 
 add_executable(implicitEval main_implicit_eval.cpp)
 
+add_executable(allVoxels2Ply main_all_voxels_to_ply.cpp)
+
 target_link_libraries(bim_data ${CGAL_LIBRARIES} io_geometry)
 target_link_libraries(color_classes io_geometry)
 target_link_libraries(plane_arrangement io_geometry)
@@ -179,6 +181,7 @@ target_link_libraries(splitSparseToDense sparse_to_dense io_geometry voxel_arran
 target_link_libraries(splitImplicit io_geometry voxel_arrangement graph_statistics implicit_representation)
 target_link_libraries(readBoxes io_geometry implicit_representation)
 target_link_libraries(implicitEval io_geometry eval_metrics tinyply "-lstdc++fs")
+target_link_libraries(allVoxels2Ply ${CGAL_LIBRARIES} io_geometry voxel_arrangement graph_statistics "-lstdc++fs")
 if(MKL_FOUND)
     target_link_libraries(mesh2plane ${MKL_LIBRARIES})
 endif()

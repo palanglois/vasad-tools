@@ -65,6 +65,9 @@ public:
     // Save as ply (based on ground truth labels)
     void saveAsPly(const std::string &path, const std::vector<classKeywordsColor> &classesWithColor);
 
+    // Save as ply (based on ground truth labels, 1 file per label)
+    void saveAllLabelsAsPly(const std::string &path, const std::vector<classKeywordsColor> &classesWithColor);
+
     // Save a representation of the features
     void saveFeaturesAsPly(const std::string &path, const std::vector<classKeywordsColor> &classesWithColor);
 
