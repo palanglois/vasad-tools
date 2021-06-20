@@ -2,6 +2,7 @@
 
 using namespace std;
 using Json = nlohmann::json;
+using namespace tinyply;
 
 
 vector<string> splitString(const string& s, const string& sep) {
@@ -442,6 +443,77 @@ vector<facesLabelName> loadTreesFromObj(const string &inFile, const vector<class
     //Debug
 //    cout << "input bbox : " << CGAL::bbox_3(points.begin(), points.end()) << endl;
     return allTrees;
+}
+
+vector<Triangle> loadTrianglesFromPly(const string &inFile)
+{
+    unique_ptr<istream> file_stream;
+    vector<uint8_t> byte_buffer;
+    bool threeChannels = false;
+
+    vector<float3> _points;
+    vector<uint3> _faces;
+    vector<Triangle> triangles;
+    try
+    {
+        // Preload into memory
+        byte_buffer = read_file_binary(inFile);
+        file_stream = make_unique<memory_stream>((char*)byte_buffer.data(), byte_buffer.size());
+
+        // Check if the stream was correctly open
+        if (!file_stream || file_stream->fail()) throw std::runtime_error("file_stream failed to open " + inFile);
+
+        // Set the cursor at the beginning of the file
+        file_stream->seekg(0, std::ios::beg);
+
+        // Parse the PLY file's header
+        PlyFile file;
+        file.parse_header(*file_stream);
+
+        // Prepare the data containers
+        shared_ptr<PlyData> vertices, faces, colors;
+
+        // Requesting the relevant properties
+        try { vertices = file.request_properties_from_element("vertex", { "x", "y", "z" }); }
+        catch (const exception & e) { cerr << "tinyply exception: " << e.what() << endl; }
+        try { faces = file.request_properties_from_element("face", { "vertex_indices" }, 3); }
+        catch (const exception & e) {
+            try { faces = file.request_properties_from_element("face", { "vertex_index" }, 3); }
+            catch (const exception & e) {cerr << "tinyply exception: " << e.what() << endl;}
+        }
+        try { colors = file.request_properties_from_element("face", { "red", "green", "blue", "alpha" }); }
+        catch (const exception & e) {
+            try { colors = file.request_properties_from_element("face", { "red", "green", "blue"}); threeChannels=true;}
+            catch (const exception & e) {cerr << "tinyply exception: " << e.what() << endl;}
+        }
+
+        // Actual parsing
+        file.read(*file_stream);
+
+        // Process the vertices
+        const size_t numVerticesBytes = vertices->buffer.size_bytes();
+        _points = vector<float3>(vertices->count);
+        memcpy(_points.data(), vertices->buffer.get(), numVerticesBytes);
+
+        // Processing the faces
+        const size_t numFacesBytes = faces->buffer.size_bytes();
+        _faces = vector<uint3>(faces->count);
+        memcpy(_faces.data(), faces->buffer.get(), numFacesBytes);
+    }
+    catch (const exception & e)
+    {
+        cerr << "Caught tinyply exception: " << e.what() << endl;
+    }
+
+    // Filling the triangles
+    for(int i=0; i < _faces.size(); i++)
+    {
+        Point x(_points[_faces[i].x].x, _points[_faces[i].x].y, _points[_faces[i].x].z);
+        Point y(_points[_faces[i].y].x, _points[_faces[i].y].y, _points[_faces[i].y].z);
+        Point z(_points[_faces[i].z].x, _points[_faces[i].z].y, _points[_faces[i].z].z);
+        triangles.emplace_back(x, y, z);
+    }
+    return triangles;
 }
 
 void savePointsAsObj(const vector<Point>& points, const string &outPath) {

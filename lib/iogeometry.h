@@ -47,10 +47,12 @@
 // External
 #include "json/json.hpp"
 #include "tqdm/tqdm.hpp"
+#include "tinyply/tinyply.h"
 #include <Eigen/Dense>
 
 // Ours
 #include "Colormap.h"
+#include "plyInline.h"
 
 typedef CGAL::Simple_cartesian<double> Kernel;
 //typedef CGAL::Exact_predicates_inexact_constructions_kernel Kernel;
@@ -274,6 +276,7 @@ std::vector<Point> loadPointOfViews(const std::string &jsonFile);
 std::vector<Point> loadPointCloudObj(const std::string &inFile);
 std::vector<facesLabelName> loadTreesFromObj(const std::string &inFile,
         const std::vector<classKeywordsColor> &classes);
+std::vector<Triangle> loadTrianglesFromPly(const std::string &inFile);
 bool hasLabels (const std::string &inFile);
 std::pair<std::vector<Point>, std::vector<int>> loadPointsWithLabel(const std::string &inFile);
 std::pair<std::vector<Point>, std::vector<Vector>> loadPointsWithNormals(const std::string &inFile);

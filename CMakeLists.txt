@@ -60,6 +60,7 @@ include_directories(lib)
 
 # IoGeometry
 add_library(io_geometry STATIC lib/iogeometry.cpp lib/iogeometry.h)
+target_link_libraries(io_geometry tinyply)
 
 # GraphStatistics
 add_library(graph_statistics STATIC lib/graphStats.cpp lib/graphStats.h lib/graphStatsInline.h)
@@ -76,6 +77,10 @@ add_library(sparse_to_dense STATIC lib/sparseToDense.cpp lib/sparseToDense.h)
 # Implicit representation
 add_library(implicit_representation STATIC lib/ImplicitRepresentation.cpp)
 target_link_libraries(implicit_representation "-lstdc++fs" cnpy voxel_arrangement graph_statistics)
+
+# EvalMetrics
+add_library(eval_metrics STATIC lib/EvalMetrics.cpp)
+target_link_libraries(eval_metrics graph_statistics)
 
 add_executable(bim_data main.cpp)
 
@@ -142,6 +147,8 @@ add_executable(splitImplicit main_split_implicit.cpp)
 
 add_executable(readBoxes main_read_boxes.cpp)
 
+add_executable(implicitEval main_implicit_eval.cpp)
+
 target_link_libraries(bim_data ${CGAL_LIBRARIES} io_geometry)
 target_link_libraries(color_classes io_geometry)
 target_link_libraries(plane_arrangement io_geometry)
@@ -171,6 +178,7 @@ target_link_libraries(mergePly tinyply)
 target_link_libraries(splitSparseToDense sparse_to_dense io_geometry voxel_arrangement graph_statistics voxel_sparse)
 target_link_libraries(splitImplicit io_geometry voxel_arrangement graph_statistics implicit_representation)
 target_link_libraries(readBoxes io_geometry implicit_representation)
+target_link_libraries(implicitEval io_geometry eval_metrics tinyply "-lstdc++fs")
 if(MKL_FOUND)
     target_link_libraries(mesh2plane ${MKL_LIBRARIES})
 endif()
