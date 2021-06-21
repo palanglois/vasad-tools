@@ -16,8 +16,10 @@ int main(int argc, char *argv[]) {
     opt.add_option("-h", "--help", "show option help");
     opt.add_option("-i", "--input",
                    "Path to the directory containing the raw implicit output ply files (one per chunk per class)", "");
+    opt.add_option("-o", "--output", "Output directory", ".");
     opt.add_option("-m", "--mesh", "Path to the input obj ground truth", "");
-    opt.add_option("-n", "--number", "Number of samples", "10000");
+    opt.add_option("-ns", "--number_surfacic", "Number of surfacic samples", "10000");
+    opt.add_option("-nv", "--number_volumic", "Number of volumic samples", "10000");
     opt.add_option("-v", "--verbose", "Verbosity trigger");
 
     //Parsing options
@@ -32,8 +34,11 @@ int main(int argc, char *argv[]) {
 
     const string gtPath = opt["-m"];
     const string inputPath = opt["-i"][opt["-i"].size() - 1] == '/' ? opt["-i"] : opt["-i"] + '/';
-    const int nbSamples = op::str2int(opt["-n"]);
+    const string outputPath = opt["-o"][opt["-o"].size() - 1] == '/' ? opt["-o"] : opt["-o"] + '/';
+    const int nbSamplesSurfacic = op::str2int(opt["-ns"]);
+    const int nbSamplesVolumic = op::str2int(opt["-nv"]);
     bool verbose = op::str2bool(opt["-v"]);
+    const double percentage = 0.95;
 
     // Load semantic_classes
     vector<classKeywordsColor> classesWithColor = loadSemanticClasses((string) TEST_DIR + "semantic_classes.json");
@@ -77,10 +82,12 @@ int main(int argc, char *argv[]) {
     }
 
     // Compute the metrics
-    EvalMetrics metrics(labeledShapesPred, shapesAndClasses, classesWithColor, nbSamples);
+    EvalMetrics metrics(labeledShapesPred, shapesAndClasses, classesWithColor,
+                        nbSamplesVolumic, nbSamplesSurfacic);
 
     // IoU
     cout << "IoU: " << metrics.getIoU() << endl;
+    cout << "IoU geometric: " << metrics.getIoUGeometric() << endl;
 
     // Confusion Matrix
     vector<vector<int>> confusionMatrix = metrics.getConfusionMatrix();
@@ -89,6 +96,23 @@ int main(int argc, char *argv[]) {
             cout << confusionMatrix[i][j] << " ";
         cout << endl;
     }
+
+    // Mean surfacic distance
+    cout << "Mean surfacic distance: " << metrics.meanSurfacicDistance() << endl;
+
+    // Max surfacic distance
+    cout << "Max surfacic distance: " << metrics.maxSurfacicDistance() << endl;
+
+    // Precision
+    cout << "Distance d such that " << percentage * 100 << "% of NN distances are under d (precision): "
+         << metrics.precision(percentage) << endl;
+
+    // Precision
+    cout << "Distance d such that " << percentage * 100 << "% of NN distances are under d (recall): "
+         << metrics.recall(percentage) << endl;
+
+    // Save
+    metrics.saveAsJson(outputPath + "metrics.json", percentage);
 
     return 0;
 }
