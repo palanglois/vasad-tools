@@ -81,8 +81,6 @@ int splitArrangementInVoxelsRegular(vector<facesLabelName> &labeledShapes,
 template <typename T>
 void VoxelArrangement::computeFeaturesRegular(const std::vector<Point> &points, const std::vector<Point> &pointOfViews,
                                               const std::vector<T> &labels, int nbClasses, bool verbose) {
-    Simple_to_Epeck s2e;
-    Epeck_to_Simple e2s;
     // Make sure that the bbox planes have been built
     computeBboxPlanes();
     // Initialize the features

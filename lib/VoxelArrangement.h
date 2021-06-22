@@ -53,6 +53,9 @@ public:
     void computeFeaturesRegular(const std::vector<Point> &points, const std::vector<Point> &pointOfViews,
                                 const std::vector<T> &labels, int nbClasses, bool verbose);
 
+    void computeFeaturesPtNormal(const std::vector<Point> &points, const std::vector<Point> &pointOfViews,
+                                 const std::vector<Vector> &normals, bool verbose);
+
     // Computing the visibility only
     void computeVisibility(const std::vector<Point> &points, const std::vector<Point> &pointOfViews, bool verbose);
 
@@ -116,6 +119,14 @@ int splitArrangementInVoxels(std::vector<facesLabelName> &labeledShapes,
                              const std::vector<int> &pointCloudLabels,
                              double voxelSide,
                              int nbClasses, const std::string &path, int maxNodes, bool verbose);
+
+int splitArrangementInVoxelsPure(std::vector<facesLabelName> &labeledShapes,
+                                 const std::vector<Point> &pointOfViews,
+                                 const std::vector<Point> &pointCloud,
+                                 const std::vector<Vector> &normals,
+                                 double voxelSide,
+                                 int nbClasses, const std::string &path, int nbVoxelsAlongAxis,
+                                 bool withRichFeatures, bool verbose);
 
 
 #endif //BIM_DATA_VOXELARRANGEMENT_H

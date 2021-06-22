@@ -412,3 +412,39 @@ TEST(VoxelArrangement, Visibility)
     ASSERT_EQ(visibility[1][1][0][0], 0.);
 
 }
+
+TEST(VoxelArrangement, computeFeaturesPtNormal)
+{
+    CGAL::Bbox_3 bbox(0., 0., 0., 1., 1., 1.);
+    double voxelSize = 0.5;
+    auto voxArr = VoxelArrangement(bbox, voxelSize);
+
+    //Preparing vectors
+    vector<Point> points;
+    vector<Vector> normals;
+    vector<Point> pointOfViews;
+
+    // 1st visibility ray
+    pointOfViews.emplace_back(0.25, 0.25, 0.25);
+    normals.emplace_back(1., 0., 0.);
+    points.emplace_back(1.25, 0.25, 0.25);
+
+    // 2nd visibility ray
+    pointOfViews.emplace_back(0.25, 0.25, 0.25);
+    normals.emplace_back(0., 1., 0.);
+    points.emplace_back(0.25, 0.75, 0.25);
+
+    // 3rd visibility ray
+    pointOfViews.emplace_back(0.25, 0.25, 0.25);
+    normals.emplace_back(0., 0., 1.);
+    points.emplace_back(0.25, 0.75, 0.25);
+
+    voxArr.computeFeaturesPtNormal(points, pointOfViews, normals, false);
+
+    VoxelArrangement::FeatTensor features = voxArr.features();
+
+    vector<double> vox010 = features[0][1][0];
+    ASSERT_EQ(vox010[0], 0.);
+    ASSERT_EQ(vox010[1], 0.5);
+    ASSERT_EQ(vox010[2], 0.5);
+}

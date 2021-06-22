@@ -35,7 +35,7 @@ EvalMetrics::EvalMetrics(vector<facesLabelName> &predShapes, vector<facesLabelNa
     for(const auto& bbox: gtBboxes)
         globalBbox += bbox;
 
-    // Sample points
+    // Sample points (volumic)
     default_random_engine generator;
     uniform_real_distribution<double> xDist(globalBbox.xmin(), globalBbox.xmax());
     uniform_real_distribution<double> yDist(globalBbox.ymin(), globalBbox.ymax());
@@ -171,8 +171,9 @@ multiset<double> findPcDistance(const vector<Point>& refPointCloud, const vector
 #pragma omp parallel for
     for(int i=0; i < queryPointCloud.size(); i++)
     {
-        itr++;
         Neighbor_search search(tree, queryPointCloud[i], 1);
+#pragma omp atomic
+        itr++;
 #pragma omp critical
         {
             allDistances.insert(sqrt(search.begin()->second));
