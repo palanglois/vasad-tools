@@ -35,6 +35,8 @@ public:
     void generateRandomVolumicPoints(std::vector<facesLabelName> &labeledShapes,  int nbBoxShoots=-1,
             bool verbose=false);
 
+    int generateVolumicPointsOnGrid(std::vector<facesLabelName> &labeledShapes, double voxelSize=0.05, bool verbose=false);
+
     // Normalization
     void normalizeClouds();
 
@@ -84,7 +86,7 @@ int splitBimInImplicit(std::vector<facesLabelName> &labeledShapes, const std::ve
                        const std::vector<std::vector<double>> &richFeatures,
                        int nbClasses, double bboxSize, int nbFilesToGenerate, int nbSurfacicPerFiles,
                        int nbVolumicPerFiles, const std::string &path, int nbBoxShoots=-1, int randomChunks=-1,
-                       bool verbose=false);
+                       double voxelSize=-1, bool verbose=false);
 
 
 #endif //BIM_DATA_IMPLICITREPRESENTATION_H

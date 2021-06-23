@@ -187,9 +187,44 @@ TEST(ImplicitRepresentation, computeBoxes)
     ASSERT_NEAR((yMaxT - yMinT).norm(), 0.6, 1e-6);
 
     Eigen::Vector3f zMin(0., 0., -0.5);
-    Eigen::Vector3f zMax(0., 0.,0.5);
-    Eigen::Vector3f zMinT = mat*scale.cwiseProduct(zMin) + translation;
-    Eigen::Vector3f zMaxT = mat*scale.cwiseProduct(zMax) + translation;
+    Eigen::Vector3f zMax(0., 0., 0.5);
+    Eigen::Vector3f zMinT = mat * scale.cwiseProduct(zMin) + translation;
+    Eigen::Vector3f zMaxT = mat * scale.cwiseProduct(zMax) + translation;
     ASSERT_NEAR((zMaxT - zMinT).norm(), 1., 1e-6);
+}
 
+
+TEST(ImplicitRepresentation, generateVolumicPointsOnGrid) {
+    CGAL::Bbox_3 bbox(0., 0., 0., 1., 1., 1.);
+
+    const int nbFiles = 1;
+    const int nbSurfacicPerFiles = 76000;
+    const int nbVolumicPointsPerFile = 3 * (6 * 1 + 3 * 2);
+    double voxelSize = 0.333;
+
+    const string testObjPath = (string) TEST_DIR + "simplecube.obj";
+    vector<classKeywordsColor> classesWithColor = loadSemanticClasses((string) TEST_DIR + "semantic_classes.json");
+    auto allTrees = loadTreesFromObj(testObjPath, classesWithColor);
+    ImplicitRepresentation impRep(bbox, nbFiles, nbSurfacicPerFiles, nbVolumicPointsPerFile, classesWithColor.size());
+
+
+    cout.setstate(ios_base::failbit);
+    cerr.setstate(ios_base::failbit);
+    int samplingIdx = impRep.generateVolumicPointsOnGrid(allTrees, voxelSize, false);
+    cout.clear();
+    cerr.clear();
+
+    auto volPoints = impRep.getVolumicPoints();
+    ASSERT_EQ(volPoints.size(), nbVolumicPointsPerFile*nbFiles);
+    ASSERT_EQ(samplingIdx, 0);
+
+    auto labels = impRep.getOccupancies();
+    map<int, int> counts;
+    for(const auto& label: labels)
+        if(counts.find(label) != counts.end())
+            counts[label]++;
+        else
+            counts[label] = 1;
+    ASSERT_EQ(counts[5], 3*4);
+    ASSERT_EQ(counts[11], 3*8);
 }

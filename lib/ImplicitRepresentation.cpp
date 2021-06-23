@@ -299,15 +299,6 @@ void ImplicitRepresentation::computeVolumicPoints(vector<facesLabelName> &labele
 
 }
 
-void ImplicitRepresentation::generateRandomVolumicPoints(vector<facesLabelName> &labeledShapes,
-                                                         int nbBoxShoots, bool verbose) {
-    vector<Point> sampledPoints = sampleInBbox(bbox, nbVolumicPerFiles * nbFilesToGenerate);
-    if(nbBoxShoots != -1)
-        computeBoxes(labeledShapes, sampledPoints, nbBoxShoots);
-    else
-        computeVolumicPoints(labeledShapes, sampledPoints, verbose);
-}
-
 int random_num_in_range(int range) {
     int x;
 
@@ -333,6 +324,158 @@ void sampleWithReplacement(It b, It e, OutIt o, size_t n)
         // Write into output
         *(o++) = *it;
     }
+}
+
+void ImplicitRepresentation::generateRandomVolumicPoints(vector<facesLabelName> &labeledShapes,
+                                                         int nbBoxShoots, bool verbose) {
+    vector<Point> sampledPoints = sampleInBbox(bbox, nbVolumicPerFiles * nbFilesToGenerate);
+    if(nbBoxShoots != -1)
+        computeBoxes(labeledShapes, sampledPoints, nbBoxShoots);
+    else
+        computeVolumicPoints(labeledShapes, sampledPoints, verbose);
+}
+
+int ImplicitRepresentation::generateVolumicPointsOnGrid(vector<facesLabelName> &labeledShapes,
+                                                         double voxelSize, bool verbose) {
+
+    typedef std::vector<Point> PointList;
+    typedef std::map<int, PointList> PointsFromLabel;
+
+    if(areVolumicDataComputed) {
+        cerr << "Error: the volumic data have already been computed!" << endl;
+        return -2;
+    }
+
+    // Draw points in the arrangement
+    vector<Point> sampledPoints;
+    vector<double> ranges = {bbox.xmax() - bbox.xmin(),
+                             bbox.ymax() - bbox.ymin(),
+                             bbox.zmax() - bbox.zmin()};
+    int width = round(ranges[0] / voxelSize);
+    int height = round(ranges[1] / voxelSize);
+    int depth = round(ranges[2] / voxelSize);
+    double offset = voxelSize / 3.;
+    vector<double> factors = {-1., 0., 1.};
+    for(int i=0; i < width; i++)
+        for(int j=0; j < height; j++)
+            for(int k=0; k < depth; k++) {
+                Point cellPoint(bbox.xmin() + voxelSize / 2. + i * voxelSize,
+                                bbox.ymin() + voxelSize / 2. + j * voxelSize,
+                                bbox.zmin() + voxelSize / 2. + k * voxelSize);
+                for(auto ofX: factors)
+                    for(auto ofY: factors)
+                        for(auto ofZ: factors) {
+                            Vector offsetVector(ofX*offset, ofY*offset, ofZ*offset);
+                            sampledPoints.push_back(cellPoint + offsetVector);
+                        }
+            }
+
+    // Label the points
+    vector<int> labels = assignLabelToPoints(sampledPoints, labeledShapes, nbClasses, bbox);
+
+    // Store it by voxel
+    vector<vector<vector<PointsFromLabel>>>
+    tensorPoints = vector<vector<vector<PointsFromLabel>>>(width,
+                    vector<vector<PointsFromLabel>>(height,
+                                   vector<PointsFromLabel>(depth)));
+    int nbPtUnique = 0;
+    for(int i=0; i < width; i++)
+        for(int j=0; j < height; j++)
+            for(int k=0; k < depth; k++) {
+                PointsFromLabel &curMap = tensorPoints[i][j][k];
+                for(int l=0; l < pow(factors.size(), 3); l++)
+                {
+                    int idx = l +
+                            k * pow(factors.size(), 3) +
+                            j * pow(factors.size(), 3) * depth +
+                            i * pow(factors.size(), 3) * depth * height;
+                    int label = labels[idx];
+                    Point curPt = sampledPoints[idx];
+                    if (curMap.find(label) == curMap.end()) {
+                        curMap[label] = {curPt};
+                        nbPtUnique++;
+                    }
+                    else
+                        curMap[label].push_back(curPt);
+                }
+            }
+
+    // Gather one point per voxel per class
+    vector<Point> selectedPoints;
+    vector<int> selectedLabels;
+    default_random_engine generator(time(nullptr));
+    for(int i=0; i < width; i++)
+        for(int j=0; j < height; j++)
+            for(int k=0; k < depth; k++) {
+                PointsFromLabel &curMap = tensorPoints[i][j][k];
+                for(const auto& labelAndPoints: curMap)
+                {
+                    vector<Point> selectedPoint;
+                    sample(labelAndPoints.second.begin(), labelAndPoints.second.end(), back_inserter(selectedPoint),
+                            1, generator);
+                    selectedPoints.push_back(selectedPoint[0]);
+                    selectedLabels.push_back(labelAndPoints.first);
+                }
+            }
+
+    // Set the correct number
+    int returnIdx = 0;
+    if(nbPtUnique < nbVolumicPerFiles*nbFilesToGenerate)
+    {
+        // We select random additional points
+        int nbToSample = nbVolumicPerFiles*nbFilesToGenerate - nbPtUnique;
+        cout << "Gathering " << nbToSample << " more samples." << endl;
+        vector<int> allIdx(sampledPoints.size(), 0);
+        for(int i=0; i < allIdx.size(); i++)
+            allIdx[i] = i;
+        vector<int> selectedIdx;
+        sampleWithReplacement(allIdx.begin(), allIdx.end(), back_inserter(selectedIdx), nbToSample);
+        for(const auto& idx: selectedIdx)
+        {
+            selectedPoints.push_back(sampledPoints[idx]);
+            selectedLabels.push_back(labels[idx]);
+        }
+        returnIdx = 1;
+    }
+    if(nbPtUnique > nbVolumicPerFiles*nbFilesToGenerate)
+    {
+        // We subsample the current points that we have
+        cout << "Subsampling " << nbVolumicPerFiles*nbFilesToGenerate << " out of " << nbPtUnique << "." << endl;
+        vector<int> allIdx(nbVolumicPerFiles*nbFilesToGenerate, 0);
+        for(int i=0; i < allIdx.size(); i++)
+            allIdx[i] = i;
+        vector<int> selectedIdx;
+        sample(allIdx.begin(), allIdx.end(), back_inserter(selectedIdx), nbVolumicPerFiles*nbFilesToGenerate, generator);
+        vector<Point> subSamples(nbVolumicPerFiles*nbFilesToGenerate);
+        vector<int> subLabels(nbVolumicPerFiles*nbFilesToGenerate);
+#pragma omp parallel for
+        for(int i=0; i < nbVolumicPerFiles; i++) {
+            subSamples[i] = selectedPoints[selectedIdx[i]];
+            subLabels[i] = selectedLabels[selectedIdx[i]];
+        }
+        selectedPoints = subSamples;
+        selectedLabels = subLabels;
+        returnIdx = -1;
+    }
+
+    // Shuffling
+    vector<int> indexes;
+    indexes.reserve(selectedPoints.size());
+    for (int i = 0; i < selectedPoints.size(); ++i)
+        indexes.push_back(i);
+    random_shuffle(indexes.begin(), indexes.end());
+    vector<Point> finalPoints(selectedPoints.size());
+    vector<int> finalLabels(selectedPoints.size());
+    for (int i = 0; i < selectedPoints.size(); i++) {
+        finalPoints[i] = selectedPoints[indexes[i]];
+        finalLabels[i] = selectedLabels[indexes[i]];
+    }
+
+    // Store it
+    storeVolumicPoints(finalPoints, finalLabels, nbClasses);
+
+    areVolumicDataComputed = true;
+    return returnIdx;
 }
 
 void ImplicitRepresentation::normalizeClouds() {
@@ -550,7 +693,7 @@ int splitBimInImplicit(vector<facesLabelName> &labeledShapes, const vector<Point
                        const vector<Point> &pointCloud, const vector<Vector> &pointCloudNormals,
                        const vector<vector<double>> &richFeatures, int nbClasses, double bboxSize,
                        int nbFilesToGenerate, int nbSurfacicPerFiles, int nbVolumicPerFiles, const string &path,
-                       int nbBoxShoots, int randomChunks, bool verbose)
+                       int nbBoxShoots, int randomChunks, double voxelSize, bool verbose)
 {
     // Compute initial bounding box
     CGAL::Bbox_3 initialBbox;
@@ -653,9 +796,15 @@ int splitBimInImplicit(vector<facesLabelName> &labeledShapes, const vector<Point
 
         // Compute the volumic points
         if(randomChunks != -1)
-            implicitRep.generateRandomVolumicPoints(selectedLabeledShapes, nbBoxShoots, verbose);
+            if(voxelSize == -1)
+                implicitRep.generateRandomVolumicPoints(selectedLabeledShapes, nbBoxShoots, verbose);
+            else
+                implicitRep.generateVolumicPointsOnGrid(selectedLabeledShapes, voxelSize, verbose);
         else
-            implicitRep.generateRandomVolumicPoints(labeledShapes, nbBoxShoots, verbose);
+            if(voxelSize == -1)
+                implicitRep.generateRandomVolumicPoints(labeledShapes, nbBoxShoots, verbose);
+            else
+                implicitRep.generateVolumicPointsOnGrid(selectedLabeledShapes, voxelSize, verbose);
 
         // Normalize the points
         implicitRep.normalizeClouds();
