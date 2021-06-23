@@ -804,7 +804,7 @@ int splitBimInImplicit(vector<facesLabelName> &labeledShapes, const vector<Point
             if(voxelSize == -1)
                 implicitRep.generateRandomVolumicPoints(labeledShapes, nbBoxShoots, verbose);
             else
-                implicitRep.generateVolumicPointsOnGrid(selectedLabeledShapes, voxelSize, verbose);
+                implicitRep.generateVolumicPointsOnGrid(labeledShapes, voxelSize, verbose);
 
         // Normalize the points
         implicitRep.normalizeClouds();
