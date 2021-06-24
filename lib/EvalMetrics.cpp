@@ -19,7 +19,6 @@ EvalMetrics::EvalMetrics(vector<facesLabelName> &predShapes, vector<facesLabelNa
     for(const auto& shape: gtShapes)
         allGtShapes.insert(allGtShapes.end(), get<0>(shape).begin(), get<0>(shape).end());
     gtPoints = samplePointsOnMesh(allGtShapes, nbSamplesSurfacic);
-    savePointsAsObj(gtPoints, "test_sampling.obj");
     cout << "Surfacic point sampling done!" << endl;
 
     // NN Distances
