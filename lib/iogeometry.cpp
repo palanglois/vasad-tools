@@ -481,11 +481,6 @@ vector<Triangle> loadTrianglesFromPly(const string &inFile)
             try { faces = file.request_properties_from_element("face", { "vertex_index" }, 3); }
             catch (const exception & e) {cerr << "tinyply exception: " << e.what() << endl;}
         }
-        try { colors = file.request_properties_from_element("face", { "red", "green", "blue", "alpha" }); }
-        catch (const exception & e) {
-            try { colors = file.request_properties_from_element("face", { "red", "green", "blue"}); threeChannels=true;}
-            catch (const exception & e) {cerr << "tinyply exception: " << e.what() << endl;}
-        }
 
         // Actual parsing
         file.read(*file_stream);
