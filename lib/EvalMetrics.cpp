@@ -182,3 +182,36 @@ multiset<double> findPcDistance(const vector<Point>& refPointCloud, const vector
     }
     return allDistances;
 }
+
+pair<vector<int>, vector<double>> computePcClosestLabel(const vector<Point> &pointCloud, vector<facesLabelName> &shapes)
+{
+    vector<int> labels(pointCloud.size(), -1);
+    vector<double> bestDistance(pointCloud.size(), DBL_MAX);
+    Tree tree;
+
+    // Go through all the shapes
+    auto tqLabeledShapes = tq::trange(shapes.size());
+    tqLabeledShapes.set_prefix("Labeling each point: ");
+    for (int j : tqLabeledShapes)
+    {
+        if(j >=10) break;
+        // Build an AABB tree for the current shape
+        auto &labeledTree = shapes[j];
+        tree.rebuild(get<0>(labeledTree).begin(), get<0>(labeledTree).end());
+        tree.accelerate_distance_queries();
+        // Go through the point cloud
+#pragma omp parallel for
+        for(int i=0; i < pointCloud.size(); i++)
+        {
+            // For each point, find the closest on the shape
+            double distance = tree.squared_distance(pointCloud[i]);
+            // If the distance is improved, the points gets the label of the current shape
+            if (distance < bestDistance[i]) {
+                bestDistance[i] = distance;
+                labels[i] = get<1>(labeledTree);
+            }
+        }
+    }
+
+    return make_pair(labels, bestDistance);
+}

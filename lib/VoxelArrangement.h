@@ -23,8 +23,8 @@ public:
     void loadHdf(const std::string& name);
     void computePlanes();
     void buildArrangement();
-    void normalizeFeatures();
-    void normalizeFeatures(const std::vector<std::vector<std::vector<int>>> &nbHits);
+    void normalizeFeatures(bool withNormals=false);
+    void normalizeFeatures(const std::vector<std::vector<std::vector<int>>> &nbHits, bool withNormals=false);
     void computeBboxPlanes();
     int getLabel(const triplet& voxelIdx);
     void getIntersections(const std::vector<PlaneSimple> &planes,
@@ -51,7 +51,8 @@ public:
     // Computing the features from labeled points with their point of views (no point snapping on the facets)
     template <typename T>
     void computeFeaturesRegular(const std::vector<Point> &points, const std::vector<Point> &pointOfViews,
-                                const std::vector<T> &labels, int nbClasses, bool verbose);
+                                const std::vector<T> &labels, int nbClasses,
+                                const std::vector<Vector> &normals, bool verbose=true);
 
     void computeFeaturesPtNormal(const std::vector<Point> &points, const std::vector<Point> &pointOfViews,
                                  const std::vector<Vector> &normals, bool verbose);

@@ -17,15 +17,16 @@ vector<string> splitString(const string& s, const string& sep) {
     return outputSplit;
 }
 
-pair<vector<Point>, vector<vector<double>>> loadLightConvPointOutput(const string& path)
+tuple<vector<Point>, vector<int>, vector<vector<double>>> loadLightConvPointOutput(const string& path)
 {
     //Loading the obj data
     ifstream inputStream(path.c_str());
     if (!inputStream) {
         cerr << "Could not load file located at : " << path << endl;
-        return make_pair(vector<Point>(), vector<vector<double>>());
+        return make_tuple(vector<Point>(), vector<int>(), vector<vector<double>>());
     }
     vector<Point> points;
+    vector<int> gt;
     vector<vector<double>> labels;
     string currentLine;
     while (getline(inputStream, currentLine)) {
@@ -34,6 +35,7 @@ pair<vector<Point>, vector<vector<double>>> loadLightConvPointOutput(const strin
         double vx = stod(split[0]);
         double vy = stod(split[1]);
         double vz = stod(split[2]);
+        gt.push_back(stoi(split[3]));
         vector<double> prediction;
         prediction.reserve(split.size() - 4);
         for(int i = 4; i < split.size(); i++)
@@ -41,7 +43,7 @@ pair<vector<Point>, vector<vector<double>>> loadLightConvPointOutput(const strin
         points.emplace_back(vx, vy, vz);
         labels.push_back(prediction);
     }
-    return make_pair(points, labels);
+    return make_tuple(points, gt, labels);
 }
 
 /* Load points from an obj files */

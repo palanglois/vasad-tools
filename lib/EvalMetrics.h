@@ -46,5 +46,6 @@ private:
 std::vector<Point> samplePointsOnMesh(const std::vector<Triangle>& mesh, int nbSamples);
 std::multiset<double> findPcDistance(const std::vector<Point>& refPointCloud, const std::vector<Point>& queryPointCloud);
 
+std::pair<std::vector<int>, std::vector<double>> computePcClosestLabel(const std::vector<Point> &pointCloud, std::vector<facesLabelName> &shapes);
 
 #endif //BIM_DATA_EVALMETRICS_H

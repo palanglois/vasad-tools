@@ -109,18 +109,21 @@ TEST(VoxelArrangement, FeaturesRegularFromPointsWithLabels)
     vector<Point> points;
     vector<Point> pointOfViews;
     vector<int> labels;
+    vector<Vector> normals;
 
     // 1st point
     points.emplace_back(0.6, 0.25, 0.25);
     pointOfViews.emplace_back(0.9, 0.6, 0.25);
     labels.push_back(1);
+    normals.emplace_back(1., 0., 0.);
 
     // 1st point
     points.emplace_back(0.7, 0.25, 0.25);
     pointOfViews.emplace_back(0.4, 0.25, 1.1);
     labels.push_back(0);
+    normals.emplace_back(0., 1., 0.);
 
-    voxArr.computeFeaturesRegular(points, pointOfViews, labels, nbClasses, false);
+    voxArr.computeFeaturesRegular(points, pointOfViews, labels, nbClasses, normals, false);
     cout.clear();
     cerr.clear();
 
@@ -154,18 +157,21 @@ TEST(VoxelArrangement, FeaturesRegularFromPointsWithFeatures)
     vector<Point> points;
     vector<Point> pointOfViews;
     vector<vector<double>> labels;
+    vector<Vector> normals;
 
     // 1st point
     points.emplace_back(0.6, 0.25, 0.25);
     pointOfViews.emplace_back(0.9, 0.6, 0.25);
     labels.push_back({0., 0.5, 0.});
+    normals.emplace_back(1., 0., 0.);
 
     // 2nd point
     points.emplace_back(0.7, 0.25, 0.25);
     pointOfViews.emplace_back(0.4, 0.25, 1.1);
     labels.push_back({0.5, 0., 0.});
+    normals.emplace_back(0., 1., 0.);
 
-    voxArr.computeFeaturesRegular(points, pointOfViews, labels, nbClasses, false);
+    voxArr.computeFeaturesRegular(points, pointOfViews, labels, nbClasses, normals, false);
     cout.clear();
     cerr.clear();
 
@@ -180,6 +186,9 @@ TEST(VoxelArrangement, FeaturesRegularFromPointsWithFeatures)
         ASSERT_DOUBLE_EQ(feat, 0.);
     ASSERT_DOUBLE_EQ(features[1][0][0][0], 0.25);
     ASSERT_DOUBLE_EQ(features[1][0][0][1], 0.25);
+    ASSERT_DOUBLE_EQ(features[1][0][0][4], sqrt(2.) / 2.);
+    ASSERT_DOUBLE_EQ(features[1][0][0][5], sqrt(2.) / 2.);
+    ASSERT_DOUBLE_EQ(features[1][0][0][6], 0.);
     ASSERT_DOUBLE_EQ(features[1][1][0][nbClasses], 1.);
     ASSERT_DOUBLE_EQ(features[0][0][1][nbClasses], 1.);
     ASSERT_DOUBLE_EQ(features[1][0][1][nbClasses], 1.);
@@ -205,10 +214,12 @@ TEST(VoxelArrangement, VoxelInOut)
     vector<Point> points;
     vector<Point> pointOfViews;
     vector<int> pointLabels;
+    vector<Vector> normals;
     points.emplace_back(0.6, 0.25, 0.25);
     pointOfViews.emplace_back(0.9, 0.6, 0.25);
     pointLabels.push_back(1);
-    voxArr.computeFeaturesRegular(points, pointOfViews, pointLabels, nbClasses, false);
+    normals.emplace_back(1., 0., 0.);
+    voxArr.computeFeaturesRegular(points, pointOfViews, pointLabels, nbClasses, normals, false);
 
     // Output
     string outputJsonPath = (string) TEST_DIR + "voxelOutput.json";
@@ -259,9 +270,11 @@ TEST(VoxelArrangement, Split)
     vector<Point> points;
     vector<Point> pointOfViews;
     vector<int> pointLabels;
+    vector<Vector> normals;
     points.emplace_back(0.6, 0.25, 0.25);
     pointOfViews.emplace_back(0.9, 0.6, 0.25);
     pointLabels.push_back(1);
+    normals.emplace_back(1., 0., 0.);
 
     // Labels
     const string testObjPath = (string) TEST_DIR + "simplecube.obj";
@@ -276,7 +289,7 @@ TEST(VoxelArrangement, Split)
     double nbVoxelsAlongAxis = 2.;
     int nbSplitsRegular = splitArrangementInVoxelsRegular(allTrees, pointOfViews, points, pointLabels, voxelSide,
                                                           classesWithColor.size(), outPath, nbVoxelsAlongAxis,
-                                                          richFeatures, verbose);
+                                                          richFeatures, normals, verbose);
 
     int nbSplits = splitArrangementInVoxels(allTrees, pointOfViews, points, pointLabels, voxelSide,
                                             classesWithColor.size(), outPath, maxNodes, verbose);

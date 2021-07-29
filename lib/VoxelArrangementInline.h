@@ -14,7 +14,7 @@ inline void updateFeatures(vector<double>& feature, int label)
 
 inline void updateFeatures(vector<double>& feature, const vector<double>& richLabel)
 {
-    assert(feature.size() - 1 == richLabel.size());
+    assert(feature.size() - 1 == richLabel.size() || feature.size() - 4 == richLabel.size());
     for(int i=0; i < richLabel.size(); i++)
         feature[i] += richLabel.at(i);
 }
@@ -26,7 +26,7 @@ int splitArrangementInVoxelsRegular(vector<facesLabelName> &labeledShapes,
                                     const vector<T> &pointCloudLabels,
                                     double voxelSide,
                                     int nbClasses, const string &path, int nbVoxelsAlongAxis,
-                                    bool withRichFeatures, bool verbose)
+                                    bool withRichFeatures, const vector<Vector> &normals, bool verbose=true)
 {
 
     // Compute initial bounding box
@@ -68,7 +68,7 @@ int splitArrangementInVoxelsRegular(vector<facesLabelName> &labeledShapes,
         }
 
         // We compute the features
-        fullArrangement.computeFeaturesRegular(pointCloud, pointOfViews, pointCloudLabels, nbClasses, verbose);
+        fullArrangement.computeFeaturesRegular(pointCloud, pointOfViews, pointCloudLabels, nbClasses, normals, verbose);
 
         // We save the current chunk
         string outPath(path + padTo(to_string(i), 5) + ".h5");
@@ -80,14 +80,16 @@ int splitArrangementInVoxelsRegular(vector<facesLabelName> &labeledShapes,
 
 template <typename T>
 void VoxelArrangement::computeFeaturesRegular(const std::vector<Point> &points, const std::vector<Point> &pointOfViews,
-                                              const std::vector<T> &labels, int nbClasses, bool verbose) {
+                                              const std::vector<T> &labels, int nbClasses,
+                                              const std::vector<Vector> &normals, bool verbose) {
     // Make sure that the bbox planes have been built
     computeBboxPlanes();
     // Initialize the features
+    int featureSize = normals.size() == 0 ? nbClasses + 1 : nbClasses + 4;
     _features = vector<vector<vector<vector<double>>>>(_width,
                  vector<vector<vector<double>>>(_height,
                          vector<vector<double>>(_depth,
-                                 vector<double>(nbClasses + 1, 0.))));
+                                 vector<double>(featureSize, 0.))));
     vector<vector<vector<int>>> nbHits = vector<vector<vector<int>>>(_width,
                                                  vector<vector<int>>(_height,
                                                          vector<int>(_depth, 0)));
@@ -103,6 +105,13 @@ void VoxelArrangement::computeFeaturesRegular(const std::vector<Point> &points, 
 
         triplet cellIdx = findVoxel(point);
         updateFeatures(_features[get<0>(cellIdx)][get<1>(cellIdx)][get<2>(cellIdx)], label);
+        // Normals
+        if(normals.size() != 0)
+        {
+            _features[get<0>(cellIdx)][get<1>(cellIdx)][get<2>(cellIdx)][nbClasses + 1] += normals[i].x();
+            _features[get<0>(cellIdx)][get<1>(cellIdx)][get<2>(cellIdx)][nbClasses + 2] += normals[i].y();
+            _features[get<0>(cellIdx)][get<1>(cellIdx)][get<2>(cellIdx)][nbClasses + 3] += normals[i].z();
+        }
         nbHits[get<0>(cellIdx)][get<1>(cellIdx)][get<2>(cellIdx)]++;
     }
 
@@ -132,9 +141,9 @@ void VoxelArrangement::computeFeaturesRegular(const std::vector<Point> &points, 
         }
     }
     if (typeid(T) == typeid(int))
-        normalizeFeatures();
+        normalizeFeatures(normals.size() != 0);
     else
-        normalizeFeatures(nbHits);
+        normalizeFeatures(nbHits, normals.size() != 0);
 }
 
 
@@ -143,7 +152,8 @@ int splitLabeledPointCloud(const std::vector<Point> &pointOfViews,
                            const std::vector<Point> &pointCloud,
                            const std::vector<T> &pointCloudLabels,
                            double voxelSide, int nbClasses, const std::string &path, int nbVoxelsAlongAxis,
-                           bool verbose)
+                           const std::vector<Vector> &normals=std::vector<Vector>(0),
+                           bool verbose=true)
 {
     // Compute initial bounding box
     CGAL::Bbox_3 initialBbox;
@@ -165,7 +175,7 @@ int splitLabeledPointCloud(const std::vector<Point> &pointOfViews,
         auto fullArrangement = VoxelArrangement(curBbox, voxelSide);
 
         // We compute the features
-        fullArrangement.computeFeaturesRegular(pointCloud, pointOfViews, pointCloudLabels, nbClasses, verbose);
+        fullArrangement.computeFeaturesRegular(pointCloud, pointOfViews, pointCloudLabels, nbClasses, normals, verbose);
 
         // If we have an empty chunk, we discard it
         if(fullArrangement.areFeaturesEmpty()) continue;

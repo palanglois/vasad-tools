@@ -283,7 +283,7 @@ std::pair<std::vector<Point>, std::vector<Vector>> loadPointsWithNormals(const s
 std::tuple<std::vector<Point>, std::vector<Vector>, std::vector<std::vector<double>>>
         loadPointsWithNormalsAndRichFeatures(const std::string &inFile);
 std::pair<std::vector<Point>, std::vector<std::vector<double>>> loadPointsWithRichFeatures(const std::string &inFile);
-std::pair<std::vector<Point>, std::vector<std::vector<double>>> loadLightConvPointOutput(const std::string& path);
+std::tuple<std::vector<Point>, std::vector<int>, std::vector<std::vector<double>>> loadLightConvPointOutput(const std::string& path);
 
 // Output functions
 void savePointsAsObj(const std::vector<Point>& points, const std::string &outPath);

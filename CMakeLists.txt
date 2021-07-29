@@ -155,6 +155,8 @@ add_executable(splitVoxelsPure main_split_voxels_pure.cpp)
 
 add_executable(gt2split main_gt_to_split.cpp)
 
+add_executable(evalPointSemanticImprovement main_eval_point_semantic_improvement.cpp)
+
 target_link_libraries(bim_data ${CGAL_LIBRARIES} io_geometry)
 target_link_libraries(color_classes io_geometry)
 target_link_libraries(plane_arrangement io_geometry)
@@ -188,6 +190,7 @@ target_link_libraries(implicitEval io_geometry eval_metrics tinyply "-lstdc++fs"
 target_link_libraries(allVoxels2Ply ${CGAL_LIBRARIES} io_geometry voxel_arrangement graph_statistics "-lstdc++fs")
 target_link_libraries(splitVoxelsPure voxel_arrangement io_geometry graph_statistics)
 target_link_libraries(gt2split io_geometry tinyply)
+target_link_libraries(evalPointSemanticImprovement io_geometry eval_metrics "-lstdc++fs")
 if(MKL_FOUND)
     target_link_libraries(mesh2plane ${MKL_LIBRARIES})
 endif()
@@ -203,7 +206,7 @@ enable_testing()
 include_directories(test)
 add_executable(runUnitTests test/mainTest.cpp test/test_graph.cpp test/graph_fixture.h
         test/test_region_growing.cpp test/test_voxels.cpp lib/RegionGrowing.cpp test/test_voxels_sparse.cpp
-        test/test_implicit_representation.cpp)
+        test/test_implicit_representation.cpp test/test_eval.cpp)
 target_link_libraries(runUnitTests GTest_in pthread ${CGAL_LIBRARIES} io_geometry graph_statistics voxel_arrangement
-        voxel_sparse sparse_to_dense implicit_representation)
+        voxel_sparse sparse_to_dense implicit_representation eval_metrics)
 add_test(runUnitTests runUnitTests)

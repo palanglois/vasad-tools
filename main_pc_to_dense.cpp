@@ -50,8 +50,10 @@ int main(int argc, char *argv[]) {
     vector<classKeywordsColor> classesWithColor = loadSemanticClasses((string) TEST_DIR + "semantic_classes.json");
 
     // Loading Light conv point predictions
-    pair<vector<Point>, vector<vector<double>>> lcpData = loadLightConvPointOutput(opt["-i"]);
-    cout << "Loaded " << lcpData.first.size() << " points from LightConvPoint." << endl;
+    tuple<vector<Point>, vector<int>, vector<vector<double>>> lcpData = loadLightConvPointOutput(opt["-i"]);
+    vector<Point> &lcpPointCloud = get<0>(lcpData);
+    vector<vector<double>> &richLabels = get<2>(lcpData);
+    cout << "Loaded " << lcpPointCloud.size() << " points from LightConvPoint." << endl;
 
     // Loading points with label
     pair<vector<Point>, vector<Vector>> originalData = loadPointsWithNormals(opt["-s"]);
@@ -77,20 +79,20 @@ int main(int argc, char *argv[]) {
     vector<colorTuple> pointColors;
 
     //Fill the data
-    auto tqPoints = tq::trange(lcpData.first.size()); // works for rvalues too!
+    auto tqPoints = tq::trange(lcpPointCloud.size()); // works for rvalues too!
     tqPoints.set_prefix("Processing each point: ");
     for(int i: tqPoints) {
-        Neighbor_search search(tree, lcpData.first[i], 1);
+        Neighbor_search search(tree, lcpPointCloud[i], 1);
         int idx = point2idx.at(search.begin()->first);
-        outputPredLabels[lcpData.first[i]] = lcpData.second[i];
+        outputPredLabels[lcpPointCloud[i]] = richLabels[i];
         outputPointOfViews.push_back(pointOfViews[idx]);
         normals.push_back(originalData.second[idx]);
-        int pseudoLabel = lcpData.second[i].size() == 1 ? lcpData.second[i][0] : arg_max(lcpData.second[i]);
+        int pseudoLabel = richLabels[i].size() == 1 ? richLabels[i][0] : arg_max(richLabels[i]);
         pointColors.push_back(get<2>(classesWithColor[pseudoLabel]));
     }
     vector<double> features(0);
-    savePointsAsObjWithColors(lcpData.first, pointColors, outputPath + "goodVis.obj");
-    savePointsAsObjWithLabel(make_pair(lcpData.first, outputPredLabels),
+    savePointsAsObjWithColors(lcpPointCloud, pointColors, outputPath + "goodVis.obj");
+    savePointsAsObjWithLabel(make_pair(lcpPointCloud, outputPredLabels),
                              outputPath + "goodSamplesWithLabel.obj", normals, features);
     savePointsAsObj(outputPointOfViews, outputPath + "goodPov.obj");
 

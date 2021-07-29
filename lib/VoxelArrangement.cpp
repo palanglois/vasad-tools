@@ -210,26 +210,48 @@ void VoxelArrangement::buildArrangement()
     }
 }
 
-void VoxelArrangement::normalizeFeatures() {
+void VoxelArrangement::normalizeFeatures(bool withNormals) {
     for(int i=0; i < _width; i++)
         for(int j=0; j < _height; j++)
             for(int k=0; k < _depth; k++) {
                 double nbElems = 0.;
-                for (int l = 0; l < _features[i][j][k].size(); l++)
+                double featSize = withNormals ? _features[i][j][k].size() - 3 : _features[i][j][k].size();
+                for (int l = 0; l < featSize; l++)
                     nbElems += _features[i][j][k][l];
                 if(nbElems == 0.) continue;
-                for (int l = 0; l < _features[i][j][k].size(); l++)
+                for (int l = 0; l < featSize; l++)
                     _features[i][j][k][l] /= nbElems;
+                if(withNormals)
+                {
+                    double nx = _features[i][j][k][_features[i][j][k].size() - 3];
+                    double ny = _features[i][j][k][_features[i][j][k].size() - 2];
+                    double nz = _features[i][j][k][_features[i][j][k].size() - 1];
+                    double norm = sqrt(pow(nx, 2) + pow(ny, 2) + pow(nz, 2));
+                    if(norm != 0)
+                        for(int l=1; l < 4; l++)
+                            _features[i][j][k][_features[i][j][k].size() - l] /= norm;
+                }
             }
 }
 
-void VoxelArrangement::normalizeFeatures(const vector<vector<vector<int>>> &nbHits) {
+void VoxelArrangement::normalizeFeatures(const vector<vector<vector<int>>> &nbHits, bool withNormals) {
     for(int i=0; i < _width; i++)
         for(int j=0; j < _height; j++)
             for(int k=0; k < _depth; k++)
-                if(nbHits[i][j][k] != 0)
-                    for (int l = 0; l < _features[i][j][k].size(); l++)
+                if(nbHits[i][j][k] != 0) {
+                    int featSize = withNormals ? _features[i][j][k].size() - 3 : _features[i][j][k].size();
+                    for (int l = 0; l < featSize; l++)
                         _features[i][j][k][l] /= (double) nbHits[i][j][k];
+                    if(withNormals) {
+                        double nx = _features[i][j][k][_features[i][j][k].size() - 3];
+                        double ny = _features[i][j][k][_features[i][j][k].size() - 2];
+                        double nz = _features[i][j][k][_features[i][j][k].size() - 1];
+                        double norm = sqrt(pow(nx, 2) + pow(ny, 2) + pow(nz, 2));
+                        if (norm != 0)
+                            for (int l = 1; l < 4; l++)
+                                _features[i][j][k][_features[i][j][k].size() - l] /= norm;
+                    }
+                }
 }
 
 void VoxelArrangement::computeBboxPlanes() {
@@ -975,7 +997,8 @@ int splitArrangementInVoxels(vector<facesLabelName> &labeledShapes,
         fullArrangement.assignLabel(labeledShapes, nbClasses, verbose);
 
         // We compute the features
-        fullArrangement.computeFeaturesRegular(pointCloud, pointOfViews, pointCloudLabels, nbClasses, verbose);
+        fullArrangement.computeFeaturesRegular(pointCloud, pointOfViews, pointCloudLabels, nbClasses,
+                                               vector<Vector>(0), verbose);
 
         // We save the current chunk
         string outPath(path + padTo(to_string(chunkIterator), 4) + ".json");

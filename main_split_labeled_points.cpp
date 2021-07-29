@@ -63,11 +63,11 @@ int main(int argc, char *argv[]) {
 
     // Loading points with either labels or rich features
     pair<vector<Point>, vector<int>> pointsWithLabel;
-    pair<vector<Point>, vector<vector<double>>> pointsWithRichFeatures;
+    tuple<vector<Point>,vector<Vector>, vector<vector<double>>> pointsWithNormalsAndRichFeatures;
     if(isLabel)
         pointsWithLabel = loadPointsWithLabel(pointCloudPath);
     else
-        pointsWithRichFeatures = loadPointsWithRichFeatures(pointCloudPath);
+        pointsWithNormalsAndRichFeatures = loadPointsWithNormalsAndRichFeatures(pointCloudPath);
 
     // Point of views
     vector<Point> pointOfViews = loadPointCloudObj(pointOfViewPath);
@@ -77,13 +77,13 @@ int main(int argc, char *argv[]) {
     if(isLabel) {
         cout << "Loaded " << pointsWithLabel.first.size() << " points" << endl;
         nbSplit = splitLabeledPointCloud(pointOfViews, pointsWithLabel.first, pointsWithLabel.second, voxelSide,
-                                         classesWithColor.size(), outputPath + prefix, nbVoxelsAlongAxis, verbose);
+                                         classesWithColor.size(), outputPath + prefix, nbVoxelsAlongAxis, vector<Vector>(0), verbose);
     }
     else {
-        cout << "Loaded " << pointsWithRichFeatures.first.size() << " points" << endl;
-        nbSplit = splitLabeledPointCloud(pointOfViews, pointsWithRichFeatures.first, pointsWithRichFeatures.second,
+        cout << "Loaded " << get<0>(pointsWithNormalsAndRichFeatures).size() << " points" << endl;
+        nbSplit = splitLabeledPointCloud(pointOfViews, get<0>(pointsWithNormalsAndRichFeatures), get<2>(pointsWithNormalsAndRichFeatures),
                                          voxelSide, classesWithColor.size(), outputPath + prefix, nbVoxelsAlongAxis,
-                                         verbose);
+                                         get<1>(pointsWithNormalsAndRichFeatures), verbose);
     }
 
     cout << endl << "Made " << nbSplit << " chunks out of point cloud " << pointCloudPath << endl;
