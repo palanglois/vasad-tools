@@ -25,6 +25,7 @@ include_directories(${HDF5_INCLUDE_DIRS})
 add_library(tinyply external/tinyply/tinyply.cpp)
 
 # Cnpy
+find_package(ZLIB REQUIRED)
 add_library(cnpy external/cnpy/cnpy.cpp)
 
 # Qt
@@ -184,8 +185,8 @@ target_link_libraries(splitLabeledPoints ${CGAL_LIBRARIES} io_geometry voxel_arr
 target_link_libraries(computeThickness ${CGAL_LIBRARIES} io_geometry)
 target_link_libraries(mergePly tinyply)
 target_link_libraries(splitSparseToDense sparse_to_dense io_geometry voxel_arrangement graph_statistics voxel_sparse)
-target_link_libraries(splitImplicit io_geometry voxel_arrangement graph_statistics implicit_representation)
-target_link_libraries(readBoxes io_geometry implicit_representation)
+target_link_libraries(splitImplicit ${ZLIB_LIBRARIES} io_geometry voxel_arrangement graph_statistics implicit_representation)
+target_link_libraries(readBoxes ${ZLIB_LIBRARIES} io_geometry implicit_representation)
 target_link_libraries(implicitEval io_geometry eval_metrics tinyply "-lstdc++fs")
 target_link_libraries(allVoxels2Ply ${CGAL_LIBRARIES} io_geometry voxel_arrangement graph_statistics "-lstdc++fs")
 target_link_libraries(splitVoxelsPure voxel_arrangement io_geometry graph_statistics)
@@ -207,6 +208,6 @@ include_directories(test)
 add_executable(runUnitTests test/mainTest.cpp test/test_graph.cpp test/graph_fixture.h
         test/test_region_growing.cpp test/test_voxels.cpp lib/RegionGrowing.cpp test/test_voxels_sparse.cpp
         test/test_implicit_representation.cpp test/test_eval.cpp)
-target_link_libraries(runUnitTests GTest_in pthread ${CGAL_LIBRARIES} io_geometry graph_statistics voxel_arrangement
+target_link_libraries(runUnitTests GTest_in pthread ${ZLIB_LIBRARIES} ${CGAL_LIBRARIES} io_geometry graph_statistics voxel_arrangement
         voxel_sparse sparse_to_dense implicit_representation eval_metrics)
 add_test(runUnitTests runUnitTests)
